@@ -1,0 +1,66 @@
+version: "3.9"
+services:
+  sc2_controller:
+    build:
+      context: .
+      dockerfile: ./sc2_controller/Dockerfile
+      args:
+        CARGO_FLAGS: "--release"
+    ports:
+      - "8083:8083"
+    environment:
+      - "ACSC2_PORT=8083"
+      - "ACSC2_PROXY_HOST=proxy_controller"
+    volumes:
+      - C:\Program Files (x86)\StarCraft II\Maps:/root/StarCraftII/maps
+      - "./logs:/logs"
+
+  bot_controller1:
+    build:
+      context: .
+      dockerfile: ./bot_controller/Dockerfile
+      args:
+        CARGO_FLAGS: "--release"
+    ports:
+      - "8081:8081"
+    volumes:
+      - "./matches/bots:/bots"
+      - "./logs:/logs"
+    environment:
+      - "ACBOT_PORT=8081"
+      - "ACBOT_PROXY_HOST=proxy_controller"
+
+  bot_controller2:
+    build:
+      context: .
+      dockerfile: ./bot_controller/Dockerfile
+      args:
+        CARGO_FLAGS: "--release"
+    ports:
+      - "8082:8082"
+    volumes:
+      - "./matches/bots:/bots"
+      - "./logs:/logs"
+    environment:
+      - "ACBOT_PORT=8082"
+      - "ACBOT_PROXY_HOST=proxy_controller"
+
+  proxy_controller:
+    build:
+      context: .
+      dockerfile: ./proxy_controller/Dockerfile
+      args:
+        CARGO_FLAGS: "--release"
+    ports:
+      - "8080:8080"
+    environment:
+      - "ACPROXY_PORT=8080"
+      - "ACPROXY_BOT_CONT_1_HOST=bot_controller1"
+      - "ACPROXY_BOT_CONT_2_HOST=bot_controller2"
+      - "ACPROXY_SC2_CONT_1_HOST=sc2_controller"
+      - "ACPROXY_SC2_CONT_2_HOST=sc2_controller"
+    volumes:
+      - "./matches:/app/matches"
+      - "./config.toml:/app/config.toml"
+      - "./logs:/logs"
+

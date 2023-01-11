@@ -1,0 +1,8 @@
+
+[workspace]
+members = [
+    "bot_controller",
+    "sc2_controller",
+    "proxy_controller",
+    "common"
+]

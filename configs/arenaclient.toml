@@ -1,0 +1,37 @@
+ARENA_CLIENT_ID = "aiarenaclient_local"  # ID of arenaclient. Used for AiArena
+API_TOKEN = ""  # API Token to retrieve matches and submit results. Used for AiArena
+ROUNDS_PER_RUN = -1  # Set to -1 to ignore this
+BASE_WEBSITE_URL = ""
+DEBUG_MODE = true  # Enables debug mode for more logging
+PYTHON = "python"  # Which python version to use
+RUN_TYPE = "aiarena"  # Run on AiArena, locally or test (options: "test", "local", "aiarena")
+# Secure mode will ignore the BOTS_DIRECTORY configuration setting and instead run each bot in their home directory.
+SECURE_MODE = true
+
+# LOGGING
+LOG_ROOT = "/logs"
+LOG_DIR = "arenaclient"
+LOGGING_LEVEL = "debug" #info,debug,error,trace
+
+# PATHS AND FILES
+TEMP_ROOT = "/tmp/"
+TEMP_PATH = "aiarena"
+
+# Directories
+REPLAYS_DIRECTORY = "/replays"
+BOTS_DIRECTORY = "/bots"  # Ignored when SECURE_MODE == True
+
+# MATCHES
+DISABLE_DEBUG = true
+VALIDATE_RACE = true
+
+
+# Controllers
+BOT_CONTROLLER_1_HOST="127.0.0.1"
+BOT_CONTROLLER_1_PORT=8081
+BOT_CONTROLLER_2_HOST="127.0.0.1"
+BOT_CONTROLLER_2_PORT=8082
+SC2_CONTROLLER_1_HOST="127.0.0.1"
+SC2_CONTROLLER_1_PORT=8083
+SC2_CONTROLLER_2_HOST="127.0.0.1"
+SC2_CONTROLLER_2_PORT=8084
