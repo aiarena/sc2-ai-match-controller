@@ -167,7 +167,7 @@ mod tests {
         game_result.result = Some(AiArenaResult::Error);
         let aiarena_game_result = AiArenaGameResult::from(&game_result);
         let serialized =
-            serde_json::to_value(&aiarena_game_result).expect("Could not serialize GameResult");
+            serde_json::to_value(aiarena_game_result).expect("Could not serialize GameResult");
         assert_eq!(serialized["type"], "Error");
     }
 
@@ -179,7 +179,7 @@ mod tests {
         game_result.result = None;
         let aiarena_game_result = AiArenaGameResult::from(&game_result);
         let serialized =
-            serde_json::to_value(&aiarena_game_result).expect("Could not serialize GameResult");
+            serde_json::to_value(aiarena_game_result).expect("Could not serialize GameResult");
         assert_eq!(serialized["type"], "Player1Win");
     }
 
@@ -191,7 +191,7 @@ mod tests {
         game_result.result = None;
         let aiarena_game_result = AiArenaGameResult::from(&game_result);
         let serialized =
-            serde_json::to_value(&aiarena_game_result).expect("Could not serialize GameResult");
+            serde_json::to_value(aiarena_game_result).expect("Could not serialize GameResult");
         assert_eq!(serialized["type"], "Player2Win");
     }
 
@@ -203,7 +203,7 @@ mod tests {
         game_result.result = None;
         let aiarena_game_result = AiArenaGameResult::from(&game_result);
         let serialized =
-            serde_json::to_value(&aiarena_game_result).expect("Could not serialize GameResult");
+            serde_json::to_value(aiarena_game_result).expect("Could not serialize GameResult");
         assert_eq!(serialized["type"], "Player1TimeOut");
     }
 
@@ -215,7 +215,7 @@ mod tests {
         game_result.result = None;
         let aiarena_game_result = AiArenaGameResult::from(&game_result);
         let serialized =
-            serde_json::to_value(&aiarena_game_result).expect("Could not serialize GameResult");
+            serde_json::to_value(aiarena_game_result).expect("Could not serialize GameResult");
         assert_eq!(serialized["type"], "Player2TimeOut");
     }
 
@@ -227,7 +227,7 @@ mod tests {
         game_result.result = None;
         let aiarena_game_result = AiArenaGameResult::from(&game_result);
         let serialized =
-            serde_json::to_value(&aiarena_game_result).expect("Could not serialize GameResult");
+            serde_json::to_value(aiarena_game_result).expect("Could not serialize GameResult");
         assert_eq!(serialized["type"], "Tie");
     }
 
@@ -239,7 +239,7 @@ mod tests {
         game_result.result = None;
         let aiarena_game_result = AiArenaGameResult::from(&game_result);
         let serialized =
-            serde_json::to_value(&aiarena_game_result).expect("Could not serialize GameResult");
+            serde_json::to_value(aiarena_game_result).expect("Could not serialize GameResult");
         assert_eq!(serialized["type"], "Error");
     }
 
@@ -251,7 +251,7 @@ mod tests {
         game_result.result = None;
         let aiarena_game_result = AiArenaGameResult::from(&game_result);
         let serialized =
-            serde_json::to_value(&aiarena_game_result).expect("Could not serialize GameResult");
+            serde_json::to_value(aiarena_game_result).expect("Could not serialize GameResult");
         assert_eq!(serialized["type"], "Player1Crash");
     }
 
@@ -263,7 +263,7 @@ mod tests {
         game_result.result = None;
         let aiarena_game_result = AiArenaGameResult::from(&game_result);
         let serialized =
-            serde_json::to_value(&aiarena_game_result).expect("Could not serialize GameResult");
+            serde_json::to_value(aiarena_game_result).expect("Could not serialize GameResult");
         assert_eq!(serialized["type"], "Player2Crash");
     }
 
@@ -274,7 +274,7 @@ mod tests {
         game_result.match_id = match_id;
         let aiarena_game_result = AiArenaGameResult::from(&game_result);
         let serialized =
-            serde_json::to_value(&aiarena_game_result).expect("Could not serialize GameResult");
+            serde_json::to_value(aiarena_game_result).expect("Could not serialize GameResult");
         assert_eq!(serialized["match"], match_id);
     }
 

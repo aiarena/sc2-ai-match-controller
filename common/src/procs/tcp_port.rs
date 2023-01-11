@@ -124,7 +124,7 @@ mod tests {
         let port = portpicker::pick_unused_port().unwrap();
 
         let address = format!("{}:{}", host, port);
-        let _listener = TcpListener::bind(&address).unwrap();
+        let _listener = TcpListener::bind(address).unwrap();
         let pid = std::process::id();
         println!("{:?}, {:?}", 0f32, port);
         if let Some(found_port) = get_ipv4_port_for_pid(pid) {
