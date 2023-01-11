@@ -21,7 +21,8 @@ jobs:
       fail-fast: false
     steps:
       - uses: actions/checkout@v3
-        submodules: 'true'
+        with:
+          submodules: 'true'
 
       # This is a separate action that sets up buildx runner
       - name: Set up Docker Buildx

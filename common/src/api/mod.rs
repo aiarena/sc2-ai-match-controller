@@ -4,8 +4,6 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use reqwest::header::HeaderName;
 use tokio_util::io::ReaderStream;
-#[cfg(feature = "swagger")]
-use utoipa::ToSchema;
 
 pub mod errors;
 pub mod process;
