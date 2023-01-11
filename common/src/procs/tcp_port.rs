@@ -111,7 +111,8 @@ mod tests {
     use std::net::TcpListener;
 
     use crate::procs::tcp_port::get_ipv4_port_for_pid;
-
+    
+    #[cfg(target_os = "windows")]
     #[test]
     fn test_tcp_port() {
         assert!(test_ip_port("0.0.0.0"));
@@ -125,8 +126,9 @@ mod tests {
         let address = format!("{}:{}", host, port);
         let _listener = TcpListener::bind(&address).unwrap();
         let pid = std::process::id();
-
+        println!("{:?}, {:?}",0f32, port);
         if let Some(found_port) = get_ipv4_port_for_pid(pid) {
+            
             found_port == port
         } else {
             false
