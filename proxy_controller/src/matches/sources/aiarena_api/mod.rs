@@ -54,9 +54,7 @@ impl MatchSource for HttpApiSource {
 
     async fn next_match(&self) -> Option<Match> {
         match self.api.get_match().await {
-            Ok(m) => {
-                Some(Match::from(m))
-            }
+            Ok(m) => Some(Match::from(m)),
             Err(err) => {
                 error!("{:?}", err);
                 None
