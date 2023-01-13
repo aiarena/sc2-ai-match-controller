@@ -47,7 +47,10 @@ impl BotController {
     }
 
     pub async fn download_bot_log(&self) -> Result<Bytes, ApiError<ApiErrorMessage>> {
-        let path = format!("/download/bot/{}/log", self.process_key);
+        let path = format!(
+            "/download/bot/{}/log",
+            common::urlencoding::encode(&self.start_bot.as_ref().unwrap().bot_name)
+        );
         let log_url = self.url.join(&path).unwrap(); // static string, so the constructor should catch any parse
                                                      // errors
         let request = self
@@ -59,7 +62,10 @@ impl BotController {
     }
 
     pub async fn download_bot_data(&self) -> Result<Bytes, ApiError<ApiErrorMessage>> {
-        let path = format!("/download/bot/{}/data", self.process_key);
+        let path = format!(
+            "/download/bot/{}/data",
+            common::urlencoding::encode(&self.start_bot.as_ref().unwrap().bot_name)
+        );
         let log_url = self.url.join(&path).unwrap(); // static string, so the constructor should catch any parse
                                                      // errors
         let request = self

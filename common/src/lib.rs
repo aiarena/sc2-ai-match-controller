@@ -16,6 +16,7 @@ pub use tracing;
 pub use tracing_appender;
 pub use tracing_subscriber;
 pub use url;
+pub use urlencoding;
 pub use utilities::portpicker;
 #[cfg(feature = "swagger")]
 pub use utoipa;

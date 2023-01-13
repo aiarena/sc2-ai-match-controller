@@ -23,11 +23,18 @@ use procfs::process::FDTarget;
 use procfs::process::Process;
 
 #[cfg(target_os = "windows")]
-pub fn get_ipv4_port_for_pid(pid: u32) -> Option<Port> {
+pub fn get_ipv4_port_for_pid(pid: u32, proxy_port: u16, check_remote_port: bool) -> Option<Port> {
     get_tcp_entry_list()
         .unwrap_or_default()
         .iter()
-        .find(|x| x.pid == pid)
+        .find(|x| {
+            x.pid == pid
+                && (if check_remote_port {
+                    x.remote_address.port() == proxy_port
+                } else {
+                    true
+                })
+        })
         .map(|x| x.local_address.port())
 }
 
@@ -127,7 +134,7 @@ mod tests {
         let _listener = TcpListener::bind(address).unwrap();
         let pid = std::process::id();
         println!("{:?}, {:?}", 0f32, port);
-        if let Some(found_port) = get_ipv4_port_for_pid(pid) {
+        if let Some(found_port) = get_ipv4_port_for_pid(pid, port, false) {
             found_port == port
         } else {
             false

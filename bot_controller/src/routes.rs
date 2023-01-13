@@ -258,27 +258,48 @@ pub async fn start_bot(
     let max_retries = 10;
     let mut counter = 0;
     let mut port = None;
+    #[cfg(target_os = "windows")]
+    {
+        let proxy_port: u16 = get_proxy_port(PREFIX).parse().unwrap();
 
-    while port.is_none() && counter < max_retries {
-        counter += 1;
-        port = get_ipv4_port_for_pid(pid);
-        if port.is_some() {
-            break;
+        while port.is_none() && counter < max_retries {
+            counter += 1;
+
+            port = get_ipv4_port_for_pid(pid, proxy_port, true);
+            if port.is_some() {
+                break;
+            }
+            tokio::time::sleep(Duration::from_secs(3)).await;
         }
-        tokio::time::sleep(Duration::from_secs(3)).await;
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        let proxy_port: u16 = get_proxy_port(PREFIX).parse().unwrap();
+
+        while port.is_none() && counter < max_retries {
+            counter += 1;
+
+            port = get_ipv4_port_for_pid(pid);
+            if port.is_some() {
+                break;
+            }
+            tokio::time::sleep(Duration::from_secs(3)).await;
+        }
+    }
+    let encoded_bot_name = common::urlencoding::encode(bot_name);
+
+    match state.extra_info.write().entry(encoded_bot_name.to_string()) {
+        Entry::Occupied(mut occ) => {
+            occ.get_mut().insert("BotDirectory".to_string(), bot_path);
+        }
+        Entry::Vacant(vac) => {
+            vac.insert(HashMap::new())
+                .insert("BotDirectory".to_string(), bot_path);
+        }
     }
 
     if let Some(port) = port {
         state.process_map.write().insert(port, process);
-        match state.extra_info.write().entry(*process_key) {
-            Entry::Occupied(mut occ) => {
-                occ.get_mut().insert("BotDirectory".to_string(), bot_path);
-            }
-            Entry::Vacant(vac) => {
-                vac.insert(HashMap::new())
-                    .insert("BotDirectory".to_string(), bot_path);
-            }
-        }
 
         let start_response = StartResponse {
             status: Status::Success,
@@ -332,18 +353,18 @@ responses(
 )
 ))]
 pub async fn download_bot_log(
-    Path(process_key): Path<Port>,
+    Path(bot_name): Path<String>,
     State(state): State<AppState>,
 ) -> Result<FileResponse, AppError> {
     let bot_directory = state
         .extra_info
         .read()
-        .get(&process_key)
+        .get(&bot_name)
         .and_then(|x| x.get("BotDirectory"))
         .ok_or_else(|| {
             AppError::Download(DownloadError::BotFolderNotFound(format!(
-                "Could not find directory entry for port {:?}",
-                process_key
+                "Could not find directory entry for bot_name {:?}",
+                bot_name
             )))
         })?
         .clone();
@@ -374,18 +395,18 @@ responses(
 )
 ))]
 pub async fn download_bot_data(
-    Path(process_key): Path<Port>,
+    Path(bot_name): Path<String>,
     State(state): State<AppState>,
 ) -> Result<BytesResponse, AppError> {
     let bot_directory = state
         .extra_info
         .read()
-        .get(&process_key)
+        .get(&bot_name)
         .and_then(|x| x.get("BotDirectory"))
         .ok_or_else(|| {
             AppError::Download(DownloadError::BotFolderNotFound(format!(
-                "Could not find directory entry for port {:?}",
-                process_key
+                "Could not find directory entry for bot {:?}",
+                bot_name
             )))
         })?
         .clone();
