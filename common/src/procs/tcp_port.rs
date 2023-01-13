@@ -113,20 +113,21 @@ fn get_tcp_entry_list() -> Result<Vec<TcpNetEntry>, std::io::Error> {
 }
 
 #[cfg(test)]
+
 mod tests {
     use crate::portpicker;
     use std::net::TcpListener;
 
     use crate::procs::tcp_port::get_ipv4_port_for_pid;
 
-    #[cfg(target_os = "windows")]
+    
     #[test]
     fn test_tcp_port() {
         assert!(test_ip_port("0.0.0.0"));
         assert!(test_ip_port("127.0.0.1"));
         assert!(test_ip_port("127.0.0.1"));
     }
-
+    #[cfg(target_os = "windows")]
     fn test_ip_port(host: &str) -> bool {
         let port = portpicker::pick_unused_port().unwrap();
 
@@ -135,6 +136,20 @@ mod tests {
         let pid = std::process::id();
         println!("{:?}, {:?}", 0f32, port);
         if let Some(found_port) = get_ipv4_port_for_pid(pid, port, false) {
+            found_port == port
+        } else {
+            false
+        }
+    }
+    #[cfg(not(target_os = "windows"))]
+    fn test_ip_port(host: &str) -> bool {
+        let port = portpicker::pick_unused_port().unwrap();
+
+        let address = format!("{}:{}", host, port);
+        let _listener = TcpListener::bind(address).unwrap();
+        let pid = std::process::id();
+        println!("{:?}, {:?}", 0f32, port);
+        if let Some(found_port) = get_ipv4_port_for_pid(pid) {
             found_port == port
         } else {
             false
