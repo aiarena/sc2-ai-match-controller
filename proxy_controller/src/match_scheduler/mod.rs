@@ -210,9 +210,10 @@ pub async fn match_scheduler<M: MatchSource>(
                 tracing::trace!("Waiting for results");
                 let (p1_result_ready, p2_result_ready) = {
                     let game_result = { proxy_state.read().game_result.clone().unwrap() };
+                    let result_ready = game_result.result.is_some();
                     (
-                        game_result.player1_result.as_ref().is_some(),
-                        game_result.player2_result.as_ref().is_some(),
+                        result_ready || game_result.player1_result.as_ref().is_some(),
+                        result_ready || game_result.player2_result.as_ref().is_some(),
                         // game_result.result.as_ref().is_some(),
                     )
                 };
