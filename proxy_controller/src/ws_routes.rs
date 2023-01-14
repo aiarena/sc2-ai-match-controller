@@ -115,7 +115,7 @@ async fn websocket(bot_ws: WebSocket, state: Arc<RwLock<ProxyState>>, addr: Sock
         if ready || counter > max_counter {
             break;
         } else {
-            sleep(Duration::from_secs(3)).await;
+            sleep(Duration::from_secs(5)).await;
         }
     }
     if state.read().ready {
@@ -207,6 +207,9 @@ async fn websocket(bot_ws: WebSocket, state: Arc<RwLock<ProxyState>>, addr: Sock
             .add_player_result(player_num, p_result);
     } else {
         error!("Timeout while waiting for game to become ready");
+        state.write().game_result.as_mut().unwrap().result =
+            Some(AiArenaResult::InitializationError);
+        return;
     }
     tracing::info!("Done");
 }

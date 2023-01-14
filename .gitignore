@@ -180,3 +180,4 @@ logs/
 testing/aiarena-test-bots/*/data
 api_spec
 testing/api-based
+*.SC2Replay
