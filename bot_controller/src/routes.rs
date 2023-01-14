@@ -184,6 +184,19 @@ pub async fn start_bot(
         }
     };
 
+    let encoded_bot_name = common::urlencoding::encode(bot_name);
+
+    match state.extra_info.write().entry(encoded_bot_name.to_string()) {
+        Entry::Occupied(mut occ) => {
+            occ.get_mut()
+                .insert("BotDirectory".to_string(), bot_path.clone());
+        }
+        Entry::Vacant(vac) => {
+            vac.insert(HashMap::new())
+                .insert("BotDirectory".to_string(), bot_path.clone());
+        }
+    }
+
     let mut command = Command::new(program);
 
     if bot_type == &BotType::Java {
@@ -226,25 +239,18 @@ pub async fn start_bot(
             match process.try_wait() {
                 Ok(None) => {}
                 Ok(Some(exit_status)) => {
-                    let status_reason = format!(
+                    return Err(ProcessError::StartError(format!(
                         "Bot {} has exited within 5 seconds with status {}",
                         bot_name, exit_status
-                    );
-                    return Ok(Json(StartResponse {
-                        status: Status::Fail,
-                        status_reason,
-                        port: 0,
-                        process_key: *process_key,
-                    }));
+                    ))
+                    .into());
                 }
                 Err(e) => {
-                    let status_reason = format!("Error checking bot {} status: {}", bot_name, e);
-                    return Ok(Json(StartResponse {
-                        status: Status::Fail,
-                        status_reason,
-                        port: 0,
-                        process_key: *process_key,
-                    }));
+                    return Err(ProcessError::StartError(format!(
+                        "Error checking bot {} status: {}",
+                        bot_name, e
+                    ))
+                    .into());
                 }
             }
             process
@@ -274,8 +280,6 @@ pub async fn start_bot(
     }
     #[cfg(not(target_os = "windows"))]
     {
-        let proxy_port: u16 = get_proxy_port(PREFIX).parse().unwrap();
-
         while port.is_none() && counter < max_retries {
             counter += 1;
 
@@ -284,17 +288,6 @@ pub async fn start_bot(
                 break;
             }
             tokio::time::sleep(Duration::from_secs(3)).await;
-        }
-    }
-    let encoded_bot_name = common::urlencoding::encode(bot_name);
-
-    match state.extra_info.write().entry(encoded_bot_name.to_string()) {
-        Entry::Occupied(mut occ) => {
-            occ.get_mut().insert("BotDirectory".to_string(), bot_path);
-        }
-        Entry::Vacant(vac) => {
-            vac.insert(HashMap::new())
-                .insert("BotDirectory".to_string(), bot_path);
         }
     }
 
