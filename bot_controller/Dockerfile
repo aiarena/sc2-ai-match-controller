@@ -17,7 +17,7 @@ COPY . .
 RUN cargo build ${CARGO_FLAGS} --bin bot_controller
 
 
-FROM aiarena/arenaclient-bot-base:v0.1
+FROM aiarena/arenaclient-bot-base:v0.2
 ARG APP=/app
 
 RUN apt-get update \
