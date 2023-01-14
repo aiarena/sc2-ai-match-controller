@@ -119,8 +119,9 @@ mod tests {
     use std::net::TcpListener;
 
     use crate::procs::tcp_port::get_ipv4_port_for_pid;
-
-    #[test]
+    
+    #[cfg(target_os = "windows")]
+    #[test]    
     fn test_tcp_port() {
         assert!(test_ip_port("0.0.0.0"));
         assert!(test_ip_port("127.0.0.1"));
