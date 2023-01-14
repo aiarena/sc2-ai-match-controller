@@ -158,7 +158,7 @@ impl MatchSource for TestSource {
         if expected_result != game_result.result {
             error!(
                 "Actual result {:?} does not match expected result {:?}",
-                expected_result, game_result.result
+                game_result.result, expected_result
             );
             std::process::exit(2);
         }
