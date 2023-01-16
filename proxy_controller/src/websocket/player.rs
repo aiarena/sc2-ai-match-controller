@@ -190,6 +190,23 @@ impl Player {
             error!("Could not create handler: {:?}", &error);
             return Err(PlayerError::CreateGame(error));
         }
+        // // Throttle fast bots
+        // for _ in 0..10 {
+        //     match self.sc2_query(&ping_request).await {
+        //         Ok(resp) => {
+        //             if resp.has_status(){
+        //                 if resp.status() == Status::launched{
+        //                     break;
+        //                 }
+        //             }
+        //             sleep(Duration::from_secs(3)).await;
+        //         }
+        //         Err(e) => {
+        //             trace!("Error {:?}", e);
+        //             sleep(Duration::from_secs(3)).await;
+        //         }
+        //     }
+        // }
 
         info!("Game created successfully");
 

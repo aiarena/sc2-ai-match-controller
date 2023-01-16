@@ -107,7 +107,6 @@ pub fn create_zip_package(zip_structs: &[ZipStruct], zip_file: &mut File) -> io:
                         #[allow(deprecated)]
                         zip_writer.start_file_from_path(&relative_path, options)?;
                         zip_writer.write_all(buffer.as_ref())?;
-                        println!("added file");
                         buffer.clear();
                     } else if entry_metadata.is_dir() {
                         let relative_path = make_relative_path_with_base(
@@ -118,7 +117,6 @@ pub fn create_zip_package(zip_structs: &[ZipStruct], zip_file: &mut File) -> io:
                         #[allow(deprecated)]
                         zip_writer.add_directory_from_path(&relative_path, options)?;
                         paths_queue.push(entry_path.clone());
-                        println!("added directory");
                     }
                 }
             }

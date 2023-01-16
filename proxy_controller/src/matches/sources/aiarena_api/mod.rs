@@ -104,7 +104,7 @@ impl MatchSource for HttpApiSource {
             if let Ok(part) = create_part_from_path(&replay_file).await {
                 files = files.part("replay_file", part)
             } else {
-                println!("{:?}", &replay_file);
+                debug!("{:?}", &replay_file);
                 error!("{:?}", create_part_from_path(&replay_file).await)
             }
 

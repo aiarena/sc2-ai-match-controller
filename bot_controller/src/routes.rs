@@ -15,6 +15,7 @@ use common::procs::tcp_port::get_ipv4_port_for_pid;
 
 use common::tokio::net::lookup_host;
 use common::tokio_util::io::ReaderStream;
+use common::tracing::debug;
 use common::utilities::directory::ensure_directory_structure;
 use common::utilities::portpicker::Port;
 use common::utilities::zip_utils::zip_directory;
@@ -264,31 +265,16 @@ pub async fn start_bot(
     let max_retries = 10;
     let mut counter = 0;
     let mut port = None;
-    #[cfg(target_os = "windows")]
-    {
-        let proxy_port: u16 = get_proxy_port(PREFIX).parse().unwrap();
 
-        while port.is_none() && counter < max_retries {
-            counter += 1;
 
-            port = get_ipv4_port_for_pid(pid, proxy_port, true);
-            if port.is_some() {
-                break;
-            }
-            tokio::time::sleep(Duration::from_secs(3)).await;
+    while port.is_none() && counter < max_retries {
+        counter += 1;
+
+        port = get_ipv4_port_for_pid(pid);
+        if port.is_some() {
+            break;
         }
-    }
-    #[cfg(not(target_os = "windows"))]
-    {
-        while port.is_none() && counter < max_retries {
-            counter += 1;
-
-            port = get_ipv4_port_for_pid(pid);
-            if port.is_some() {
-                break;
-            }
-            tokio::time::sleep(Duration::from_secs(3)).await;
-        }
+        tokio::time::sleep(Duration::from_secs(3)).await;
     }
 
     if let Some(port) = port {

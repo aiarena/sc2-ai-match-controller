@@ -9,7 +9,7 @@ use crate::matches::Match;
 use crate::state::{ProxyState, SC2Url};
 use common::bytes::Bytes;
 use common::configuration::ac_config::{ACConfig, RunType};
-use common::futures_util::future::{join, join4};
+use common::futures_util::future::{join, join3, join4};
 use common::futures_util::TryFutureExt;
 use common::models::bot_controller::{PlayerNum, StartBot};
 use common::parking_lot::RwLock;
@@ -51,33 +51,31 @@ pub async fn match_scheduler<M: MatchSource>(
             std::process::exit(2);
         }
     };
-
-    let sock_addrs = vec![
-        bot_controllers[0].sock_addr(),
-        bot_controllers[1].sock_addr(),
-    ];
-    proxy_state.write().auth_whitelist.extend(sock_addrs);
+    // TODO: Enable when auth is implemented
+    // let sock_addrs = vec![
+    //     bot_controllers[0].sock_addr(),
+    //     bot_controllers[1].sock_addr(),
+    // ];
+    // proxy_state.write().auth_whitelist.extend(sock_addrs);
 
     info!("Waiting for controllers to become ready");
     let mut ready = false;
 
     while !ready {
         sleep(Duration::from_secs(3)).await;
-        let res = join4(
+        let res = join3(
             bot_controllers[0].health(),
             bot_controllers[1].health(),
             sc2_controllers[0].health(),
-            sc2_controllers[1].health(),
         )
         .await;
-        ready = res.0 && res.1 && res.2 && res.3;
+        ready = res.0 && res.1 && res.2;
     }
 
-    let _cleanup_res = join4(
+    let _cleanup_res = join3(
         bot_controllers[0].terminate_all(),
         bot_controllers[1].terminate_all(),
         sc2_controllers[0].terminate_all(),
-        sc2_controllers[1].terminate_all(),
     )
     .await;
 
@@ -124,8 +122,8 @@ pub async fn match_scheduler<M: MatchSource>(
                 tracing::debug!("SC2-1 Response:\n{:?}", sc1_resp);
                 tracing::debug!("SC2-2 Response:\n{:?}", sc2_resp);
                 let urls = vec![
-                    SC2Url::new(&settings.sc2_cont_1_host, &sc1_resp),
-                    SC2Url::new(&settings.sc2_cont_2_host, &sc2_resp),
+                    SC2Url::new(&settings.sc2_cont_host, &sc1_resp),
+                    SC2Url::new(&settings.sc2_cont_host, &sc2_resp),
                 ];
                 tracing::trace!("Adding SC2 urls");
                 proxy_state.write().sc2_urls.extend(urls);
@@ -199,8 +197,13 @@ pub async fn match_scheduler<M: MatchSource>(
                 }
                 bots_started = true;
             }
-            (Err(e), _) | (_, Err(e)) => {
-                error!("Failed to start bot: {}", e);
+            (Err(e), _) => {
+                error!("Failed to start bot 1: {}", e);
+                proxy_state.write().game_result.as_mut().unwrap().result =
+                    Some(AiArenaResult::InitializationError);
+            }
+            (_, Err(e)) => {
+                error!("Failed to start bot 2: {}", e);
                 proxy_state.write().game_result.as_mut().unwrap().result =
                     Some(AiArenaResult::InitializationError);
             }
@@ -252,26 +255,24 @@ pub async fn match_scheduler<M: MatchSource>(
             .await
             .unwrap();
         match_counter += 1;
-        let _cleanup_res = join4(
+        let _cleanup_res = join3(
             bot_controllers[0].terminate_all(),
             bot_controllers[1].terminate_all(),
             sc2_controllers[0].terminate_all(),
-            sc2_controllers[1].terminate_all(),
         )
         .await;
         let mut state = proxy_state.write();
         clean_up_state(&mut state);
     }
 
-    match join4(
+    match join3(
         bot_controllers[0].shutdown(),
         bot_controllers[1].shutdown(),
         sc2_controllers[0].shutdown(),
-        sc2_controllers[1].shutdown(),
     )
     .await
     {
-        (Err(e), _, _, _) | (_, Err(e), _, _) | (_, _, Err(e), _) | (_, _, _, Err(e)) => {
+        (Err(e), _, _) | (_, Err(e), _) | (_, _, Err(e)) => {
             error!("Failed to shutdown one or more controllers: {:?}", e);
         }
         _ => {}
@@ -410,8 +411,8 @@ fn init_sc2_controllers(
     settings: &ACConfig,
 ) -> Result<[SC2Controller; 2], common::url::ParseError> {
     Ok([
-        SC2Controller::new(&settings.sc2_cont_1_host, settings.sc2_cont_1_port)?,
-        SC2Controller::new(&settings.sc2_cont_2_host, settings.sc2_cont_2_port)?,
+        SC2Controller::new(&settings.sc2_cont_host, settings.sc2_cont_port)?,
+        SC2Controller::new(&settings.sc2_cont_host, settings.sc2_cont_port)?,
     ])
 }
 

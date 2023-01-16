@@ -7,6 +7,7 @@ use common::async_trait::async_trait;
 use common::configuration::ac_config::ACConfig;
 use common::models::bot_controller::PlayerNum;
 use common::parking_lot::RwLock;
+use common::tracing::debug;
 use common::tracing::log::error;
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
@@ -60,7 +61,7 @@ impl TestSource {
         let mut results = match serde_json::from_slice::<Results>(&bytes) {
             Ok(r) => r,
             Err(e) => {
-                println!("{:?}", e);
+                debug!("{:?}", e);
                 Results::default()
             }
         };

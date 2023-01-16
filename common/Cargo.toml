@@ -35,16 +35,7 @@ tokio-util = { version = "0.7.4", features = ["full"] }
 zip-extensions = "0.6.1"
 bytes = "1.3.0"
 urlencoding = "2.1.2"
-
-[target.'cfg(target_os = "windows")'.dependencies]
-winapi = { version = "0.3", features = ["iphlpapi", ] }
-
-[target.'cfg(any(target_os = "linux", target_os = "android"))'.dependencies]
-procfs = "0.14.1"
-openssl = { version = "0.10", features = ["vendored"] }
-
-[target.'cfg(target_os = "macos")'.dependencies]
-libproc = "0.12"
+netstat2 = "0.9.1"
 
 
 [features]

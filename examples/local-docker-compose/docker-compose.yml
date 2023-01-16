@@ -57,8 +57,7 @@ services:
       - "ACPROXY_PORT=8080"
       - "ACPROXY_BOT_CONT_1_HOST=bot_controller1"
       - "ACPROXY_BOT_CONT_2_HOST=bot_controller2"
-      - "ACPROXY_SC2_CONT_1_HOST=sc2_controller"
-      - "ACPROXY_SC2_CONT_2_HOST=sc2_controller"
+      - "ACPROXY_SC2_CONT_HOST=sc2_controller"
     volumes:
       - "./matches:/app/matches"
       - "./config.toml:/app/config.toml"
