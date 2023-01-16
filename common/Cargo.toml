@@ -37,6 +37,8 @@ bytes = "1.3.0"
 urlencoding = "2.1.2"
 netstat2 = "0.9.1"
 
+[target.'cfg(not(windows))'.dependencies]
+openssl = { version = "0.10", features = ["vendored"] }
 
 [features]
 ws = ["axum/ws"]

@@ -15,7 +15,6 @@ use common::procs::tcp_port::get_ipv4_port_for_pid;
 
 use common::tokio::net::lookup_host;
 use common::tokio_util::io::ReaderStream;
-use common::tracing::debug;
 use common::utilities::directory::ensure_directory_structure;
 use common::utilities::portpicker::Port;
 use common::utilities::zip_utils::zip_directory;
@@ -198,13 +197,40 @@ pub async fn start_bot(
         }
     }
 
-    let mut command = Command::new(program);
+    let mut command = Command::new(&program);
 
     if bot_type == &BotType::Java {
         command.arg("-jar");
     }
     if !filename.is_empty() {
         command.arg(filename);
+    }
+
+    #[cfg(not(windows))]
+    {
+        use common::tracing::debug;
+        use std::os::unix::fs::PermissionsExt;
+        if bot_type == &BotType::CppLinux {
+            let bot_file_path = std::path::Path::new(&bot_path).join(&program);
+            if let Ok(bot_file) = std::fs::metadata(&bot_file_path) {
+                debug!("Setting bot file permissions");
+                let mut perms = bot_file.permissions();
+                perms.set_mode(0o777);
+                std::fs::set_permissions(&bot_file_path, perms);
+            }
+            // if std::path::Path::new(&bot_path).is_dir() {
+            //     for item in std::fs::read_dir(&bot_path).unwrap() {
+            //         debug!("Setting bot folder item's permissions");
+            //         if let Ok(item) = item {
+            //             if let Ok(bot_dir_file) = std::fs::metadata(&item.path()) {
+            //                 let mut perms = bot_dir_file.permissions();
+            //                 perms.set_mode(0o777);
+            //                 perms.set_mode(mode)
+            //             }
+            //         }
+            //     }
+            // }
+        }
     }
     let (proxy_host, proxy_port) = (get_proxy_host(PREFIX), get_proxy_port(PREFIX));
 
