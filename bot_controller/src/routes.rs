@@ -292,7 +292,6 @@ pub async fn start_bot(
     let mut counter = 0;
     let mut port = None;
 
-
     while port.is_none() && counter < max_retries {
         counter += 1;
 
