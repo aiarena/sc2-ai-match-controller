@@ -11,6 +11,7 @@ pub enum DownloadError {
     Unauthorized,
     Io(Error),
     ZipError(ZipError),
+    NotAvailable(String),
     Other(String),
 }
 

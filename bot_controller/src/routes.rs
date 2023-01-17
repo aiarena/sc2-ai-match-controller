@@ -9,12 +9,13 @@ use common::axum::extract::{Path, State};
 use common::axum::http::header;
 use common::axum::Json;
 use common::configuration::{get_proxy_host, get_proxy_port, get_proxy_url_from_env};
-use common::models::bot_controller::{BotType, StartBot};
+use common::models::bot_controller::{BotType, PlayerNum, StartBot};
 use common::models::{StartResponse, Status, TerminateResponse};
 use common::procs::tcp_port::get_ipv4_port_for_pid;
 
 use common::tokio::net::lookup_host;
 use common::tokio_util::io::ReaderStream;
+use common::tracing::debug;
 use common::utilities::directory::ensure_directory_structure;
 use common::utilities::portpicker::Port;
 use common::utilities::zip_utils::zip_directory;
@@ -85,56 +86,22 @@ pub async fn start_bot(
     } = &start_bot;
     let bot_path =
         std::path::PathBuf::from(format!("{}/{}", &state.settings.bots_directory, bot_name));
+
     if *should_download {
         let proxy_url = get_proxy_url_from_env(PREFIX);
-        let download_url = format!("http://{}/download_bot", proxy_url);
+        let bot_download_url = format!("http://{}/download_bot", proxy_url);
 
-        let client = Client::new();
-        let request = client
-            .request(common::reqwest::Method::POST, &download_url)
-            .json(player_num)
-            .build()
-            .map_err(|e| {
-                AppError::Process(ProcessError::StartError(format!(
-                    "Could not build download request: {:?}",
-                    &e
-                )))
-            })?;
+        download_and_extract(&bot_download_url, &bot_path, player_num).await?;
 
-        let resp = match client.execute(request).await {
-            Ok(resp) => resp,
-            Err(err) => {
-                error!("{:?}", err);
-                return Err(ProcessError::StartError(format!(
-                    "Could not download bot from url: {:?}",
-                    &download_url
-                ))
-                .into());
+        let bot_data_download_url = format!("http://{}/download_bot_data", proxy_url);
+        let bot_data_path = bot_path.join("data");
+        match download_and_extract(&bot_data_download_url, &bot_data_path, player_num).await {
+            Ok(_) => {}
+            Err(AppError::Download(DownloadError::NotAvailable(e))) => {
+                debug!("{:?}", e)
             }
-        };
-
-        let status = resp.status();
-
-        if status.is_client_error() || status.is_server_error() {
-            return Err(ProcessError::StartError(format!(
-                "Status: {:?}\nCould not download bot from url: {:?}",
-                status, &download_url
-            ))
-            .into());
+            Err(e) => return Err(e),
         }
-
-        let bot_zip_bytes = resp
-            .bytes()
-            .await
-            .map_err(|e| ProcessError::StartError(format!("{:?}", e)))?;
-
-        if bot_path.exists() {
-            let _ = tokio::fs::remove_dir(&bot_path).await;
-            let _ = tokio::fs::remove_file(&bot_path).await;
-        }
-        // tokio::fs::write(&bot_path, bot_zip_bytes).await.map_err(DownloadError::from)?;
-        common::utilities::zip_utils::zip_extract_from_memory(&bot_zip_bytes, &bot_path)
-            .map_err(DownloadError::from)?;
     }
     let mut bot_path = format!("{}/{}", &state.settings.bots_directory, bot_name);
 
@@ -316,6 +283,60 @@ pub async fn start_bot(
         process.kill().expect("Could not kill process");
         Err(ProcessError::StartError("Could not find port for started process".to_string()).into())
     }
+}
+
+async fn download_and_extract(
+    url: &str,
+    path: &std::path::Path,
+    player_num: &PlayerNum,
+) -> Result<(), AppError> {
+    let client = Client::new();
+    let request = client
+        .request(common::reqwest::Method::POST, url)
+        .json(player_num)
+        .build()
+        .map_err(|e| {
+            AppError::Process(ProcessError::StartError(format!(
+                "Could not build download request: {:?}",
+                &e
+            )))
+        })?;
+
+    let resp = match client.execute(request).await {
+        Ok(resp) => resp,
+        Err(err) => {
+            error!("{:?}", err);
+            return Err(ProcessError::StartError(format!(
+                "Could not download bot from url: {:?}",
+                &url
+            ))
+            .into());
+        }
+    };
+
+    let status = resp.status();
+
+    if status.is_client_error() || status.is_server_error() {
+        return Err(ProcessError::StartError(format!(
+            "Status: {:?}\nCould not download bot from url: {:?}",
+            status, &url
+        ))
+        .into());
+    }
+
+    let bot_zip_bytes = resp
+        .bytes()
+        .await
+        .map_err(|e| ProcessError::StartError(format!("{:?}", e)))?;
+
+    if path.exists() {
+        let _ = tokio::fs::remove_dir(&path).await;
+        let _ = tokio::fs::remove_file(&path).await;
+    }
+    // tokio::fs::write(&bot_path, bot_zip_bytes).await.map_err(DownloadError::from)?;
+    common::utilities::zip_utils::zip_extract_from_memory(&bot_zip_bytes, &path.to_path_buf())
+        .map_err(DownloadError::from)
+        .map_err(AppError::from)
 }
 
 #[common::tracing::instrument(skip(state))]

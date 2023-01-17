@@ -107,12 +107,12 @@ impl AiArenaApiClient {
     fn token_header(&self) -> String {
         format!("Token {}", &self.token)
     }
-    pub async fn download_bot(&self, bot_url: &str) -> Result<Bytes, ApiError<AiArenaApiError>> {
+    pub async fn download_zip(&self, url: &str) -> Result<Bytes, ApiError<AiArenaApiError>> {
         // static string, so the constructor should catch any parse errors
-        let bot_url = Url::parse(bot_url).map_err(ApiError::from)?;
+        let url = Url::parse(url).map_err(ApiError::from)?;
         let request = self
             .client
-            .request(common::reqwest::Method::GET, bot_url)
+            .request(common::reqwest::Method::GET, url)
             .header(common::reqwest::header::AUTHORIZATION, self.token_header())
             .build()?;
 

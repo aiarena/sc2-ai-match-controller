@@ -65,6 +65,7 @@ impl IntoResponse for AppError {
                 (StatusCode::INTERNAL_SERVER_ERROR, e)
             }
             Self::Download(DownloadError::Other(e)) => (StatusCode::INTERNAL_SERVER_ERROR, e),
+            Self::Download(DownloadError::NotAvailable(e)) => (StatusCode::NOT_FOUND, e),
         };
 
         let body = Json(ApiErrorMessage {

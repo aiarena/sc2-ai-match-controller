@@ -14,7 +14,7 @@ use crate::match_scheduler::match_scheduler;
 use crate::matches::sources::aiarena_api::HttpApiSource;
 use crate::matches::sources::test_source::TestSource;
 use crate::matches::sources::{FileSource, MatchSource};
-use crate::routes::{configuration, download_bot, download_map};
+use crate::routes::{configuration, download_bot, download_bot_data, download_map};
 use crate::state::ProxyState;
 use crate::ws_routes::websocket_handler;
 use axum::{http::Request, response::Response};
@@ -97,6 +97,7 @@ async fn main() {
         .route("/health", get(health))
         .route("/download_bot", post(download_bot))
         .route("/download_map", get(download_map))
+        .route("/download_bot_data", post(download_bot_data))
         // .route("/start", post(start_bot))
         // .route("/stats/:bot_name", get(stats))
         // .route("/stats/host", get(stats_host))
