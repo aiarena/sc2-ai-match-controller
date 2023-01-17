@@ -381,6 +381,8 @@ impl Player {
                         r_vars.set_surrender_flag();
                     }
 
+                    r_vars.add_tags(&request);
+
                     response = self.sc2_query(&request).await?;
 
                     if response.has_game_info() {
