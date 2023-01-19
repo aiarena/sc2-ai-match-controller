@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 common = { path = "../common" }
-serde = { version = "1.0.147", features = ["derive"] }
+serde = { version = "^1.0", features = ["derive"] }
 
 [features]
 swagger = ["common/swagger"]
