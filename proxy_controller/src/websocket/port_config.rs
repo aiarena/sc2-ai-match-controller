@@ -1,6 +1,6 @@
 //! Full port configuration
 
-use common::portpicker::pick_unused_port_in_range;
+use common::utilities::portpicker::pick_unused_port_in_range;
 use protobuf::MessageField;
 
 use sc2_proto::sc2api::{PortSet, RequestJoinGame};

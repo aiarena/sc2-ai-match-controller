@@ -3,15 +3,15 @@ pub mod errors;
 use crate::matches::sources::file_source::errors::{FileMatchExtractError, SubmissionError};
 use crate::matches::sources::{AiArenaGameResult, LogsAndReplays, MatchSource};
 use crate::matches::{Match, MatchPlayer};
-use common::async_trait::async_trait;
+use async_trait::async_trait;
 use common::configuration::ac_config::ACConfig;
 use common::models::bot_controller::PlayerNum;
-use common::tracing::log::error;
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
 use std::io::{BufRead, BufReader, BufWriter, Lines, Read, Seek, SeekFrom, Write};
+use tracing::log::error;
 
 pub struct FileSource {
     settings: ACConfig,

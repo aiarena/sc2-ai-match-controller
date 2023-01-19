@@ -3,18 +3,18 @@ use crate::matches::sources::file_source::errors::{FileMatchExtractError, Submis
 use crate::matches::sources::file_source::open_results_file;
 use crate::matches::sources::{AiArenaGameResult, LogsAndReplays, MatchSource};
 use crate::matches::{Match, MatchPlayer};
-use common::async_trait::async_trait;
+use async_trait::async_trait;
 use common::configuration::ac_config::ACConfig;
 use common::models::bot_controller::PlayerNum;
-use common::parking_lot::RwLock;
-use common::tracing::debug;
-use common::tracing::log::error;
+use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufRead, BufReader, BufWriter, Lines, Read, Seek, SeekFrom, Write};
 use std::str::FromStr;
+use tracing::debug;
+use tracing::error;
 
 pub struct TestSource {
     settings: ACConfig,

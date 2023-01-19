@@ -3,11 +3,11 @@ use std::time::Duration;
 use crate::api_reference::aiarena::errors::AiArenaApiError;
 use crate::api_reference::aiarena::AiArenaMatch;
 use crate::api_reference::{ApiError, ControllerApi, ResponseContent};
-use common::async_trait::async_trait;
-use common::bytes::Bytes;
-use common::reqwest::multipart::Form;
-use common::reqwest::{Client, StatusCode, Url};
-use common::tracing::{debug, error};
+use async_trait::async_trait;
+use bytes::Bytes;
+use reqwest::multipart::Form;
+use reqwest::{Client, StatusCode, Url};
+use tracing::{debug, error};
 
 pub struct AiArenaApiClient {
     client: Client,
@@ -19,7 +19,7 @@ impl AiArenaApiClient {
     const API_MATCHES_ENDPOINT: &'static str = "/api/arenaclient/matches/";
     const API_RESULTS_ENDPOINT: &'static str = "/api/arenaclient/results/";
 
-    pub fn new(website_url: &str, token: &str) -> Result<Self, common::url::ParseError> {
+    pub fn new(website_url: &str, token: &str) -> Result<Self, url::ParseError> {
         let url = Url::parse(website_url)?;
 
         Ok(Self {
@@ -34,8 +34,8 @@ impl AiArenaApiClient {
 
         let request = self
             .client
-            .request(common::reqwest::Method::POST, api_matches_url)
-            .header(common::reqwest::header::AUTHORIZATION, self.token_header())
+            .request(reqwest::Method::POST, api_matches_url)
+            .header(reqwest::header::AUTHORIZATION, self.token_header())
             .build()?;
 
         let response = self.client.execute(request).await?;
@@ -75,8 +75,8 @@ impl AiArenaApiClient {
         let map_url = Url::parse(map_url).map_err(ApiError::from)?;
         let request = self
             .client
-            .request(common::reqwest::Method::GET, map_url)
-            .header(common::reqwest::header::AUTHORIZATION, self.token_header())
+            .request(reqwest::Method::GET, map_url)
+            .header(reqwest::header::AUTHORIZATION, self.token_header())
             .build()?;
 
         let response = self.client.execute(request).await?;
@@ -112,8 +112,8 @@ impl AiArenaApiClient {
         let url = Url::parse(url).map_err(ApiError::from)?;
         let request = self
             .client
-            .request(common::reqwest::Method::GET, url)
-            .header(common::reqwest::header::AUTHORIZATION, self.token_header())
+            .request(reqwest::Method::GET, url)
+            .header(reqwest::header::AUTHORIZATION, self.token_header())
             .build()?;
 
         let response = self.client.execute(request).await?;
@@ -145,9 +145,9 @@ impl AiArenaApiClient {
         let api_submission_url = self.url.join(Self::API_RESULTS_ENDPOINT).unwrap();
         let request = self
             .client
-            .request(common::reqwest::Method::POST, api_submission_url)
+            .request(reqwest::Method::POST, api_submission_url)
             .multipart(files)
-            .header(common::reqwest::header::AUTHORIZATION, self.token_header())
+            .header(reqwest::header::AUTHORIZATION, self.token_header())
             .timeout(Duration::from_secs(30))
             .build()
             .unwrap();

@@ -17,21 +17,21 @@ use crate::matches::sources::{FileSource, MatchSource};
 use crate::routes::{configuration, download_bot, download_bot_data, download_map};
 use crate::state::ProxyState;
 use crate::ws_routes::websocket_handler;
+use axum::error_handling::HandleErrorLayer;
+use axum::http::StatusCode;
+use axum::routing::{get, post};
+use axum::Router;
 use axum::{http::Request, response::Response};
 use common::api::health;
-use common::axum::error_handling::HandleErrorLayer;
-use common::axum::http::StatusCode;
-use common::axum::routing::{get, post};
-use common::axum::Router;
-use common::config::{Config, FileFormat};
 use common::configuration::ac_config::{ACConfig, RunType};
 use common::configuration::get_host_url;
 use common::logging::init_logging;
-use common::parking_lot::RwLock;
-use common::tower::ServiceBuilder;
-use common::tower_http::trace::TraceLayer;
-use common::tower_http::BoxError;
-use common::{axum, config, tokio, tower, tracing, tracing_appender};
+use config::{Config, FileFormat};
+use parking_lot::RwLock;
+use tower::ServiceBuilder;
+use tower_http::trace::TraceLayer;
+use tower_http::BoxError;
+
 use std::net::SocketAddr;
 use std::path::Path;
 use std::str::FromStr;
@@ -53,7 +53,7 @@ async fn main() {
     let log_file = "proxy_controller.log";
     let full_path = Path::new(&log_path).join(log_file);
     if full_path.exists() {
-        common::tokio::fs::remove_file(full_path).await.unwrap();
+        tokio::fs::remove_file(full_path).await.unwrap();
     }
     let (non_blocking_stdout, _guard) = tracing_appender::non_blocking(std::io::stdout());
     let non_blocking_file = tracing_appender::rolling::never(&log_path, log_file);

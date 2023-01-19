@@ -8,26 +8,25 @@ use crate::docs::ApiDoc;
 use crate::routes::{
     download_bot_data, download_bot_log, download_controller_log, start_bot, terminate_bot,
 };
+use axum::http::Request;
+use axum::response::Response;
+use axum::routing::{get, post};
 use axum::Router;
+use axum::{error_handling::HandleErrorLayer, http::StatusCode};
 use common::api::health;
 use common::api::process::{
     shutdown, stats, stats_all, stats_host, status, terminate_all, ProcessMap,
 };
 use common::api::state::AppState;
-use common::axum::http::Request;
-use common::axum::response::Response;
-use common::axum::routing::{get, post};
-use common::axum::{error_handling::HandleErrorLayer, http::StatusCode};
 use common::configuration::{get_config_from_proxy, get_host_url, get_proxy_url_from_env};
 use common::logging::init_logging;
-use common::tower::{BoxError, ServiceBuilder};
-use common::tower_http::trace::{DefaultMakeSpan, DefaultOnRequest, DefaultOnResponse, TraceLayer};
-use common::tracing::Span;
+use tower::{BoxError, ServiceBuilder};
+use tower_http::trace::{DefaultMakeSpan, DefaultOnRequest, DefaultOnResponse, TraceLayer};
+use tracing::Span;
 #[cfg(feature = "swagger")]
-use common::utoipa::OpenApi;
+use utoipa::OpenApi;
 #[cfg(feature = "swagger")]
-use common::utoipa_swagger_ui::SwaggerUi;
-use common::{axum, tokio, tower, tracing, tracing_appender};
+use utoipa_swagger_ui::SwaggerUi;
 
 use std::path::Path;
 use std::str::FromStr;
@@ -52,7 +51,7 @@ async fn main() {
     let log_file = "bot_controller.log";
     let full_path = Path::new(&log_path).join(log_file);
     if full_path.exists() {
-        common::tokio::fs::remove_file(full_path).await.unwrap();
+        tokio::fs::remove_file(full_path).await.unwrap();
     }
 
     let (non_blocking_stdout, _guard) = tracing_appender::non_blocking(std::io::stdout());

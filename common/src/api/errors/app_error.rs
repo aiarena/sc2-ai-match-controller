@@ -71,7 +71,7 @@ impl IntoResponse for AppError {
                 "IP and Port not in whitelist".to_string(),
             ),
             Self::Download(DownloadError::BotFolderNotFound(e)) => {
-                tracing::debug!("Error: {}", e.to_string());
+                tracing::debug!("Error: {}", e);
                 (StatusCode::INTERNAL_SERVER_ERROR, e)
             }
             Self::Download(DownloadError::Other(e)) => (StatusCode::INTERNAL_SERVER_ERROR, e),

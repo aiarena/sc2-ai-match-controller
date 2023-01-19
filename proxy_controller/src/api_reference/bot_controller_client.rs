@@ -1,11 +1,11 @@
 use crate::api_reference::{ApiError, ControllerApi};
+use async_trait::async_trait;
+use bytes::Bytes;
 use common::api::errors::app_error::ApiErrorMessage;
-use common::async_trait::async_trait;
-use common::bytes::Bytes;
 use common::models::bot_controller::StartBot;
 use common::models::StartResponse;
 use common::portpicker::Port;
-use common::reqwest::{Client, Url};
+use reqwest::{Client, Url};
 
 pub struct BotController {
     client: Client,
@@ -15,7 +15,7 @@ pub struct BotController {
 }
 
 impl BotController {
-    pub fn new(host: &str, port: Port) -> Result<Self, common::url::ParseError> {
+    pub fn new(host: &str, port: Port) -> Result<Self, url::ParseError> {
         let url_string = format!("http://{}:{}", host, port);
         let url = Url::parse(&url_string)?;
 
@@ -40,7 +40,7 @@ impl BotController {
                                                           // errors
         let request = self
             .client
-            .request(common::reqwest::Method::POST, start_url)
+            .request(reqwest::Method::POST, start_url)
             .json(&self.start_bot)
             .build()?;
         self.execute_request(request).await
@@ -49,14 +49,11 @@ impl BotController {
     pub async fn download_bot_log(&self) -> Result<Bytes, ApiError<ApiErrorMessage>> {
         let path = format!(
             "/download/bot/{}/log",
-            common::urlencoding::encode(&self.start_bot.as_ref().unwrap().bot_name)
+            urlencoding::encode(&self.start_bot.as_ref().unwrap().bot_name)
         );
         let log_url = self.url.join(&path).unwrap(); // static string, so the constructor should catch any parse
                                                      // errors
-        let request = self
-            .client
-            .request(common::reqwest::Method::GET, log_url)
-            .build()?;
+        let request = self.client.request(reqwest::Method::GET, log_url).build()?;
 
         self.execute_request_file(request).await
     }
@@ -64,14 +61,11 @@ impl BotController {
     pub async fn download_bot_data(&self) -> Result<Bytes, ApiError<ApiErrorMessage>> {
         let path = format!(
             "/download/bot/{}/data",
-            common::urlencoding::encode(&self.start_bot.as_ref().unwrap().bot_name)
+            urlencoding::encode(&self.start_bot.as_ref().unwrap().bot_name)
         );
         let log_url = self.url.join(&path).unwrap(); // static string, so the constructor should catch any parse
                                                      // errors
-        let request = self
-            .client
-            .request(common::reqwest::Method::GET, log_url)
-            .build()?;
+        let request = self.client.request(reqwest::Method::GET, log_url).build()?;
 
         self.execute_request_file(request).await
     }

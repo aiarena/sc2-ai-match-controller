@@ -8,6 +8,18 @@ edition = "2021"
 [dependencies]
 common = { path = "../common" }
 serde = { version = "^1.0", features = ["derive"] }
+utoipa = { version="2.4.2", features = ["axum_extras"], optional=true }
+utoipa-swagger-ui = { version="3.0.1",  features = ["axum"], optional=true }
+axum = { version = "0.6.2" }
+tokio = { version = "1.0"}#, features = ["macros", "rt-multi-thread", "fs"] }
+tower = { version = "0.4"}#, features = ["util", "timeout"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-appender = "0.2.2"
+reqwest = { version = "0.11.12", features=["json"]}
+tower-http = { version = "0.3.0", features = ["add-extension", "trace"] }
+tokio-util = { version = "0.7.4", features = ["full"] }
+tempfile = "3.3.0"
 
 [features]
-swagger = ["common/swagger"]
+swagger = ["utoipa", "utoipa-swagger-ui"]
