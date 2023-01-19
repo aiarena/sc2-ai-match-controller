@@ -22,7 +22,7 @@ use common::utilities::zip_utils::zip_directory;
 
 use common::api::{BytesResponse, FileResponse};
 use common::procs::create_stdout_and_stderr_files;
-use common::reqwest::Client;
+use common::reqwest::{Client, StatusCode};
 use common::tracing::log::error;
 #[cfg(feature = "swagger")]
 use common::utoipa;
@@ -317,11 +317,16 @@ async fn download_and_extract(
     let status = resp.status();
 
     if status.is_client_error() || status.is_server_error() {
-        return Err(ProcessError::StartError(format!(
-            "Status: {:?}\nCould not download bot from url: {:?}",
-            status, &url
-        ))
-        .into());
+        let text = resp.text().await.unwrap_or_else(|_| "Error".to_string());
+        if status == StatusCode::NOT_IMPLEMENTED {
+            return Err(AppError::Download(DownloadError::NotAvailable(text)));
+        } else {
+            return Err(ProcessError::StartError(format!(
+                "Status: {:?}\nCould not download bot from url: {:?}",
+                status, &url
+            ))
+            .into());
+        }
     }
 
     let bot_zip_bytes = resp

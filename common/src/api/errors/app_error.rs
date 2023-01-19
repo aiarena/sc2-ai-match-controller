@@ -46,15 +46,24 @@ impl IntoResponse for AppError {
             Self::Process(
                 ProcessError::StartError(message) | ProcessError::TerminateError(message),
             ) => (StatusCode::BAD_REQUEST, message),
-            Self::Map(MapError::NotFound(e)) => (StatusCode::NOT_FOUND, e.to_string()),
-            Self::Map(MapError::Other(e)) => (StatusCode::BAD_REQUEST, e.to_string()),
+            Self::Map(MapError::NotFound(e)) => {
+                tracing::debug!("Error: {}", e.to_string());
+                (StatusCode::NOT_FOUND, e.to_string())
+            }
+            Self::Map(MapError::Other(e)) => {
+                tracing::debug!("Error: {}", e.to_string());
+                (StatusCode::BAD_REQUEST, e.to_string())
+            }
             Self::Download(DownloadError::Io(e)) | Self::Download(DownloadError::TempFile(e)) => {
+                tracing::debug!("Error: {}", e.to_string());
                 (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
             }
             Self::Download(DownloadError::ZipError(e)) => {
+                tracing::debug!("Error: {}", e.to_string());
                 (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
             }
             Self::Download(DownloadError::FileNotFound(e)) => {
+                tracing::debug!("Error: {}", e.to_string());
                 (StatusCode::NOT_FOUND, e.to_string())
             }
             Self::Download(DownloadError::Unauthorized) => (
@@ -62,10 +71,11 @@ impl IntoResponse for AppError {
                 "IP and Port not in whitelist".to_string(),
             ),
             Self::Download(DownloadError::BotFolderNotFound(e)) => {
+                tracing::debug!("Error: {}", e.to_string());
                 (StatusCode::INTERNAL_SERVER_ERROR, e)
             }
             Self::Download(DownloadError::Other(e)) => (StatusCode::INTERNAL_SERVER_ERROR, e),
-            Self::Download(DownloadError::NotAvailable(e)) => (StatusCode::NOT_FOUND, e),
+            Self::Download(DownloadError::NotAvailable(e)) => (StatusCode::NOT_IMPLEMENTED, e),
         };
 
         let body = Json(ApiErrorMessage {

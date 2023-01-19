@@ -92,7 +92,7 @@ pub async fn start_sc2(
             Err(err) => {
                 crate::tracing::error!("{:?}", err);
                 return Err(ProcessError::StartError(format!(
-                    "Could not download bot from url: {:?}",
+                    "Could not download map from url: {:?}",
                     &download_url
                 ))
                 .into());
