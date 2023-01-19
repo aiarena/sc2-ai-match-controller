@@ -1,8 +1,8 @@
-use crate::api_reference::aiarena::aiarena_api_client::AiArenaApiClient;
 use crate::state::ProxyState;
 use axum::extract::State;
 use axum::Json;
 use bytes::Bytes;
+use common::api::api_reference::aiarena::aiarena_api_client::AiArenaApiClient;
 use common::api::errors::app_error::AppError;
 use common::api::errors::download_error::DownloadError;
 use common::configuration::ac_config::ACConfig;

@@ -1,11 +1,11 @@
-use crate::api_reference::aiarena::aiarena_api_client::AiArenaApiClient;
-use crate::api_reference::aiarena::errors::AiArenaApiError;
-use crate::api_reference::aiarena::AiArenaMatch;
-use crate::api_reference::ApiError;
 use crate::matches::sources::file_source::errors::SubmissionError;
 use crate::matches::sources::{AiArenaGameResult, LogsAndReplays, MatchSource};
 use crate::matches::Match;
 use async_trait::async_trait;
+use common::api::api_reference::aiarena::aiarena_api_client::AiArenaApiClient;
+use common::api::api_reference::aiarena::errors::AiArenaApiError;
+use common::api::api_reference::aiarena::AiArenaMatch;
+use common::api::api_reference::ApiError;
 use common::configuration::ac_config::ACConfig;
 use common::paths::base_dir;
 use serde::{Deserialize, Serialize};

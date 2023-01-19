@@ -1,5 +1,4 @@
 #![allow(dead_code)]
-mod api_reference;
 #[cfg(feature = "swagger")]
 mod docs;
 mod game;

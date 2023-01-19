@@ -1,8 +1,8 @@
 use std::time::Duration;
 
-use crate::api_reference::aiarena::errors::AiArenaApiError;
-use crate::api_reference::aiarena::AiArenaMatch;
-use crate::api_reference::{ApiError, ControllerApi, ResponseContent};
+use crate::api::api_reference::aiarena::errors::AiArenaApiError;
+use crate::api::api_reference::aiarena::AiArenaMatch;
+use crate::api::api_reference::{ApiError, ControllerApi, ResponseContent};
 use async_trait::async_trait;
 use bytes::Bytes;
 use reqwest::multipart::Form;
@@ -178,8 +178,8 @@ impl ControllerApi for AiArenaApiClient {
 
 #[cfg(test)]
 mod tests {
-    use crate::api_reference::bot_controller_client::BotController;
-    use crate::api_reference::ControllerApi;
+    use crate::api::api_reference::bot_controller_client::BotController;
+    use crate::api::api_reference::ControllerApi;
 
     #[test]
     fn test_get_socket_addr() {

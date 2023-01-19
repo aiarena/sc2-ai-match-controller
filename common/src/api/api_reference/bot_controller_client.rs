@@ -1,10 +1,10 @@
-use crate::api_reference::{ApiError, ControllerApi};
+use crate::api::api_reference::{ApiError, ControllerApi};
+use crate::api::errors::app_error::ApiErrorMessage;
+use crate::models::bot_controller::StartBot;
+use crate::models::StartResponse;
+use crate::portpicker::Port;
 use async_trait::async_trait;
 use bytes::Bytes;
-use common::api::errors::app_error::ApiErrorMessage;
-use common::models::bot_controller::StartBot;
-use common::models::StartResponse;
-use common::portpicker::Port;
 use reqwest::{Client, Url};
 
 pub struct BotController {
@@ -86,8 +86,8 @@ impl ControllerApi for BotController {
 
 #[cfg(test)]
 mod tests {
-    use crate::api_reference::bot_controller_client::BotController;
-    use crate::api_reference::ControllerApi;
+    use crate::api::api_reference::bot_controller_client::BotController;
+    use crate::api::api_reference::ControllerApi;
 
     #[test]
     fn test_get_socket_addr() {

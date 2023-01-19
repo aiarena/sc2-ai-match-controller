@@ -1,6 +1,3 @@
-use crate::api_reference::bot_controller_client::BotController;
-use crate::api_reference::sc2_controller_client::SC2Controller;
-use crate::api_reference::{ApiError, ControllerApi};
 use crate::game::game_config::GameConfig;
 use crate::game::game_result::GameResult;
 use crate::matches::aiarena_result::AiArenaResult;
@@ -8,6 +5,9 @@ use crate::matches::sources::{AiArenaGameResult, LogsAndReplays, MatchSource};
 use crate::matches::Match;
 use crate::state::{ProxyState, SC2Url};
 use bytes::Bytes;
+use common::api::api_reference::bot_controller_client::BotController;
+use common::api::api_reference::sc2_controller_client::SC2Controller;
+use common::api::api_reference::{ApiError, ControllerApi};
 use common::configuration::ac_config::{ACConfig, RunType};
 use common::models::bot_controller::{PlayerNum, StartBot};
 use common::utilities::directory::ensure_directory_structure;

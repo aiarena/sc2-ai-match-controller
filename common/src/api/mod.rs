@@ -5,6 +5,7 @@ use axum::response::IntoResponse;
 use reqwest::header::HeaderName;
 use tokio_util::io::ReaderStream;
 
+pub mod api_reference;
 pub mod errors;
 pub mod process;
 pub mod state;
