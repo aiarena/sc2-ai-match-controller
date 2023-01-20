@@ -36,6 +36,7 @@ use std::path::Path;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
+use std::vec;
 use tracing::Span;
 
 static PREFIX: &str = "acproxy";
@@ -76,6 +77,8 @@ async fn main() {
         game_result: None,
         auth_whitelist: indexmap::IndexSet::default(),
         shutdown_sender: tx,
+        bot_controllers: vec![],
+        sc2_controllers: vec![],
     }));
 
     tokio::spawn(match_scheduler(app_state.clone(), match_source));

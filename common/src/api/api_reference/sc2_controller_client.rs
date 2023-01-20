@@ -7,6 +7,7 @@ use reqwest::{Client, Url};
 
 use crate::api::api_reference::{ApiError, ControllerApi};
 
+#[derive(Debug, Clone)]
 pub struct SC2Controller {
     client: Client,
     url: Url,

@@ -41,6 +41,7 @@ pub async fn match_scheduler<M: MatchSource>(
             std::process::exit(2);
         }
     };
+    proxy_state.write().bot_controllers = bot_controllers.to_vec();
 
     let mut sc2_controllers = match init_sc2_controllers(&settings) {
         Ok(c) => c,
@@ -50,6 +51,7 @@ pub async fn match_scheduler<M: MatchSource>(
             std::process::exit(2);
         }
     };
+    proxy_state.write().sc2_controllers = sc2_controllers.to_vec();
     // TODO: Enable when auth is implemented
     // let sock_addrs = vec![
     //     bot_controllers[0].sock_addr(),
@@ -129,9 +131,14 @@ pub async fn match_scheduler<M: MatchSource>(
 
                 tracing::trace!("SC2 urls added");
                 sc2_controllers[0].set_process_key(sc1_resp.process_key);
+                proxy_state.write().sc2_controllers[0].set_process_key(sc1_resp.process_key);
                 sc2_controllers[1].set_process_key(sc2_resp.process_key);
+                proxy_state.write().sc2_controllers[1].set_process_key(sc2_resp.process_key);
                 bot_controllers[0].set_process_key(sc1_resp.process_key);
+                proxy_state.write().bot_controllers[0].set_process_key(sc1_resp.process_key);
                 bot_controllers[1].set_process_key(sc2_resp.process_key);
+                proxy_state.write().bot_controllers[1].set_process_key(sc2_resp.process_key);
+
                 (sc1_resp.process_key, sc2_resp.process_key)
             }
             (Err(e), _) | (_, Err(e)) => {
