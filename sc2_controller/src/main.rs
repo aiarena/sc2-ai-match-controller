@@ -20,6 +20,7 @@ use std::str::FromStr;
 use std::{net::SocketAddr, time::Duration};
 use tower::{BoxError, ServiceBuilder};
 use tower_http::trace::TraceLayer;
+use tracing::debug;
 use tracing::Span;
 #[cfg(feature = "swagger")]
 use utoipa::OpenApi;
@@ -114,11 +115,43 @@ async fn main() {
     let addr = SocketAddr::from_str(&host_url).unwrap();
     tracing::debug!("listening on {}", addr);
     let graceful_server = axum::Server::bind(&addr)
-        .serve(app.into_make_service())
+        .serve(app.into_make_service_with_connect_info::<SocketAddr>())
         .with_graceful_shutdown(async {
-            let _ = rx.recv().await;
+            tokio::select! {
+                _ = rx.recv() => {},
+                _ = shutdown_signal() => {},
+            }
         });
+
     if let Err(e) = graceful_server.await {
         tracing::error!("server error: {}", e);
     }
+}
+
+/// Tokio signal handler that will wait for a user to press CTRL+C.
+/// We use this in our hyper `Server` method `with_graceful_shutdown`.
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        tokio::signal::ctrl_c()
+            .await
+            .expect("failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+            .expect("failed to install signal handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {},
+        _ = terminate => {},
+    }
+
+    debug!("signal received, starting graceful shutdown");
 }
