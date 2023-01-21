@@ -1,12 +1,12 @@
-use common::api::errors::app_error::ApiErrorMessage;
-use common::async_trait::async_trait;
-use common::bytes::Bytes;
-use common::models::stats::{HostStats, ProcessStats};
-use common::models::{ProcessStatusResponse, TerminateResponse};
-use common::reqwest::{Client, Request, Url};
-use common::tracing::error;
-use common::utilities::portpicker::Port;
-use common::{reqwest, tracing, url};
+use crate::api::errors::app_error::ApiErrorMessage;
+use crate::models::stats::{HostStats, ProcessStats};
+use crate::models::{ProcessStatusResponse, TerminateResponse};
+use crate::utilities::portpicker::Port;
+use async_trait::async_trait;
+use bytes::Bytes;
+use reqwest::{Client, Request, Url};
+use tracing::error;
+
 use serde::de::DeserializeOwned;
 use std::fmt::{Debug, Display};
 use std::net::SocketAddr;
@@ -120,7 +120,7 @@ pub trait ControllerApi {
         );
         let request = self
             .client()
-            .request(common::reqwest::Method::POST, shutdown_url)
+            .request(reqwest::Method::POST, shutdown_url)
             .build()?;
 
         let response = self.client().execute(request).await?;
@@ -164,7 +164,7 @@ pub trait ControllerApi {
                                                                         // errors
         let request = self
             .client()
-            .request(common::reqwest::Method::POST, terminate_url)
+            .request(reqwest::Method::POST, terminate_url)
             .build()?;
 
         let response = self.client().execute(request).await?;
@@ -240,7 +240,7 @@ pub trait ControllerApi {
     async fn execute_request_file(
         &self,
         request: Request,
-    ) -> Result<common::bytes::Bytes, ApiError<ApiErrorMessage>> {
+    ) -> Result<bytes::Bytes, ApiError<ApiErrorMessage>> {
         let response = self.client().execute(request).await?;
 
         let status = response.status();
@@ -273,7 +273,7 @@ pub trait ControllerApi {
                                                                             // errors
         let request = self
             .client()
-            .request(common::reqwest::Method::GET, log_url)
+            .request(reqwest::Method::GET, log_url)
             .build()?;
         self.execute_request_file(request).await
     }
@@ -286,7 +286,7 @@ pub enum ApiError<T> {
     Serde(serde_json::Error),
     Io(std::io::Error),
     ResponseError(ResponseContent<T>),
-    Zip(common::zip::result::ZipError),
+    Zip(zip::result::ZipError),
 }
 
 impl<T> Display for ApiError<T>
@@ -349,8 +349,8 @@ impl<T> From<url::ParseError> for ApiError<T> {
     }
 }
 
-impl<T> From<common::zip::result::ZipError> for ApiError<T> {
-    fn from(e: common::zip::result::ZipError) -> Self {
+impl<T> From<zip::result::ZipError> for ApiError<T> {
+    fn from(e: zip::result::ZipError) -> Self {
         Self::Zip(e)
     }
 }

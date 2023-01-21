@@ -1,6 +1,4 @@
 #[cfg(feature = "swagger")]
-use common::utoipa;
-#[cfg(feature = "swagger")]
 use utoipa::OpenApi;
 
 #[cfg(feature = "swagger")]

@@ -1,12 +1,13 @@
-use common::api::errors::app_error::ApiErrorMessage;
-use common::async_trait::async_trait;
-use common::models::bot_controller::MapData;
-use common::models::StartResponse;
-use common::portpicker::Port;
-use common::reqwest::{Client, Url};
+use crate::api::errors::app_error::ApiErrorMessage;
+use crate::models::bot_controller::MapData;
+use crate::models::StartResponse;
+use crate::portpicker::Port;
+use async_trait::async_trait;
+use reqwest::{Client, Url};
 
-use crate::api_reference::{ApiError, ControllerApi};
+use crate::api::api_reference::{ApiError, ControllerApi};
 
+#[derive(Debug, Clone)]
 pub struct SC2Controller {
     client: Client,
     url: Url,
@@ -14,7 +15,7 @@ pub struct SC2Controller {
 }
 
 impl SC2Controller {
-    pub fn new(host: &str, port: Port) -> Result<Self, common::url::ParseError> {
+    pub fn new(host: &str, port: Port) -> Result<Self, url::ParseError> {
         let url_string = format!("http://{}:{}", host, port);
         let url = Url::parse(&url_string)?;
 
@@ -34,7 +35,7 @@ impl SC2Controller {
 
         let request = self
             .client
-            .request(common::reqwest::Method::POST, start_url)
+            .request(reqwest::Method::POST, start_url)
             .json(map_name)
             .build()?;
 
@@ -45,10 +46,7 @@ impl SC2Controller {
         let path = format!("/find_map/{}", map_name);
         let map_url = self.url.join(&path)?;
 
-        let request = self
-            .client
-            .request(common::reqwest::Method::GET, map_url)
-            .build()?;
+        let request = self.client.request(reqwest::Method::GET, map_url).build()?;
 
         self.execute_request(request).await
     }

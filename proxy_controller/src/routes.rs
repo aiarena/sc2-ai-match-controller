@@ -1,15 +1,15 @@
-use crate::api_reference::aiarena::aiarena_api_client::AiArenaApiClient;
 use crate::state::ProxyState;
+use axum::extract::State;
+use axum::Json;
+use bytes::Bytes;
+use common::api::api_reference::aiarena::aiarena_api_client::AiArenaApiClient;
 use common::api::errors::app_error::AppError;
 use common::api::errors::download_error::DownloadError;
-use common::axum::extract::State;
-use common::axum::Json;
-use common::bytes::Bytes;
 use common::configuration::ac_config::ACConfig;
 use common::models::bot_controller::PlayerNum;
-use common::parking_lot::RwLock;
-use common::tracing::{self};
+use parking_lot::RwLock;
 use std::sync::Arc;
+use tracing::{self};
 
 #[tracing::instrument]
 pub async fn configuration(

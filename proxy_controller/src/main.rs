@@ -1,5 +1,4 @@
 #![allow(dead_code)]
-mod api_reference;
 #[cfg(feature = "swagger")]
 mod docs;
 mod game;
@@ -17,27 +16,28 @@ use crate::matches::sources::{FileSource, MatchSource};
 use crate::routes::{configuration, download_bot, download_bot_data, download_map};
 use crate::state::ProxyState;
 use crate::ws_routes::websocket_handler;
+use axum::error_handling::HandleErrorLayer;
+use axum::http::StatusCode;
+use axum::routing::{get, post};
+use axum::Router;
 use axum::{http::Request, response::Response};
 use common::api::health;
-use common::axum::error_handling::HandleErrorLayer;
-use common::axum::http::StatusCode;
-use common::axum::routing::{get, post};
-use common::axum::Router;
-use common::config::{Config, FileFormat};
 use common::configuration::ac_config::{ACConfig, RunType};
 use common::configuration::get_host_url;
 use common::logging::init_logging;
-use common::parking_lot::RwLock;
-use common::tower::ServiceBuilder;
-use common::tower_http::trace::TraceLayer;
-use common::tower_http::BoxError;
-use common::{axum, config, tokio, tower, tracing, tracing_appender};
+use config::{Config, FileFormat};
+use parking_lot::RwLock;
+use tower::ServiceBuilder;
+use tower_http::trace::TraceLayer;
+use tower_http::BoxError;
+
 use std::net::SocketAddr;
 use std::path::Path;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
-use tracing::Span;
+use std::vec;
+use tracing::{debug, Span};
 
 static PREFIX: &str = "acproxy";
 
@@ -53,7 +53,7 @@ async fn main() {
     let log_file = "proxy_controller.log";
     let full_path = Path::new(&log_path).join(log_file);
     if full_path.exists() {
-        common::tokio::fs::remove_file(full_path).await.unwrap();
+        tokio::fs::remove_file(full_path).await.unwrap();
     }
     let (non_blocking_stdout, _guard) = tracing_appender::non_blocking(std::io::stdout());
     let non_blocking_file = tracing_appender::rolling::never(&log_path, log_file);
@@ -77,6 +77,8 @@ async fn main() {
         game_result: None,
         auth_whitelist: indexmap::IndexSet::default(),
         shutdown_sender: tx,
+        bot_controllers: vec![],
+        sc2_controllers: vec![],
     }));
 
     tokio::spawn(match_scheduler(app_state.clone(), match_source));
@@ -125,7 +127,10 @@ async fn main() {
     let graceful_server = axum::Server::bind(&addr)
         .serve(app.into_make_service_with_connect_info::<SocketAddr>())
         .with_graceful_shutdown(async {
-            let _ = rx.recv().await;
+            tokio::select! {
+                _ = rx.recv() => {},
+                _ = shutdown_signal() => {},
+            }
         });
 
     if let Err(e) = graceful_server.await {
@@ -145,4 +150,32 @@ fn setup_proxy_config() -> ACConfig {
         .expect("Could not load config")
         .try_deserialize::<ACConfig>()
         .expect("Could not deserialize config")
+}
+
+/// Tokio signal handler that will wait for a user to press CTRL+C.
+/// We use this in our hyper `Server` method `with_graceful_shutdown`.
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        tokio::signal::ctrl_c()
+            .await
+            .expect("failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+            .expect("failed to install signal handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {},
+        _ = terminate => {},
+    }
+
+    debug!("signal received, starting graceful shutdown");
 }

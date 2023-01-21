@@ -1,12 +1,13 @@
-use crate::api_reference::{ApiError, ControllerApi};
-use common::api::errors::app_error::ApiErrorMessage;
-use common::async_trait::async_trait;
-use common::bytes::Bytes;
-use common::models::bot_controller::StartBot;
-use common::models::StartResponse;
-use common::portpicker::Port;
-use common::reqwest::{Client, Url};
+use crate::api::api_reference::{ApiError, ControllerApi};
+use crate::api::errors::app_error::ApiErrorMessage;
+use crate::models::bot_controller::StartBot;
+use crate::models::StartResponse;
+use crate::portpicker::Port;
+use async_trait::async_trait;
+use bytes::Bytes;
+use reqwest::{Client, Url};
 
+#[derive(Debug, Clone)]
 pub struct BotController {
     client: Client,
     url: Url,
@@ -15,7 +16,7 @@ pub struct BotController {
 }
 
 impl BotController {
-    pub fn new(host: &str, port: Port) -> Result<Self, common::url::ParseError> {
+    pub fn new(host: &str, port: Port) -> Result<Self, url::ParseError> {
         let url_string = format!("http://{}:{}", host, port);
         let url = Url::parse(&url_string)?;
 
@@ -40,7 +41,7 @@ impl BotController {
                                                           // errors
         let request = self
             .client
-            .request(common::reqwest::Method::POST, start_url)
+            .request(reqwest::Method::POST, start_url)
             .json(&self.start_bot)
             .build()?;
         self.execute_request(request).await
@@ -49,14 +50,11 @@ impl BotController {
     pub async fn download_bot_log(&self) -> Result<Bytes, ApiError<ApiErrorMessage>> {
         let path = format!(
             "/download/bot/{}/log",
-            common::urlencoding::encode(&self.start_bot.as_ref().unwrap().bot_name)
+            urlencoding::encode(&self.start_bot.as_ref().unwrap().bot_name)
         );
         let log_url = self.url.join(&path).unwrap(); // static string, so the constructor should catch any parse
                                                      // errors
-        let request = self
-            .client
-            .request(common::reqwest::Method::GET, log_url)
-            .build()?;
+        let request = self.client.request(reqwest::Method::GET, log_url).build()?;
 
         self.execute_request_file(request).await
     }
@@ -64,14 +62,11 @@ impl BotController {
     pub async fn download_bot_data(&self) -> Result<Bytes, ApiError<ApiErrorMessage>> {
         let path = format!(
             "/download/bot/{}/data",
-            common::urlencoding::encode(&self.start_bot.as_ref().unwrap().bot_name)
+            urlencoding::encode(&self.start_bot.as_ref().unwrap().bot_name)
         );
         let log_url = self.url.join(&path).unwrap(); // static string, so the constructor should catch any parse
                                                      // errors
-        let request = self
-            .client
-            .request(common::reqwest::Method::GET, log_url)
-            .build()?;
+        let request = self.client.request(reqwest::Method::GET, log_url).build()?;
 
         self.execute_request_file(request).await
     }
@@ -92,8 +87,8 @@ impl ControllerApi for BotController {
 
 #[cfg(test)]
 mod tests {
-    use crate::api_reference::bot_controller_client::BotController;
-    use crate::api_reference::ControllerApi;
+    use crate::api::api_reference::bot_controller_client::BotController;
+    use crate::api::api_reference::ControllerApi;
 
     #[test]
     fn test_get_socket_addr() {

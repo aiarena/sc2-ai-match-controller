@@ -1,34 +1,30 @@
+use axum::body::StreamBody;
+use axum::extract::{Path, State};
+use axum::http::header;
+use axum::Json;
 use common::api::errors::app_error::AppError;
 use common::api::errors::download_error::DownloadError;
 use common::api::errors::map_error::MapError;
 use common::api::errors::process_error::ProcessError;
 use common::api::state::AppState;
-use common::axum::body::StreamBody;
-use common::axum::extract::{Path, State};
-use common::axum::http::header;
-use common::axum::Json;
 use common::configuration::get_proxy_url_from_env;
 use common::models::bot_controller::MapData;
 use common::models::{StartResponse, Status, TerminateResponse};
-use common::paths::base_dir;
+use common::paths;
 use common::portpicker::pick_unused_port_in_range;
-use common::reqwest::header::HeaderName;
-use common::reqwest::Client;
-use common::tempfile::TempDir;
-use common::tokio;
-use common::tokio::io::AsyncWriteExt;
-use common::tokio_util::io::ReaderStream;
-use common::tracing::info;
 use common::utilities::directory::ensure_directory_structure;
 use common::utilities::portpicker::Port;
-#[cfg(feature = "swagger")]
-use common::utoipa;
-use common::{paths, tracing};
+use reqwest::header::HeaderName;
+use reqwest::Client;
 use std::process::Command;
+use tempfile::TempDir;
+use tokio::io::AsyncWriteExt;
+use tokio_util::io::ReaderStream;
+use tracing::info;
 
 use crate::PREFIX;
 
-#[common::tracing::instrument(skip(state))]
+#[tracing::instrument(skip(state))]
 #[cfg_attr(feature = "swagger", utoipa::path(
     get,
     path = "/terminate/{process_key}",
@@ -59,7 +55,7 @@ pub async fn terminate_sc2(
     }
 }
 
-#[common::tracing::instrument(skip(state))]
+#[tracing::instrument(skip(state))]
 #[cfg_attr(feature = "swagger",utoipa::path(
     get,
     path = "/start",
@@ -71,14 +67,16 @@ pub async fn start_sc2(
     State(state): State<AppState>,
     Json(map_name): Json<String>,
 ) -> Result<Json<StartResponse>, AppError> {
-    let map_path = base_dir().join("maps").join(format!("{}.SC2Map", map_name));
+    let map_path = paths::base_dir()
+        .join("maps")
+        .join(format!("{}.SC2Map", map_name));
     if !map_path.exists() {
         let proxy_url = get_proxy_url_from_env(PREFIX);
         let download_url = format!("http://{}/download_map", proxy_url);
 
         let client = Client::new();
         let request = client
-            .request(common::reqwest::Method::GET, &download_url)
+            .request(reqwest::Method::GET, &download_url)
             .build()
             .map_err(|e| {
                 AppError::Process(ProcessError::StartError(format!(
@@ -90,7 +88,7 @@ pub async fn start_sc2(
         let resp = match client.execute(request).await {
             Ok(resp) => resp,
             Err(err) => {
-                crate::tracing::error!("{:?}", err);
+                tracing::error!("{:?}", err);
                 return Err(ProcessError::StartError(format!(
                     "Could not download map from url: {:?}",
                     &download_url
@@ -114,7 +112,7 @@ pub async fn start_sc2(
             .await
             .map_err(|e| ProcessError::StartError(format!("{:?}", e)))?;
 
-        let mut file = common::tokio::fs::File::create(map_path)
+        let mut file = tokio::fs::File::create(map_path)
             .await
             .map_err(|err| ProcessError::Custom(format!("Could not download map: {:?}", err)))?;
         file.write_all(&map_bytes).await.map_err(|err| {
@@ -191,7 +189,7 @@ pub async fn download_controller_log(
     Ok((headers, body))
 }
 
-#[common::tracing::instrument]
+#[tracing::instrument]
 #[cfg_attr(feature = "swagger",utoipa::path(
 get,
 path = "/find_map",
@@ -200,7 +198,7 @@ responses(
 )
 ))]
 pub async fn find_map(Path(map_name): Path<String>) -> Result<Json<MapData>, AppError> {
-    paths::maps::find_map(&map_name)
+    common::paths::maps::find_map(&map_name)
         .map_err(|err| MapError::from(err).into())
         .map(|map_path| {
             Json(MapData {

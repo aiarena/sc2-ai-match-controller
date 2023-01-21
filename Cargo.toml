@@ -1,6 +1,7 @@
 
 [workspace]
 members = [
+    "k8s_controller",
     "bot_controller",
     "sc2_controller",
     "proxy_controller",

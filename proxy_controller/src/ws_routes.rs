@@ -10,15 +10,14 @@ use crate::game::game_config::GameConfig;
 use crate::game::player_result::PlayerResult;
 use crate::game::sc2_result::Sc2Result;
 use crate::matches::aiarena_result::AiArenaResult;
-use common::axum::extract::ws::WebSocket;
-use common::axum::extract::{ConnectInfo, State, WebSocketUpgrade};
-use common::axum::response::IntoResponse;
+use axum::extract::ws::WebSocket;
+use axum::extract::{ConnectInfo, State, WebSocketUpgrade};
+use axum::response::IntoResponse;
 use common::models::bot_controller::PlayerNum;
-use common::parking_lot::RwLock;
-use common::tokio::net::TcpStream;
-use common::tokio::time::sleep;
-use common::tracing::{debug, error, Instrument};
-use common::{tokio, tracing};
+use parking_lot::RwLock;
+use tokio::net::TcpStream;
+use tokio::time::sleep;
+use tracing::{debug, error, Instrument};
 
 use crate::state::{ProxyState, SC2Url};
 use crate::websocket::errors::player_error::PlayerError;
@@ -37,7 +36,7 @@ pub async fn websocket_handler(
         .on_upgrade(move |socket| websocket(socket, state, addr))
 }
 
-#[common::tracing::instrument(skip(bot_ws, state), fields(bot_name))]
+#[tracing::instrument(skip(bot_ws, state), fields(bot_name))]
 async fn websocket(bot_ws: WebSocket, state: Arc<RwLock<ProxyState>>, addr: SocketAddr) {
     debug!("Connection from {:?}", addr);
     state.write().add_client(addr);

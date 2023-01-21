@@ -5,28 +5,27 @@ mod routes;
 #[cfg(feature = "swagger")]
 use crate::docs::ApiDoc;
 use crate::routes::{download_controller_log, find_map, start_sc2, terminate_sc2};
+use axum::http::Request;
+use axum::response::Response;
+use axum::routing::{get, post};
+use axum::{error_handling::HandleErrorLayer, http::StatusCode, Router};
 use common::api::health;
 use common::api::process::{shutdown, stats, stats_host, status, terminate_all};
 use common::api::process::{stats_all, ProcessMap};
 use common::api::state::AppState;
-use common::axum::http::Request;
-use common::axum::response::Response;
-use common::axum::routing::{get, post};
-use common::axum::{error_handling::HandleErrorLayer, http::StatusCode, Router};
 use common::configuration::{get_config_from_proxy, get_host_url, get_proxy_url_from_env};
 use common::logging::init_logging;
-use common::tower::{BoxError, ServiceBuilder};
-use common::tower_http::trace::TraceLayer;
-use common::tracing::Span;
-#[cfg(feature = "swagger")]
-use common::utoipa::OpenApi;
-#[cfg(feature = "swagger")]
-use common::utoipa_swagger_ui::SwaggerUi;
-use common::{axum, tower, tracing};
-use common::{tokio, tracing_appender};
 use std::path::Path;
 use std::str::FromStr;
 use std::{net::SocketAddr, time::Duration};
+use tower::{BoxError, ServiceBuilder};
+use tower_http::trace::TraceLayer;
+use tracing::debug;
+use tracing::Span;
+#[cfg(feature = "swagger")]
+use utoipa::OpenApi;
+#[cfg(feature = "swagger")]
+use utoipa_swagger_ui::SwaggerUi;
 
 static PREFIX: &str = "ACSC2";
 
@@ -50,7 +49,7 @@ async fn main() {
     let log_file = "sc2_controller.log";
     let full_path = Path::new(&log_path).join(log_file);
     if full_path.exists() {
-        common::tokio::fs::remove_file(full_path).await.unwrap();
+        tokio::fs::remove_file(full_path).await.unwrap();
     }
     let (non_blocking_stdout, _guard) = tracing_appender::non_blocking(std::io::stdout());
     let non_blocking_file = tracing_appender::rolling::never(&log_path, log_file);
@@ -116,11 +115,43 @@ async fn main() {
     let addr = SocketAddr::from_str(&host_url).unwrap();
     tracing::debug!("listening on {}", addr);
     let graceful_server = axum::Server::bind(&addr)
-        .serve(app.into_make_service())
+        .serve(app.into_make_service_with_connect_info::<SocketAddr>())
         .with_graceful_shutdown(async {
-            let _ = rx.recv().await;
+            tokio::select! {
+                _ = rx.recv() => {},
+                _ = shutdown_signal() => {},
+            }
         });
+
     if let Err(e) = graceful_server.await {
         tracing::error!("server error: {}", e);
     }
+}
+
+/// Tokio signal handler that will wait for a user to press CTRL+C.
+/// We use this in our hyper `Server` method `with_graceful_shutdown`.
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        tokio::signal::ctrl_c()
+            .await
+            .expect("failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+            .expect("failed to install signal handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {},
+        _ = terminate => {},
+    }
+
+    debug!("signal received, starting graceful shutdown");
 }

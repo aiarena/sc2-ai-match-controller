@@ -1,0 +1,14 @@
+version: "3.9"
+services:
+  k8s_controller:
+    build:
+      context: ../../
+      dockerfile: ./k8s_controller/Dockerfile
+      args:
+        CARGO_FLAGS: "${TEST_CARGO_FLAGS}"
+    volumes:
+      - "./config:/root/.kube/config" # kubeconfig
+      - "./arenaclients.json:/app/arenaclients.json" # arenaclient tokens
+      - "./k8s-config.toml:/app/config.toml" # k8s-controller config
+
+  

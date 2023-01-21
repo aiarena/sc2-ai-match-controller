@@ -1,4 +1,4 @@
-use common::axum::extract::ws::Message as AxumMessage;
+use axum::extract::ws::Message as AxumMessage;
 use std::time::Duration;
 use std::{error, fmt};
 
@@ -8,7 +8,7 @@ use tokio_tungstenite::tungstenite::Message as TungsteniteMessage;
 pub enum PlayerError {
     BotQuit,
     NoMessageAvailable,
-    BotWebsocket(common::axum::Error),
+    BotWebsocket(axum::Error),
     Sc2Websocket(tokio_tungstenite::tungstenite::Error),
     BotUnexpectedMessage(AxumMessage),
     Sc2UnexpectedMessage(TungsteniteMessage),
@@ -20,8 +20,8 @@ pub enum PlayerError {
     BotTimeout(Duration),
 }
 
-impl From<common::axum::Error> for PlayerError {
-    fn from(error: common::axum::Error) -> Self {
+impl From<axum::Error> for PlayerError {
+    fn from(error: axum::Error) -> Self {
         Self::BotWebsocket(error)
     }
 }

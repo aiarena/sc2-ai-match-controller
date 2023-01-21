@@ -1,6 +1,6 @@
-use crate::api_reference::aiarena::AiArenaMatch;
 use crate::game::race::BotRace;
 use crate::matches::sources::file_source::errors::FileMatchExtractError;
+use common::api::api_reference::aiarena::AiArenaMatch;
 use common::models::bot_controller::{BotType, PlayerNum};
 use std::collections::HashMap;
 use std::str::FromStr;

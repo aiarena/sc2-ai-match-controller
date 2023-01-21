@@ -1,21 +1,20 @@
-use crate::api_reference::aiarena::aiarena_api_client::AiArenaApiClient;
-use crate::api_reference::aiarena::errors::AiArenaApiError;
-use crate::api_reference::aiarena::AiArenaMatch;
-use crate::api_reference::ApiError;
 use crate::matches::sources::file_source::errors::SubmissionError;
 use crate::matches::sources::{AiArenaGameResult, LogsAndReplays, MatchSource};
 use crate::matches::Match;
-use common::async_trait::async_trait;
+use async_trait::async_trait;
+use common::api::api_reference::aiarena::aiarena_api_client::AiArenaApiClient;
+use common::api::api_reference::aiarena::errors::AiArenaApiError;
+use common::api::api_reference::aiarena::AiArenaMatch;
+use common::api::api_reference::ApiError;
 use common::configuration::ac_config::ACConfig;
 use common::paths::base_dir;
-use common::reqwest;
-use common::tokio::io::AsyncWriteExt;
-use common::tracing::log::error;
-use common::tracing::{debug, info};
 use serde::{Deserialize, Serialize};
 use std::fs::{File, OpenOptions};
 use std::path::Path;
 use std::time::Duration;
+use tokio::io::AsyncWriteExt;
+use tracing::log::error;
+use tracing::{debug, info};
 
 pub struct HttpApiSource {
     api: AiArenaApiClient,
@@ -41,7 +40,7 @@ impl HttpApiSource {
         info!("Downloading map {}", map_name);
         let map_bytes = self.api.download_map(map_url).await?;
         let map_path = base_dir().join("maps").join(format!("{}.SC2Map", map_name));
-        let mut file = common::tokio::fs::File::create(map_path).await?;
+        let mut file = tokio::fs::File::create(map_path).await?;
         Ok(file.write_all(&map_bytes).await?)
     }
 }
@@ -80,7 +79,7 @@ impl MatchSource for HttpApiSource {
         let mut attempt = 0;
         while attempt < 60 {
             debug!("Attempting to submit result. Attempt number: {}", attempt);
-            let mut files = common::reqwest::multipart::Form::new()
+            let mut files = reqwest::multipart::Form::new()
                 .text("match", game_result.match_id.to_string())
                 .text("type", game_result.result.to_string())
                 .text("game_steps", game_result.game_steps.to_string());
@@ -135,7 +134,7 @@ impl MatchSource for HttpApiSource {
             if status.is_client_error() || status.is_server_error() {
                 debug!("Error while submitting result. Sleeping...");
                 attempt += 1;
-                common::tokio::time::sleep(Duration::from_secs(10)).await;
+                tokio::time::sleep(Duration::from_secs(10)).await;
             } else {
                 break;
             }
@@ -145,7 +144,7 @@ impl MatchSource for HttpApiSource {
 }
 async fn create_part_from_path(path: &Path) -> Result<reqwest::multipart::Part, std::io::Error> {
     let file_name = String::from(path.file_name().and_then(|p| p.to_str()).unwrap());
-    let file = common::tokio::fs::read(path).await?;
+    let file = tokio::fs::read(path).await?;
 
     let file_part = reqwest::multipart::Part::bytes(file).file_name(file_name);
     Ok(file_part)

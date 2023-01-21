@@ -1,30 +1,29 @@
-use crate::api_reference::bot_controller_client::BotController;
-use crate::api_reference::sc2_controller_client::SC2Controller;
-use crate::api_reference::{ApiError, ControllerApi};
 use crate::game::game_config::GameConfig;
 use crate::game::game_result::GameResult;
 use crate::matches::aiarena_result::AiArenaResult;
 use crate::matches::sources::{AiArenaGameResult, LogsAndReplays, MatchSource};
 use crate::matches::Match;
 use crate::state::{ProxyState, SC2Url};
-use common::bytes::Bytes;
+use bytes::Bytes;
+use common::api::api_reference::bot_controller_client::BotController;
+use common::api::api_reference::sc2_controller_client::SC2Controller;
+use common::api::api_reference::{ApiError, ControllerApi};
 use common::configuration::ac_config::{ACConfig, RunType};
-use common::futures_util::future::{join, join3, join4};
-use common::futures_util::TryFutureExt;
 use common::models::bot_controller::{PlayerNum, StartBot};
-use common::parking_lot::RwLock;
-use common::portpicker::Port;
-use common::tokio::fs::File;
-use common::tokio::io::AsyncWriteExt;
-use common::tokio::join;
-use common::tokio::time::sleep;
-use common::tracing::{error, info};
 use common::utilities::directory::ensure_directory_structure;
-use common::{tokio, tracing};
+use common::utilities::portpicker::Port;
+use futures_util::future::{join, join3, join4};
+use futures_util::TryFutureExt;
+use parking_lot::RwLock;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
+use tokio::fs::File;
+use tokio::io::AsyncWriteExt;
+use tokio::join;
+use tokio::time::sleep;
+use tracing::{error, info};
 
 pub async fn match_scheduler<M: MatchSource>(
     proxy_state: Arc<RwLock<ProxyState>>,
@@ -42,6 +41,7 @@ pub async fn match_scheduler<M: MatchSource>(
             std::process::exit(2);
         }
     };
+    proxy_state.write().bot_controllers = bot_controllers.to_vec();
 
     let mut sc2_controllers = match init_sc2_controllers(&settings) {
         Ok(c) => c,
@@ -51,6 +51,7 @@ pub async fn match_scheduler<M: MatchSource>(
             std::process::exit(2);
         }
     };
+    proxy_state.write().sc2_controllers = sc2_controllers.to_vec();
     // TODO: Enable when auth is implemented
     // let sock_addrs = vec![
     //     bot_controllers[0].sock_addr(),
@@ -130,9 +131,14 @@ pub async fn match_scheduler<M: MatchSource>(
 
                 tracing::trace!("SC2 urls added");
                 sc2_controllers[0].set_process_key(sc1_resp.process_key);
+                proxy_state.write().sc2_controllers[0].set_process_key(sc1_resp.process_key);
                 sc2_controllers[1].set_process_key(sc2_resp.process_key);
+                proxy_state.write().sc2_controllers[1].set_process_key(sc2_resp.process_key);
                 bot_controllers[0].set_process_key(sc1_resp.process_key);
+                proxy_state.write().bot_controllers[0].set_process_key(sc1_resp.process_key);
                 bot_controllers[1].set_process_key(sc2_resp.process_key);
+                proxy_state.write().bot_controllers[1].set_process_key(sc2_resp.process_key);
+
                 (sc1_resp.process_key, sc2_resp.process_key)
             }
             (Err(e), _) | (_, Err(e)) => {
@@ -309,14 +315,14 @@ async fn build_logs_and_replays_object(
     let proxy_log_path = Path::new(&proxy_log_path_str).to_path_buf();
 
     if proxy_log_path.exists() {
-        let _ = common::tokio::fs::copy(
+        let _ = tokio::fs::copy(
             proxy_log_path,
             arenaclient_log_directory.join("proxy_controller.log"),
         )
         .await;
     }
     let arenaclient_logs_zip_path = temp_folder.join("ac_log");
-    let ac_zip_result = common::zip_extensions::zip_create_from_directory(
+    let ac_zip_result = zip_extensions::zip_create_from_directory(
         &arenaclient_logs_zip_path,
         &arenaclient_log_directory,
     );
@@ -341,11 +347,11 @@ async fn build_bot_logs(
     bot_controllers: &[BotController],
 ) -> io::Result<(PathBuf, PathBuf)> {
     let bot1_dir = temp_folder.join("bot1");
-    common::tokio::fs::create_dir(&bot1_dir).await?;
+    tokio::fs::create_dir(&bot1_dir).await?;
     let bot2_dir = temp_folder.join("bot2");
-    common::tokio::fs::create_dir(&bot2_dir).await?;
-    common::tokio::fs::create_dir(&bot1_dir.join("logs")).await?;
-    common::tokio::fs::create_dir(&bot2_dir.join("logs")).await?;
+    tokio::fs::create_dir(&bot2_dir).await?;
+    tokio::fs::create_dir(&bot1_dir.join("logs")).await?;
+    tokio::fs::create_dir(&bot2_dir.join("logs")).await?;
 
     let res = join4(
         bot_controllers[0].download_bot_log().and_then(|x| {
@@ -354,11 +360,10 @@ async fn build_bot_logs(
             let archive_directory = bot1_dir.join("logs");
             async move {
                 match write_file(&file_path, &x).await.map_err(ApiError::from) {
-                    Ok(_) => common::zip_extensions::zip_create_from_directory(
-                        &archive_file,
-                        &archive_directory,
-                    )
-                    .map_err(ApiError::from),
+                    Ok(_) => {
+                        zip_extensions::zip_create_from_directory(&archive_file, &archive_directory)
+                            .map_err(ApiError::from)
+                    }
                     e => e,
                 }
             }
@@ -369,11 +374,10 @@ async fn build_bot_logs(
             let archive_directory = bot2_dir.join("logs");
             async move {
                 match write_file(&file_path, &x).await.map_err(ApiError::from) {
-                    Ok(_) => common::zip_extensions::zip_create_from_directory(
-                        &archive_file,
-                        &archive_directory,
-                    )
-                    .map_err(ApiError::from),
+                    Ok(_) => {
+                        zip_extensions::zip_create_from_directory(&archive_file, &archive_directory)
+                            .map_err(ApiError::from)
+                    }
                     e => e,
                 }
             }
@@ -398,18 +402,14 @@ async fn build_bot_logs(
     Ok((bot1_dir, bot2_dir))
 }
 
-fn init_bot_controllers(
-    settings: &ACConfig,
-) -> Result<[BotController; 2], common::url::ParseError> {
+fn init_bot_controllers(settings: &ACConfig) -> Result<[BotController; 2], url::ParseError> {
     Ok([
         BotController::new(&settings.bot_cont_1_host, settings.bot_cont_1_port)?,
         BotController::new(&settings.bot_cont_2_host, settings.bot_cont_2_port)?,
     ])
 }
 
-fn init_sc2_controllers(
-    settings: &ACConfig,
-) -> Result<[SC2Controller; 2], common::url::ParseError> {
+fn init_sc2_controllers(settings: &ACConfig) -> Result<[SC2Controller; 2], url::ParseError> {
     Ok([
         SC2Controller::new(&settings.sc2_cont_host, settings.sc2_cont_port)?,
         SC2Controller::new(&settings.sc2_cont_host, settings.sc2_cont_port)?,
@@ -438,10 +438,10 @@ async fn build_arenaclient_logs(
     bot_controllers: &[BotController],
 ) -> io::Result<PathBuf> {
     let arenaclient_logs_dir = temp_folder.join("arenaclient");
-    common::tokio::fs::create_dir(&arenaclient_logs_dir).await?;
+    tokio::fs::create_dir(&arenaclient_logs_dir).await?;
 
     let bot_controller_dir = arenaclient_logs_dir.join("bot");
-    common::tokio::fs::create_dir(&bot_controller_dir).await?;
+    tokio::fs::create_dir(&bot_controller_dir).await?;
 
     let res = join(
         bot_controllers[0].download_controller_log().and_then(|x| {
