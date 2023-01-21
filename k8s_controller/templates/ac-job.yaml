@@ -1,0 +1,139 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: placeholder
+  namespace: arenaclients
+spec:
+  template:
+    spec:
+      containers:
+        - env:
+            - name: ACPROXY_PORT
+              value: '8080'
+            - name: ACPROXY_ARENA_CLIENT_ID
+              value: ''
+            - name: ACPROXY_API_TOKEN
+              value: placeholder
+            - name: ACPROXY_SC2_CONT_PORT
+              value: '8083'
+            - name: ACPROXY_LOGGING_LEVEL
+              value: debug
+          image: aiarena/arenaclient-proxy:latest
+          imagePullPolicy: Always
+          name: proxy-controller
+          ports:
+            - containerPort: 8080
+              name: 8080tcp
+              protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /health
+              port: 8080
+              scheme: HTTP
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+            - mountPath: /app/config.toml
+              name: config
+              subPath: config.toml
+          __active: true
+          resources: {}
+        - env:
+            - name: ACBOT_PORT
+              value: '8081'
+            - name: ACBOT_PROXY_HOST
+              value: 127.0.0.1
+          image: aiarena/arenaclient-bot:latest
+          imagePullPolicy: Always
+          name: bot-controller-1
+          ports:
+            - containerPort: 8081
+              name: 8081tcp
+              protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /health
+              port: 8081
+              scheme: HTTP
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          resources:
+            limits:
+              cpu: '2'
+            requests:
+              cpu: '1'
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        - env:
+            - name: ACBOT_PORT
+              value: '8082'
+            - name: ACBOT_PROXY_HOST
+              value: 127.0.0.1
+          image: aiarena/arenaclient-bot:latest
+          imagePullPolicy: Always
+          name: bot-controller-2
+          ports:
+            - containerPort: 8082
+              name: 8082tcp
+              protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /health
+              port: 8082
+              scheme: HTTP
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          resources:
+            limits:
+              cpu: '2'
+            requests:
+              cpu: '1'
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        - env:
+            - name: ACSC2_PORT
+              value: '8083'
+            - name: ACSC2_PROXY_HOST
+              value: 127.0.0.1
+          image: aiarena/arenaclient-sc2:latest
+          imagePullPolicy: Always
+          name: sc2-controller
+          ports:
+            - containerPort: 8083
+              name: 8083tcp
+              protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /health
+              port: 8083
+              scheme: HTTP
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          resources: {}
+      dnsPolicy: ClusterFirst
+      imagePullSecrets:
+      nodeSelector:
+        {}
+      restartPolicy: Never
+      schedulerName: default-scheduler
+      terminationGracePeriodSeconds: 30
+      volumes:
+        - configMap:
+            defaultMode: 420
+            name: arenaclient-new-staging-config
+            optional: false
+          name: config
+  backoffLimit: 6
+__clone: true
