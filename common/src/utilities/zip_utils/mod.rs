@@ -19,7 +19,7 @@ pub struct ZipStruct {
 }
 
 pub fn zip_directory<W: Write + io::Seek>(file: W, directory: &Path) -> io::Result<()> {
-    let options = FileOptions::default().compression_method(CompressionMethod::Stored);
+    let options = FileOptions::default().compression_method(CompressionMethod::Deflated);
     zip_directory_with_options(file, directory, options)
 }
 
@@ -181,4 +181,26 @@ pub fn zip_extract_from_memory(archive_file: &Bytes, target_dir: &PathBuf) -> Zi
 }
 
 #[cfg(test)]
-mod tests {}
+mod tests {
+
+    use super::{zip_directory, zip_extract_from_memory};
+
+    #[test]
+    fn test_zip_file_size_is_smaller() {
+        let zip_file = include_bytes!("../../../../testing/unittests/test_zip.zip");
+        let temp_dir = tempfile::TempDir::new()
+            .expect("Could not create tmp directory")
+            .into_path();
+        let zip_bytes = bytes::Bytes::from_static(zip_file);
+        zip_extract_from_memory(&zip_bytes, &temp_dir).expect("Could not extract archive");
+        let dir_size = fs_extra::dir::get_size(&temp_dir).expect("Could not get size of directory");
+
+        let mut tmp_file = tempfile::tempfile().expect("Could not create tempfile");
+        zip_directory(&mut tmp_file, &temp_dir).expect("Could not zip file");
+        let zipped_archive_size = tmp_file
+            .metadata()
+            .expect("Could not read tmp file metadata")
+            .len();
+        assert!(zipped_archive_size < dir_size)
+    }
+}
