@@ -15,6 +15,9 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Get tags
+        run: git fetch --tags origin
+
       - name: "Get tag"
         id: "get-tag"
         shell: "bash"
