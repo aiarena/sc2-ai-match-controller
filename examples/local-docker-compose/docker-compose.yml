@@ -3,7 +3,8 @@ services:
   sc2_controller:
     build:
       context: .
-      dockerfile: ./sc2_controller/Dockerfile
+      dockerfile: ./docker/Dockerfile
+      target: sc2_controller
       args:
         CARGO_FLAGS: "--release"
     ports:
@@ -18,7 +19,8 @@ services:
   bot_controller1:
     build:
       context: .
-      dockerfile: ./bot_controller/Dockerfile
+      dockerfile: ./docker/Dockerfile
+      target: bot_controller
       args:
         CARGO_FLAGS: "--release"
     ports:
@@ -33,7 +35,8 @@ services:
   bot_controller2:
     build:
       context: .
-      dockerfile: ./bot_controller/Dockerfile
+      dockerfile: ./docker/Dockerfile
+      target: bot_controller
       args:
         CARGO_FLAGS: "--release"
     ports:
@@ -48,7 +51,8 @@ services:
   proxy_controller:
     build:
       context: .
-      dockerfile: ./proxy_controller/Dockerfile
+      dockerfile: ./docker/Dockerfile
+      target: proxy_controller
       args:
         CARGO_FLAGS: "--release"
     ports:

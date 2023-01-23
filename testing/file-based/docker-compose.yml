@@ -1,10 +1,11 @@
 version: "3.9"
 services:
   sc2_controller:
-    restart: Never
+    restart: unless-stopped
     build:
       context: ../../
-      dockerfile: ./sc2_controller/Dockerfile
+      dockerfile: ./docker/Dockerfile
+      target: sc2_controller
       args:
         CARGO_FLAGS: "${TEST_CARGO_FLAGS}"
     environment:
@@ -14,10 +15,11 @@ services:
       - "../testing-maps:/root/StarCraftII/maps"
 
   bot_controller1:
-    restart: Never
+    restart: unless-stopped
     build:
       context: ../../
-      dockerfile: ./bot_controller/Dockerfile
+      dockerfile: ./docker/Dockerfile
+      target: bot_controller
       args:
         CARGO_FLAGS: "${TEST_CARGO_FLAGS}"
     volumes:
@@ -28,10 +30,11 @@ services:
       - "ACBOT_PROXY_HOST=proxy_controller"
 
   bot_controller2:
-    restart: Never
+    restart: unless-stopped
     build:
       context: ../../
-      dockerfile: ./bot_controller/Dockerfile
+      dockerfile: ./docker/Dockerfile
+      target: bot_controller
       args:
         CARGO_FLAGS: "${TEST_CARGO_FLAGS}"
     volumes:
@@ -41,10 +44,11 @@ services:
       - "ACBOT_PROXY_HOST=proxy_controller"
 
   proxy_controller:
-    restart: Never
+    restart: unless-stopped
     build:
       context: ../../
-      dockerfile: ./proxy_controller/Dockerfile
+      dockerfile: ./docker/Dockerfile
+      target: proxy_controller
       args:
         CARGO_FLAGS: "${TEST_CARGO_FLAGS}"
     environment:

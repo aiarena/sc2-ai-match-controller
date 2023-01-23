@@ -2,8 +2,9 @@ version: "3.9"
 services:
   k8s_controller:
     build:
-      context: ../../
-      dockerfile: ./k8s_controller/Dockerfile
+      context: ../
+      dockerfile: ./docker/Dockerfile
+      target: k8s_controller
       args:
         CARGO_FLAGS: "${TEST_CARGO_FLAGS}"
     volumes:

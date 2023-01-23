@@ -1,6 +1,6 @@
 [package]
 name = "bot_controller"
-version = "0.0.1"
+version.workspace = true
 edition = "2021"
 include = ["configs/*.toml"]
 description = "Controller that controls SC2 bot processes"
@@ -8,20 +8,20 @@ license-file="./LICENCE"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-common = {path="../common"}
-serde_json = "1.0.91"
-axum = { version = "0.6.2" }
-utoipa = { version="2.4.2", features = ["axum_extras"], optional=true }
-utoipa-swagger-ui = { version="3.0.1",  features = ["axum"], optional=true }
-tokio = { version = "1.0"}#, features = ["macros", "rt-multi-thread", "fs"] }
-tower = { version = "0.4"}#, features = ["util", "timeout"] }
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-tracing-appender = "0.2.2"
-reqwest = { version = "0.11.12", features=["json"]}
-tower-http = { version = "0.3.0", features = ["add-extension", "trace"] }
-tokio-util = { version = "0.7.4", features = ["full"] }
-urlencoding = "2.1.2"
+common = {workspace=true}
+serde_json = { workspace=true }
+axum = { workspace=true }
+utoipa = { workspace=true, features = ["axum_extras"], optional=true }
+utoipa-swagger-ui = { workspace=true,  features = ["axum"], optional=true }
+tokio = { workspace=true }#, features = ["macros", "rt-multi-thread", "fs"] }
+tower = { workspace=true }#, features = ["util", "timeout"] }
+tracing = { workspace=true  }
+tracing-subscriber = { workspace=true , features = ["env-filter"] }
+tracing-appender = { workspace=true  }
+reqwest = { workspace=true , features=["json"]}
+tower-http = { workspace=true , features = ["add-extension", "trace"] }
+tokio-util = { workspace=true , features = ["full"] }
+urlencoding = { workspace=true  }
 
 [features]
 swagger = ["utoipa", "utoipa-swagger-ui"]

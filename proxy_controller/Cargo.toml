@@ -1,36 +1,36 @@
 [package]
 name = "proxy_controller"
-version = "0.1.0"
+version.workspace = true
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-axum = { version = "0.6.2", features=["ws"]}
-common = { path = "../common"}
-serde = { version = "^1.0", features = ["derive"] }
-serde_json = "1.0.87"
-tokio-tungstenite = "0.18.0"
-sc2-proto = { git = "https://github.com/aiarena/sc2-proto-rs.git" }
-protobuf = { version = "=3.2.0", features = ["with-bytes"] }
-indexmap = { version = "1.9.2", features = ["serde"] }
-utoipa = { version="2.4.2", features = ["axum_extras"], optional=true }
-utoipa-swagger-ui = { version="3.0.1",  features = ["axum"], optional=true }
-reqwest = { version = "0.11.12", features = [ "stream"] }
-tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-tracing-appender = "0.2.2"
-async-trait = "0.1.58"
-futures-util = "0.3.21"
-config = { git = "https://github.com/mehcode/config-rs.git" }
-url = "2.3.1"
-zip-extensions = "0.6.1"
-zip = "0.5.13"
-tower-http = { version = "0.3.0", features = ["add-extension", "trace"] }
-parking_lot = {version = "0.12.1", features=["deadlock_detection"]}
-tower = { version = "0.4", features = ["util", "timeout"] }
-bytes = "1.3.0"
+axum = { workspace=true, features=["ws"]}
+common = { workspace=true}
+serde = { workspace=true, features = ["derive"] }
+serde_json = { workspace=true }
+tokio-tungstenite = { workspace=true }
+sc2-proto = { workspace=true }
+protobuf = { workspace=true, features = ["with-bytes"] }
+indexmap = { workspace=true, features = ["serde"] }
+utoipa = { workspace=true, features = ["axum_extras"], optional=true }
+utoipa-swagger-ui = { workspace=true,  features = ["axum"], optional=true }
+reqwest = { workspace=true, features = [ "stream"] }
+tokio = { workspace=true, features = ["macros", "rt-multi-thread"] }
+tracing = { workspace=true }
+tracing-subscriber = { workspace=true, features = ["env-filter"] }
+tracing-appender = { workspace=true }
+async-trait = { workspace=true }
+futures-util = { workspace=true }
+config = { workspace=true }
+url = { workspace=true }
+zip-extensions = { workspace=true }
+zip = { workspace=true }
+tower-http = { workspace=true, features = ["add-extension", "trace"] }
+parking_lot = {workspace=true, features=["deadlock_detection"]}
+tower = { workspace=true, features = ["util", "timeout"] }
+bytes = { workspace=true }
 
 [features]
 swagger = ["utoipa", "utoipa-swagger-ui"]
