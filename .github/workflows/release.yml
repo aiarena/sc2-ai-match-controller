@@ -4,11 +4,9 @@ permissions:
   contents: "write"
 
 on:
-  workflow_dispatch:
-  workflow_run:
-    workflows: ["Tag"]
-    types:
-      - "completed"
+  push:
+    tags:
+      - '*'
 
 jobs:
   get-tag:
@@ -89,8 +87,7 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: "Build the docker-compose stack"
-        env: TAG=v${{ needs.get-tag.outputs.pkg-version }}
-        run: docker compose -f .\docker\docker-compose.yml build
+        run: TAG=v${{ needs.get-tag.outputs.pkg-version }} docker compose -f .\docker\docker-compose.yml build
 
       - name: Push images
         run: docker compose -f .\docker\docker-compose.yml push --ignore-push-failures
