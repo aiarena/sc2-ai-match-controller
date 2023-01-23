@@ -25,5 +25,5 @@ jobs:
         shell: "bash"
         run: |
           PKG_VERSION=${{ steps.get-tag.outputs.PKG_VERSION }}
-          PKG_VERSION=${PKG_VERSION//$'\n'/}
+          PKG_VERSION=${PKG_VERSION//$'\015'}
           if ! [ $(git tag -l v$PKG_VERSION) ]; then git tag v$PKG_VERSION && git push --tags; fi
