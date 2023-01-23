@@ -64,8 +64,7 @@ jobs:
         uses: "taiki-e/upload-rust-binary-action@v1"
         with:
           bin: "sc2_controller,bot_controller,proxy_controller,k8s_controller"
-          target: ${{ matrix.target }}
-          archive: app-${{ matrix.target }}
+          archive: controllers-v${{ needs.get-tag.outputs.pkg-version }}
           ref: refs/tags/v${{ needs.get-tag.outputs.pkg-version }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
