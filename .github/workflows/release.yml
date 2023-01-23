@@ -30,7 +30,6 @@ jobs:
 
   create-release:
     name: "Create release"
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     needs: "get-tag"
     runs-on: "ubuntu-latest"
     steps:
@@ -48,7 +47,6 @@ jobs:
 
   upload-assets:
     name: "Upload assets to Github releases"
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     needs:
      - "get-tag"
      - "create-release"
@@ -71,7 +69,6 @@ jobs:
 
   push-to-registry:
     name: "Push Docker image to Docker Hub"
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     needs:
       - "get-tag"
       - "upload-assets"
