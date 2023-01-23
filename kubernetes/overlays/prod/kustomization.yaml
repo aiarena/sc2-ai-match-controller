@@ -1,0 +1,12 @@
+resources:
+- ../../base
+- configmap.yaml
+namespace: arenaclients
+images:
+- name: aiarena/k8s-controller
+  newTag: v0.1
+commonLabels:
+  app: aiarena-k8s-controller
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
