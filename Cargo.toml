@@ -36,7 +36,7 @@ utoipa-swagger-ui = { version="3.0.1" }
 reqwest = { version = "0.11.12"}
 tokio-util = { version = "0.7.4" }
 urlencoding = "2.1.2"
-shellexpand = "2.1.2"
+shellexpand = "3.0.0"
 regex = "1.7.0"
 sysinfo = "0.27.6"
 rand = "0.8.5"
