@@ -67,7 +67,6 @@ jobs:
         with:
           bin: "sc2_controller,bot_controller,proxy_controller,k8s_controller"
           target: ${{ matrix.target }}
-          archive: $bin-${{ matrix.target }}
           ref: refs/tags/v${{ needs.get-tag.outputs.pkg-version }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
