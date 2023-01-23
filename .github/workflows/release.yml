@@ -87,10 +87,10 @@ jobs:
         run: CARGO_FLAGS="--release" TAG=v${{ needs.get-tag.outputs.pkg-version }} docker compose -f docker/docker-compose.yml build
 
       - name: Push versioned images
-        run: docker compose -f docker/docker-compose.yml push --ignore-push-failures
+        run: CARGO_FLAGS="--release" TAG=v${{ needs.get-tag.outputs.pkg-version }} docker compose -f docker/docker-compose.yml push --ignore-push-failures
 
       - name: "Build the latest docker-compose stack"
         run: CARGO_FLAGS="--release" TAG=latest docker compose -f docker/docker-compose.yml build
 
       - name: Push latest images
-        run: docker compose -f docker/docker-compose.yml push --ignore-push-failures
+        run: CARGO_FLAGS="--release" TAG=latest docker compose -f docker/docker-compose.yml push --ignore-push-failures
