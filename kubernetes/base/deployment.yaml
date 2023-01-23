@@ -64,9 +64,9 @@ spec:
         secret:
           defaultMode: 420
           optional: false
-          secretName: arenaclients-secrets-staging
+          secretName: arenaclients-secrets
       - configMap:
           defaultMode: 420
-          name: staging-k8s-controller-config
+          name: k8s-controller-config
           optional: false
         name: config
