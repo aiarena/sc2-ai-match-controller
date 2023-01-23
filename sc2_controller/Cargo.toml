@@ -8,14 +8,12 @@ edition = "2021"
 
 [dependencies]
 common = { workspace=true }
-serde = { workspace=true, features = ["derive"] }
 utoipa = { workspace=true, features = ["axum_extras"], optional=true }
 utoipa-swagger-ui = { workspace=true,  features = ["axum"], optional=true }
 axum = { workspace=true }
 tokio = { workspace=true}#, features = ["macros", "rt-multi-thread", "fs"] }
 tower = { workspace=true}#, features = ["util", "timeout"] }
 tracing = { workspace=true }
-tracing-subscriber = { workspace=true, features = ["env-filter"] }
 tracing-appender = { workspace=true }
 reqwest = { workspace=true, features=["json"]}
 tower-http = { workspace=true, features = ["add-extension", "trace"] }

@@ -14,23 +14,17 @@ tokio-tungstenite = { workspace=true }
 sc2-proto = { workspace=true }
 protobuf = { workspace=true, features = ["with-bytes"] }
 indexmap = { workspace=true, features = ["serde"] }
-utoipa = { workspace=true, features = ["axum_extras"], optional=true }
-utoipa-swagger-ui = { workspace=true,  features = ["axum"], optional=true }
 reqwest = { workspace=true, features = [ "stream"] }
 tokio = { workspace=true, features = ["macros", "rt-multi-thread"] }
 tracing = { workspace=true }
-tracing-subscriber = { workspace=true, features = ["env-filter"] }
 tracing-appender = { workspace=true }
 async-trait = { workspace=true }
 futures-util = { workspace=true }
 config = { workspace=true }
 url = { workspace=true }
 zip-extensions = { workspace=true }
-zip = { workspace=true }
 tower-http = { workspace=true, features = ["add-extension", "trace"] }
 parking_lot = {workspace=true, features=["deadlock_detection"]}
 tower = { workspace=true, features = ["util", "timeout"] }
 bytes = { workspace=true }
 
-[features]
-swagger = ["utoipa", "utoipa-swagger-ui"]
