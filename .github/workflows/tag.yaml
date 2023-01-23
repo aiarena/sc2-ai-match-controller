@@ -24,4 +24,6 @@ jobs:
       - name: "Set Tag"
         shell: "bash"
         run: |
-          if ! [ $(git tag -l v${{ steps.get-tag.outputs.PKG_VERSION }}) ]; then git tag v${{ steps.get-tag.outputs.PKG_VERSION }} && git push --tags; fi
+          PKG_VERSION=${{ steps.get-tag.outputs.PKG_VERSION }}
+          PKG_VERSION=${PKG_VERSION//$'\n'/}
+          if ! [ $(git tag -l v$PKG_VERSION) ]; then git tag v$PKG_VERSION && git push --tags; fi
