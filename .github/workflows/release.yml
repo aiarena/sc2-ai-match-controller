@@ -84,13 +84,13 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: "Build the docker-compose stack with version"
-        run: TAG=v${{ needs.get-tag.outputs.pkg-version }} docker compose -f docker/docker-compose.yml build
+        run: CARGO_FLAGS="--release" TAG=v${{ needs.get-tag.outputs.pkg-version }} docker compose -f docker/docker-compose.yml build
 
-      - name: Push images
+      - name: Push versioned images
         run: docker compose -f docker/docker-compose.yml push --ignore-push-failures
 
-      - name: "Build the docker-compose stack"
-        run: TAG=latest docker compose -f docker/docker-compose.yml build
+      - name: "Build the latest docker-compose stack"
+        run: CARGO_FLAGS="--release" TAG=latest docker compose -f docker/docker-compose.yml build
 
-      - name: Push images
+      - name: Push latest images
         run: docker compose -f docker/docker-compose.yml push --ignore-push-failures
