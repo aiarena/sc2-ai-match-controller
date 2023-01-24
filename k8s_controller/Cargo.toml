@@ -17,7 +17,7 @@ chrono = { workspace=true }
 serde = { workspace=true, features = ["derive"] }
 common = { workspace=true }
 axum = { workspace=true }
-tower = { workspace=true}
+tower = { workspace=true, features = [ "timeout"] }
 tracing-appender = { workspace=true }
 tower-http = { workspace=true, features = ["add-extension", "trace"] }
 parking_lot = {workspace=true, features=["deadlock_detection"]}

@@ -132,7 +132,7 @@ spec:
       volumes:
         - configMap:
             defaultMode: 420
-            name: arenaclient-new-staging-config
+            name: placeholder
             optional: false
           name: config
   backoffLimit: 6

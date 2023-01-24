@@ -22,7 +22,7 @@ use parking_lot::RwLock;
 use state::AppState;
 use tower::{BoxError, ServiceBuilder};
 use tower_http::trace::{DefaultMakeSpan, DefaultOnRequest, DefaultOnResponse, TraceLayer};
-use tracing::{debug, Span};
+use tracing::{debug, info, Span};
 #[cfg(feature = "swagger")]
 use utoipa::OpenApi;
 #[cfg(feature = "swagger")]
@@ -32,7 +32,7 @@ use std::path::Path;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::{net::SocketAddr, time::Duration};
-
+static VERSION: &str = env!("CARGO_PKG_VERSION");
 static PREFIX: &str = "ACK8S";
 
 #[tokio::main]
@@ -47,10 +47,14 @@ async fn main() {
     if full_path.exists() {
         tokio::fs::remove_file(full_path).await.unwrap();
     }
-    let settings = setup_k8s_config();
+    let mut settings = setup_k8s_config();
+    settings.version = Some(format!("v{}", VERSION));
+
     let (non_blocking_stdout, _guard) = tracing_appender::non_blocking(std::io::stdout());
     let non_blocking_file = tracing_appender::rolling::never(&log_path, log_file);
     init_logging(&env_log, non_blocking_stdout, non_blocking_file);
+
+    info!("Running version: {:?}", VERSION);
 
     let state = AppState {};
     let app_state = Arc::new(RwLock::new(state));

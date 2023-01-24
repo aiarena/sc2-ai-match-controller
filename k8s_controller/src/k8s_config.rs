@@ -8,4 +8,5 @@ pub struct K8sConfig {
     pub website_url: String,
     pub namespace: String,
     pub arenaclients_json_path: String,
+    pub version: Option<String>,
 }
