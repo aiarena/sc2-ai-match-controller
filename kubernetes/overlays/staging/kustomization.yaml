@@ -4,7 +4,7 @@ resources:
 namespace: arenaclients
 images:
 - name: aiarena/k8s-controller
-  newTag: v0.1.0
+  newTag: v0.2.0
 nameSuffix: -staging
 commonLabels:
   app: aiarena-k8s-controller-staging
