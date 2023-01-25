@@ -292,7 +292,7 @@ async fn get_allocated_api_tokens(jobs: &Api<Job>, prefix: &str) -> anyhow::Resu
     }) {
         if let Some(status) = &job.status {
             if status.completion_time.is_none() {
-                if let Ok(api_token) = get_inner_spec(&job)
+                if let Ok(api_token) = get_inner_spec(job)
                     .and_then(|f| {
                         f.containers
                             .iter()

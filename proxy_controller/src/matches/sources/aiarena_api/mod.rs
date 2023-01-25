@@ -124,12 +124,12 @@ impl MatchSource for HttpApiSource {
                 files = files.text("bot2_avg_step_time", avg_step_time.to_string());
             }
             if let Some(bot1_tags) = &game_result.bot1_tags {
-                for tag in bot1_tags{
+                for tag in bot1_tags {
                     files = files.text("bot1_tags", serde_json::to_string(&tag).unwrap());
                 }
             }
             if let Some(bot2_tags) = &game_result.bot2_tags {
-                for tag in bot2_tags{
+                for tag in bot2_tags {
                     files = files.text("bot2_tags", serde_json::to_string(&tag).unwrap());
                 }
             }
