@@ -326,8 +326,7 @@ async fn build_logs_and_replays_object(
     let ac_zip_result = zip_extensions::zip_create_from_directory_with_options(
         &arenaclient_logs_zip_path,
         &arenaclient_log_directory,
-         zip::write::FileOptions::default()
-                            .compression_method(CompressionMethod::Deflated),
+        zip::write::FileOptions::default().compression_method(CompressionMethod::Deflated),
     );
 
     match ac_zip_result {
@@ -380,15 +379,13 @@ async fn build_bot_logs(
             let archive_directory = bot2_dir.join("logs");
             async move {
                 match write_file(&file_path, &x).await.map_err(ApiError::from) {
-                    Ok(_) => {
-                       zip_extensions::zip_create_from_directory_with_options(
+                    Ok(_) => zip_extensions::zip_create_from_directory_with_options(
                         &archive_file,
                         &archive_directory,
                         zip::write::FileOptions::default()
                             .compression_method(CompressionMethod::Deflated),
                     )
-                    .map_err(ApiError::from)
-                    }
+                    .map_err(ApiError::from),
                     e => e,
                 }
             }
