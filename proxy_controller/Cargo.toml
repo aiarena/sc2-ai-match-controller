@@ -27,4 +27,5 @@ tower-http = { workspace=true, features = ["add-extension", "trace"] }
 parking_lot = {workspace=true, features=["deadlock_detection"]}
 tower = { workspace=true, features = ["util", "timeout"] }
 bytes = { workspace=true }
+zip ={ workspace=true }
 
