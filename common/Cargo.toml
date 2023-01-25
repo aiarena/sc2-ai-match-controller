@@ -13,7 +13,7 @@ serde = { workspace=true, features = ["derive", "rc"] }
 config = { workspace=true}
 reqwest = { workspace=true, features=["json", "multipart"]}
 rand = { workspace=true }
-tokio = { workspace=true, features = ["macros", "rt-multi-thread", "fs"] }
+tokio = { workspace=true }
 tracing = { workspace=true }
 tracing-subscriber = { workspace=true, features = ["env-filter"] }
 async-trait = { workspace=true }
@@ -30,8 +30,8 @@ axum = { workspace=true }
 url = { workspace=true }
 urlencoding = { workspace=true }
 
-[target.'cfg(not(windows))'.dependencies]
-openssl = { version = "0.10", features = ["vendored"] }
+#[target.'cfg(not(windows))'.dependencies]
+#openssl = { version = "0.10", features = ["vendored"] }
 
 [features]
 swagger = ["utoipa", "utoipa-swagger-ui"]

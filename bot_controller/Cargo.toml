@@ -12,8 +12,8 @@ common = {workspace=true}
 axum = { workspace=true }
 utoipa = { workspace=true, features = ["axum_extras"], optional=true }
 utoipa-swagger-ui = { workspace=true,  features = ["axum"], optional=true }
-tokio = { workspace=true }#, features = ["macros", "rt-multi-thread", "fs"] }
-tower = { workspace=true }#, features = ["util", "timeout"] }
+tokio = { workspace=true }
+tower = { workspace=true }
 tracing = { workspace=true  }
 tracing-appender = { workspace=true  }
 reqwest = { workspace=true , features=["json"]}
