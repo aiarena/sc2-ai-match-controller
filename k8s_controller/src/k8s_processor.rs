@@ -48,7 +48,7 @@ pub async fn process(settings: K8sConfig) {
         let jobs: Api<Job> = Api::namespaced(client, &settings.namespace);
 
         trace!("Getting allocated api tokens");
-        let in_progress_tokens = match get_allocated_api_tokens(&jobs).await {
+        let in_progress_tokens = match get_allocated_api_tokens(&jobs, &settings.job_prefix).await {
             Ok(c) => c,
             Err(e) => {
                 error!("Error getting allocated api tokens: {:?}", e);
