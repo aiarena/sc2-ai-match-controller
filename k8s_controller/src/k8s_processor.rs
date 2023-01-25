@@ -281,9 +281,15 @@ async fn get_all_jobs(jobs: &Api<Job>) -> anyhow::Result<ObjectList<Job>> {
     let lp = ListParams::default();
     Ok(jobs.list(&lp).await?)
 }
-async fn get_allocated_api_tokens(jobs: &Api<Job>) -> anyhow::Result<Vec<String>> {
+async fn get_allocated_api_tokens(jobs: &Api<Job>, prefix: &str) -> anyhow::Result<Vec<String>> {
     let mut api_tokens = vec![];
-    for job in get_all_jobs(jobs).await? {
+    for job in get_all_jobs(jobs).await?.iter().filter(|j| {
+        if let Some(name) = &j.metadata.name {
+            name.contains(prefix)
+        } else {
+            false
+        }
+    }) {
         if let Some(status) = &job.status {
             if status.completion_time.is_none() {
                 if let Ok(api_token) = get_inner_spec(&job)
