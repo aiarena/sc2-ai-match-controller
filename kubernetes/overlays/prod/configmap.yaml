@@ -10,7 +10,7 @@ metadata:
 data:
   config.toml: |-
     OLD_MATCH_DELETE_AFTER_MINUTES = 10
-    JOB_PREFIX= ""
+    JOB_PREFIX= "prod"
     WEBSITE_URL= "https://aiarena.net"
     NAMESPACE= "arenaclients"
     ARENACLIENTS_JSON_PATH = "arenaclients.json"
