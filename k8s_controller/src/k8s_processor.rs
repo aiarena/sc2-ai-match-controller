@@ -87,7 +87,11 @@ async fn schedule_jobs(
     job_data: &mut Job,
     arenaclients: &[Arenaclient],
 ) -> anyhow::Result<()> {
-    for ac in arenaclients.iter().take(settings.max_arenaclients).filter(|&x| !x.allocated) {
+    for ac in arenaclients
+        .iter()
+        .take(settings.max_arenaclients)
+        .filter(|&x| !x.allocated)
+    {
         let api_client = AiArenaApiClient::new(&settings.website_url, &ac.token)?; //todo: change url address
         debug!("Getting new match for AC {:?}", ac.name);
         match api_client.get_match().await {
@@ -163,15 +167,17 @@ async fn delete_old_jobs(
                             let date_diff = chrono::Utc::now() - completion_time.0;
                             if date_diff.num_minutes() > settings.old_match_delete_after_minutes {
                                 if let Some(name) = job.metadata.name {
-                                    debug!(
-                                        "Deleting job {} with age of {} minutes",
-                                        name,
-                                        date_diff.num_minutes()
-                                    );
-                                    if let Err(e) =
-                                        jobs.delete(&name, &DeleteParams::background()).await
-                                    {
-                                        error!("Error deleting job {}: {:?}", name, e);
+                                    if name.contains(&settings.job_prefix) {
+                                        debug!(
+                                            "Deleting job {} with age of {} minutes",
+                                            name,
+                                            date_diff.num_minutes()
+                                        );
+                                        if let Err(e) =
+                                            jobs.delete(&name, &DeleteParams::background()).await
+                                        {
+                                            error!("Error deleting job {}: {:?}", name, e);
+                                        }
                                     }
                                 }
                             }
