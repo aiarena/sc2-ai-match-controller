@@ -10,7 +10,7 @@ To run integration tests,  run the following command from the root of the Git re
 
 To run the integration tests in release mode, run the following command from the root of the Git repo:
 ## Windows
-`$env:TEST_CARGO_FLAGS='--release'; docker-compose -f .\testing\docker-compose.yml up --exit-code-from=proxy_controller --build --force-recreate; Remove-Item Env:\TEST_CARGO_FLAGS`
+`$env:TEST_CARGO_FLAGS='--release'; docker-compose -f .\testing\file-based\docker-compose.yml up --exit-code-from=proxy_controller --build --force-recreate; Remove-Item Env:\TEST_CARGO_FLAGS`
 
 ## Other 
-`TEST_CARGO_FLAGS="--release" docker-compose -f ./testing/docker-compose.yml up --exit-code-from=proxy_controller --build --force-recreate`
+`TEST_CARGO_FLAGS="--release" docker-compose -f ./testing/file-based/docker-compose.yml up --exit-code-from=proxy_controller --build --force-recreate`
