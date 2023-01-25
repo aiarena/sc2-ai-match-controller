@@ -87,7 +87,7 @@ async fn schedule_jobs(
     job_data: &mut Job,
     arenaclients: &[Arenaclient],
 ) -> anyhow::Result<()> {
-    for ac in arenaclients.iter().filter(|&x| !x.allocated) {
+    for ac in arenaclients.iter().take(settings.max_arenaclients).filter(|&x| !x.allocated) {
         let api_client = AiArenaApiClient::new(&settings.website_url, &ac.token)?; //todo: change url address
         debug!("Getting new match for AC {:?}", ac.name);
         match api_client.get_match().await {

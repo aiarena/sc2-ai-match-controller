@@ -9,4 +9,5 @@ pub struct K8sConfig {
     pub namespace: String,
     pub arenaclients_json_path: String,
     pub version: Option<String>,
+    pub max_arenaclients: usize,
 }
