@@ -94,3 +94,34 @@ jobs:
 
       - name: Push latest images
         run: CARGO_FLAGS="--release" TAG=latest docker compose -f docker/docker-compose.yml push --ignore-push-failures
+
+  update-kustomize-tags-staging:
+    name: "Update Kustomize Image tags"
+    needs:
+      - "get-tag"
+      - "push-to-registry"
+    runs-on: "ubuntu-latest"
+    steps:
+      - name: "Check out the repo"
+        uses: actions/checkout@v3
+      - name: Setup Kustomize
+        uses: imranismail/setup-kustomize@v1
+        with:
+          kustomize-version: "3.6.1"
+
+      - name: Update Kubernetes resources
+        run: |
+          cd kubernetes/overlays/staging
+          kustomize edit set image aiarena/k8s-controller=:v${{ needs.get-tag.outputs.pkg-version }}
+          cat kustomization.yaml
+
+      - name: Commit files
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git commit -am "Bump staging docker tag"
+
+      - name: Push changes
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
