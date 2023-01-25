@@ -71,7 +71,6 @@ jobs:
     name: "Push Docker image to Docker Hub"
     needs:
       - "get-tag"
-      - "upload-assets"
     runs-on: "ubuntu-latest"
     steps:
       - name: "Check out the repo"
