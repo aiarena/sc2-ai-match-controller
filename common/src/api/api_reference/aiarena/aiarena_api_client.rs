@@ -141,7 +141,7 @@ impl AiArenaApiClient {
             }
         }
     }
-    pub async fn submit_result(&self, files: Form) -> StatusCode {
+    pub async fn submit_result(&self, files: Form) -> Result<StatusCode, reqwest::Error> {
         let api_submission_url = self.url.join(Self::API_RESULTS_ENDPOINT).unwrap();
         let request = self
             .client
@@ -152,14 +152,14 @@ impl AiArenaApiClient {
             .build()
             .unwrap();
 
-        let response = self.client.execute(request).await.unwrap();
+        let response = self.client.execute(request).await?;
 
         let status = response.status();
 
         if status.is_client_error() || status.is_server_error() {
             error!("{:?}: {:?}", &status, &response.text().await);
         }
-        status
+        Ok(status)
     }
 }
 

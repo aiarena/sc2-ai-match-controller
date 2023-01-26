@@ -257,10 +257,12 @@ pub async fn match_scheduler<M: MatchSource>(
             }
         };
 
-        match_source
+        if let Err(e) = match_source
             .submit_result(&aiarena_game_result, logs_and_replays)
             .await
-            .unwrap();
+        {
+            error!("{:?}", e);
+        }
         match_counter += 1;
         let _cleanup_res = join3(
             bot_controllers[0].terminate_all(),

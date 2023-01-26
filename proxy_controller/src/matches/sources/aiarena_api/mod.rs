@@ -134,9 +134,14 @@ impl MatchSource for HttpApiSource {
                 }
             }
             info!("{:?}", game_result);
-            let status = self.api.submit_result(files).await;
-            if status.is_client_error() || status.is_server_error() {
+            let status_result = self.api.submit_result(files).await;
+
+            if status_result.is_err()
+                || (status_result.as_ref().unwrap().is_client_error()
+                    || status_result.as_ref().unwrap().is_server_error())
+            {
                 debug!("Error while submitting result. Sleeping...");
+                error!("{:?}", status_result);
                 attempt += 1;
                 tokio::time::sleep(Duration::from_secs(10)).await;
             } else {
