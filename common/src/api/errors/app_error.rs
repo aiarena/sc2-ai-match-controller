@@ -39,7 +39,7 @@ impl IntoResponse for AppError {
                 (StatusCode::INTERNAL_SERVER_ERROR, message)
             }
             Self::Process(ProcessError::NotInProcessMap(port)) => {
-                let message = format!("Requested Port {port} not in Process Dictionary" );
+                let message = format!("Requested Port {port} not in Process Dictionary");
                 (StatusCode::NOT_FOUND, message)
             }
             Self::Process(ProcessError::Custom(message)) => (StatusCode::BAD_REQUEST, message),

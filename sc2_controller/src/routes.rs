@@ -115,15 +115,15 @@ pub async fn start_sc2(
         let mut file = tokio::fs::File::create(map_path)
             .await
             .map_err(|err| ProcessError::Custom(format!("Could not download map: {err:?}")))?;
-        file.write_all(&map_bytes).await.map_err(|err| {
-            ProcessError::Custom(format!("Could not write map to disk: {err:?}"))
-        })?;
+        file.write_all(&map_bytes)
+            .await
+            .map_err(|err| ProcessError::Custom(format!("Could not write map to disk: {err:?}")))?;
     }
 
     let ws_port = pick_unused_port_in_range(9000..10000)
         .ok_or_else(|| ProcessError::Custom("Could not allocate port".to_string()))?;
     let tempdir = TempDir::new()
-    .map_err(|e| ProcessError::Custom(format!("Could not create temp dir: {e:?}")))?;
+        .map_err(|e| ProcessError::Custom(format!("Could not create temp dir: {e:?}")))?;
 
     let log_dir = format!("{}/{}", "sc2_controller", ws_port);
 

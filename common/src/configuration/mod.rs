@@ -62,9 +62,8 @@ pub async fn get_config_from_proxy(
 
 pub fn get_host_url(prefix: &str, default_port: Port) -> String {
     let host = std::env::var(format!("{prefix}_HOST")).unwrap_or_else(|_| "0.0.0.0".into());
-    let port =
-    std::env::var(format!("{prefix}_PORT")).unwrap_or_else(|_| default_port.to_string());
-        format!("{host}:{port}")
+    let port = std::env::var(format!("{prefix}_PORT")).unwrap_or_else(|_| default_port.to_string());
+    format!("{host}:{port}")
 }
 
 pub fn get_proxy_url_from_env(prefix: &str) -> String {

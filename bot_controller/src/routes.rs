@@ -430,7 +430,6 @@ pub async fn download_bot_data(
         .ok_or_else(|| {
             AppError::Download(DownloadError::BotFolderNotFound(format!(
                 "Could not find directory entry for bot {bot_name:?}"
-                
             )))
         })?
         .clone();

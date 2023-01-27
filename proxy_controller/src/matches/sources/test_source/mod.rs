@@ -67,9 +67,7 @@ impl TestSource {
         };
         results.results.push(game_result.clone());
         results_file.set_len(0).map_err(SubmissionError::Truncate)?;
-        results_file
-            .rewind()
-            .map_err(SubmissionError::Seek)?;
+        results_file.rewind().map_err(SubmissionError::Seek)?;
         results_file
             .write_all(
                 &serde_json::to_vec_pretty(&results).map_err(SubmissionError::Serialization)?,
