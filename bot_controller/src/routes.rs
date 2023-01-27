@@ -138,7 +138,7 @@ pub async fn start_bot(
             return Err(ProcessError::StartError(e.to_string()).into());
         }
     }
-    if let Err(e) = ensure_directory_structure(&state.settings.log_root, &bot_name).await {
+    if let Err(e) = ensure_directory_structure(&state.settings.log_root, bot_name).await {
         let message = format!("Could not validate directory structure:\n{}", e);
         return Err(ProcessError::StartError(message).into());
     }
