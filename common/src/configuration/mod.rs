@@ -61,10 +61,9 @@ pub async fn get_config_from_proxy(
 }
 
 pub fn get_host_url(prefix: &str, default_port: Port) -> String {
-    let host = std::env::var(format!("{}_HOST", prefix)).unwrap_or_else(|_| "0.0.0.0".into());
-    let port =
-        std::env::var(format!("{}_PORT", prefix)).unwrap_or_else(|_| default_port.to_string());
-    format!("{}:{}", host, port)
+    let host = std::env::var(format!("{prefix}_HOST")).unwrap_or_else(|_| "0.0.0.0".into());
+    let port = std::env::var(format!("{prefix}_PORT")).unwrap_or_else(|_| default_port.to_string());
+    format!("{host}:{port}")
 }
 
 pub fn get_proxy_url_from_env(prefix: &str) -> String {
@@ -72,9 +71,9 @@ pub fn get_proxy_url_from_env(prefix: &str) -> String {
 }
 
 pub fn get_proxy_host(prefix: &str) -> String {
-    std::env::var(format!("{}_PROXY_HOST", prefix)).unwrap_or_else(|_| "127.0.0.1".into())
+    std::env::var(format!("{prefix}_PROXY_HOST")).unwrap_or_else(|_| "127.0.0.1".into())
 }
 
 pub fn get_proxy_port(prefix: &str) -> String {
-    std::env::var(format!("{}_PROXY_PORT", prefix)).unwrap_or_else(|_| "8080".into())
+    std::env::var(format!("{prefix}_PROXY_PORT")).unwrap_or_else(|_| "8080".into())
 }

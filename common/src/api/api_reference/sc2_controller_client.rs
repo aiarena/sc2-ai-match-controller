@@ -16,7 +16,7 @@ pub struct SC2Controller {
 
 impl SC2Controller {
     pub fn new(host: &str, port: Port) -> Result<Self, url::ParseError> {
-        let url_string = format!("http://{}:{}", host, port);
+        let url_string = format!("http://{host}:{port}");
         let url = Url::parse(&url_string)?;
 
         Ok(Self {
@@ -43,7 +43,7 @@ impl SC2Controller {
     }
 
     pub async fn find_map(&self, map_name: &str) -> Result<MapData, ApiError<ApiErrorMessage>> {
-        let path = format!("/find_map/{}", map_name);
+        let path = format!("/find_map/{map_name}");
         let map_url = self.url.join(&path)?;
 
         let request = self.client.request(reqwest::Method::GET, map_url).build()?;

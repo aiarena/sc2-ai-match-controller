@@ -34,8 +34,8 @@ async fn main() {
     let host_url = get_host_url(PREFIX, 8083);
 
     let proxy_url = get_proxy_url_from_env(PREFIX);
-    let config_url = format!("http://{}/configuration", proxy_url);
-    let health_url = format!("http://{}/health", proxy_url);
+    let config_url = format!("http://{proxy_url}/configuration");
+    let health_url = format!("http://{proxy_url}/health");
 
     let settings = get_config_from_proxy(config_url, health_url, PREFIX)
         .await
@@ -43,7 +43,7 @@ async fn main() {
 
     let log_level = &settings.logging_level;
     let env_log =
-        std::env::var("RUST_LOG").unwrap_or_else(|_| format!("info,sc2_controller={}", log_level));
+        std::env::var("RUST_LOG").unwrap_or_else(|_| format!("info,sc2_controller={log_level}"));
 
     let log_path = format!("{}/sc2_controller", &settings.log_root);
     let log_file = "sc2_controller.log";
@@ -102,7 +102,7 @@ async fn main() {
                     } else {
                         Err((
                             StatusCode::INTERNAL_SERVER_ERROR,
-                            format!("Unhandled internal error: {}", error),
+                            format!("Unhandled internal error: {error}"),
                         ))
                     }
                 }))

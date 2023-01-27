@@ -17,7 +17,7 @@ pub struct BotController {
 
 impl BotController {
     pub fn new(host: &str, port: Port) -> Result<Self, url::ParseError> {
-        let url_string = format!("http://{}:{}", host, port);
+        let url_string = format!("http://{host}:{port}");
         let url = Url::parse(&url_string)?;
 
         Ok(Self {

@@ -26,7 +26,7 @@ pub async fn process(settings: K8sConfig) {
         }
     };
 
-    let mut last_run = Instant::now() - interval;
+    let mut last_run = Instant::now().checked_sub(interval).unwrap();
     info!("Starting k8s processing");
     loop {
         let diff = Instant::now() - last_run;
@@ -231,7 +231,7 @@ fn set_image_tags(job: &mut Job, container_names: &[&str], image_tag: &str) -> a
                 .as_ref()
                 .and_then(|x| x.clone().split(':').map(|x| x.to_string()).next())
             {
-                let new_name = format!("{}:{}", image_name, image_tag);
+                let new_name = format!("{image_name}:{image_tag}");
                 container.image = Some(new_name);
             }
         }
@@ -473,7 +473,7 @@ mod tests {
         let configmap_name = "test-configmap".to_string();
 
         set_config_configmap_name(&mut job, &configmap_name).expect("Could not set configmap name");
-        println!("{:?}", job);
+        println!("{job:?}");
         assert!(get_inner_spec(&job)
             .expect("Inner spec is null")
             .volumes

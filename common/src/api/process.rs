@@ -121,8 +121,7 @@ pub async fn terminate_all(
         if let Err(e) = child.kill() {
             status = Status::Fail;
             let message = format!(
-                "{}Failed to terminate process with key {}:\n{}\n",
-                temp_status_reason, process_key, e
+                "{temp_status_reason}Failed to terminate process with key {process_key}:\n{e}\n",
             );
             temp_status_reason = message;
         }
@@ -176,7 +175,7 @@ pub async fn shutdown(state: State<AppState>) -> Result<Json<TerminateResponse>,
     terminate_all(s).await?;
 
     if let Err(e) = state.shutdown_sender.send(()).await {
-        let message = format!("Could not send shutdown signal:\n{}", e);
+        let message = format!("Could not send shutdown signal:\n{e}");
         Err(ProcessError::TerminateError(message).into())
     } else {
         tracing::info!("Shutting down...");

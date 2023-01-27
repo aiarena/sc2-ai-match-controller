@@ -48,7 +48,7 @@ async fn main() {
         tokio::fs::remove_file(full_path).await.unwrap();
     }
     let mut settings = setup_k8s_config();
-    settings.version = Some(format!("v{}", VERSION));
+    settings.version = Some(format!("v{VERSION}"));
 
     let (non_blocking_stdout, _guard) = tracing_appender::non_blocking(std::io::stdout());
     let non_blocking_file = tracing_appender::rolling::never(&log_path, log_file);
@@ -95,7 +95,7 @@ async fn main() {
                     } else {
                         Err((
                             StatusCode::INTERNAL_SERVER_ERROR,
-                            format!("Unhandled internal error: {}", error),
+                            format!("Unhandled internal error: {error}"),
                         ))
                     }
                 }))

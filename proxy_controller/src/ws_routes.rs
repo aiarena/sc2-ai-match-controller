@@ -240,7 +240,7 @@ pub async fn connect(sc2_url: &SC2Url) -> Option<WebSocketStream<TcpStream>> {
             Err(ref e) if e.kind() == ConnectionRefused => {
                 continue;
             }
-            Err(e) => panic!("E: {:?}", e),
+            Err(e) => panic!("E: {e:?}"),
         };
 
         socket.set_nodelay(true).unwrap();

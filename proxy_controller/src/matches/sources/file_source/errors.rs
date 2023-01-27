@@ -22,7 +22,7 @@ impl Display for FileMatchExtractError {
             Self::MissingFields(vec) => ("Not enough fields in line", vec),
             Self::PlayerType(vec) => ("Could not extract player 1 type", vec),
         };
-        write!(f, "{} in {:?}", e, vec)
+        write!(f, "{e} in {vec:?}")
     }
 }
 
@@ -55,7 +55,7 @@ impl Display for SubmissionError {
                 "NULL".to_string(),
             ),
         };
-        write!(f, "{:?}: {:?}", explanation, error)
+        write!(f, "{explanation:?}: {error:?}")
     }
 }
 

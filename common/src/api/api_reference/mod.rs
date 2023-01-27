@@ -305,7 +305,7 @@ where
             Self::Url(e) => ("url", e.to_string()),
             Self::Zip(e) => ("zip", e.to_string()),
         };
-        write!(f, "error in {}: {}", module, e)
+        write!(f, "error in {module}: {e}")
     }
 }
 
