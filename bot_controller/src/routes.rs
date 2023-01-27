@@ -133,8 +133,8 @@ pub async fn start_bot(
         let message = format!("Could not validate directory structure:\n{}", e);
         return Err(ProcessError::StartError(message).into());
     }
-    if !std::path::Path::new(&state.settings.log_root).exists(){
-        if let Err(e) = tokio::fs::create_dir_all(&state.settings.log_root).await{
+    if !std::path::Path::new(&state.settings.log_root).exists() {
+        if let Err(e) = tokio::fs::create_dir_all(&state.settings.log_root).await {
             return Err(ProcessError::StartError(e.to_string()).into());
         }
     }
@@ -392,7 +392,9 @@ pub async fn download_bot_log(
     Path(bot_name): Path<String>,
     State(state): State<AppState>,
 ) -> Result<FileResponse, AppError> {
-    let log_path = std::path::Path::new(&state.settings.log_root).join(&bot_name).join("stderr.log");
+    let log_path = std::path::Path::new(&state.settings.log_root)
+        .join(&bot_name)
+        .join("stderr.log");
 
     let file = tokio::fs::File::open(&log_path)
         .await
