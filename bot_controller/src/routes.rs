@@ -133,9 +133,18 @@ pub async fn start_bot(
         let message = format!("Could not validate directory structure:\n{}", e);
         return Err(ProcessError::StartError(message).into());
     }
+    if !std::path::Path::new(&state.settings.log_root).exists(){
+        if let Err(e) = tokio::fs::create_dir_all(&state.settings.log_root).await{
+            return Err(ProcessError::StartError(e.to_string()).into());
+        }
+    }
+    if let Err(e) = ensure_directory_structure(&state.settings.log_root, &bot_name).await {
+        let message = format!("Could not validate directory structure:\n{}", e);
+        return Err(ProcessError::StartError(message).into());
+    }
 
-    let log_file_path = std::path::Path::new(&bot_path)
-        .join("data")
+    let log_file_path = std::path::Path::new(&state.settings.log_root)
+        .join(bot_name)
         .join("stderr.log");
 
     let (stdout_file, stderr_file) = match create_stdout_and_stderr_files(&log_file_path) {
@@ -383,19 +392,7 @@ pub async fn download_bot_log(
     Path(bot_name): Path<String>,
     State(state): State<AppState>,
 ) -> Result<FileResponse, AppError> {
-    let bot_directory = state
-        .extra_info
-        .read()
-        .get(&bot_name)
-        .and_then(|x| x.get("BotDirectory"))
-        .ok_or_else(|| {
-            AppError::Download(DownloadError::BotFolderNotFound(format!(
-                "Could not find directory entry for bot_name {:?}",
-                bot_name
-            )))
-        })?
-        .clone();
-    let log_path = std::path::Path::new(&bot_directory).join("data/stderr.log");
+    let log_path = std::path::Path::new(&state.settings.log_root).join(&bot_name).join("stderr.log");
 
     let file = tokio::fs::File::open(&log_path)
         .await
