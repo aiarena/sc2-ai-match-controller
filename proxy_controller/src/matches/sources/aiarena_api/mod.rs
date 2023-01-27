@@ -39,7 +39,7 @@ impl HttpApiSource {
         let map_name = &ai_match.map.name;
         info!("Downloading map {}", map_name);
         let map_bytes = self.api.download_map(map_url).await?;
-        let map_path = base_dir().join("maps").join(format!("{}.SC2Map", map_name));
+        let map_path = base_dir().join("maps").join(format!("{map_name}.SC2Map"));
         let mut file = tokio::fs::File::create(map_path).await?;
         Ok(file.write_all(&map_bytes).await?)
     }

@@ -35,11 +35,11 @@ impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let (status, error_message) = match self {
             Self::Process(ProcessError::NotFound(pid)) => {
-                let message = format!("Process for PID {} could not be found.", pid);
+                let message = format!("Process for PID {pid} could not be found.");
                 (StatusCode::INTERNAL_SERVER_ERROR, message)
             }
             Self::Process(ProcessError::NotInProcessMap(port)) => {
-                let message = format!("Requested Port {} not in Process Dictionary", port);
+                let message = format!("Requested Port {port} not in Process Dictionary" );
                 (StatusCode::NOT_FOUND, message)
             }
             Self::Process(ProcessError::Custom(message)) => (StatusCode::BAD_REQUEST, message),

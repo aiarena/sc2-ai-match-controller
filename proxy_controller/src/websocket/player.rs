@@ -77,7 +77,7 @@ impl Player {
     pub async fn bot_send_response(&mut self, r: &Response) -> Result<(), PlayerError> {
         trace!(
             "Response to client: [{}]",
-            format!("{:?}", r).chars().take(10).collect::<String>()
+            format!("{r:?}").chars().take(10).collect::<String>()
         );
         timeout(
             self.bot_ws_timeout,
@@ -92,7 +92,7 @@ impl Player {
     pub async fn bot_send_bytes(&mut self, r: &[u8]) -> Result<(), PlayerError> {
         trace!(
             "Response to client: [{}]",
-            format!("{:?}", r).chars().take(100).collect::<String>()
+            format!("{r:?}").chars().take(100).collect::<String>()
         );
         timeout(
             self.bot_ws_timeout,
@@ -223,7 +223,7 @@ impl Player {
                         Message::parse_from_bytes(&bytes).map_err(PlayerError::ProtoParseError)?;
                     trace!(
                         "sc2_recv_response: {:?}",
-                        format!("{:?}", msg).chars().take(250).collect::<String>()
+                        format!("{msg:?}").chars().take(250).collect::<String>()
                     );
                     Ok(msg)
                 }

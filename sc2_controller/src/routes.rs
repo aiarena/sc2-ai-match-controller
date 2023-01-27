@@ -69,10 +69,10 @@ pub async fn start_sc2(
 ) -> Result<Json<StartResponse>, AppError> {
     let map_path = paths::base_dir()
         .join("maps")
-        .join(format!("{}.SC2Map", map_name));
+        .join(format!("{map_name}.SC2Map"));
     if !map_path.exists() {
         let proxy_url = get_proxy_url_from_env(PREFIX);
-        let download_url = format!("http://{}/download_map", proxy_url);
+        let download_url = format!("http://{proxy_url}/download_map");
 
         let client = Client::new();
         let request = client
@@ -110,26 +110,26 @@ pub async fn start_sc2(
         let map_bytes = resp
             .bytes()
             .await
-            .map_err(|e| ProcessError::StartError(format!("{:?}", e)))?;
+            .map_err(|e| ProcessError::StartError(format!("{e:?}")))?;
 
         let mut file = tokio::fs::File::create(map_path)
             .await
-            .map_err(|err| ProcessError::Custom(format!("Could not download map: {:?}", err)))?;
+            .map_err(|err| ProcessError::Custom(format!("Could not download map: {err:?}")))?;
         file.write_all(&map_bytes).await.map_err(|err| {
-            ProcessError::Custom(format!("Could not write map to disk: {:?}", err))
+            ProcessError::Custom(format!("Could not write map to disk: {err:?}"))
         })?;
     }
 
     let ws_port = pick_unused_port_in_range(9000..10000)
         .ok_or_else(|| ProcessError::Custom("Could not allocate port".to_string()))?;
     let tempdir = TempDir::new()
-        .map_err(|e| ProcessError::Custom(format!("Could not create temp dir: {:?}", e)))?;
+    .map_err(|e| ProcessError::Custom(format!("Could not create temp dir: {e:?}")))?;
 
     let log_dir = format!("{}/{}", "sc2_controller", ws_port);
 
     ensure_directory_structure(&state.settings.log_root, &log_dir)
         .await
-        .map_err(|e| ProcessError::StartError(format!("{:?}", e)))?;
+        .map_err(|e| ProcessError::StartError(format!("{e:?}")))?;
 
     if let Ok(executable) = paths::executable() {
         let process_result = (Command::new(executable)

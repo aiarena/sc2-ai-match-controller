@@ -50,7 +50,7 @@ pub async fn terminate_bot(
             return Err(ProcessError::TerminateError(e.to_string()).into());
         }
     } else {
-        let message = format!("Bot {} entry does not exist", process_key);
+        let message = format!("Bot {process_key} entry does not exist");
         return Err(ProcessError::TerminateError(message).into());
     }
 
@@ -86,11 +86,11 @@ pub async fn start_bot(
 
     if *should_download {
         let proxy_url = get_proxy_url_from_env(PREFIX);
-        let bot_download_url = format!("http://{}/download_bot", proxy_url);
+        let bot_download_url = format!("http://{proxy_url}/download_bot");
 
         download_and_extract(&bot_download_url, &bot_path, player_num).await?;
 
-        let bot_data_download_url = format!("http://{}/download_bot_data", proxy_url);
+        let bot_data_download_url = format!("http://{proxy_url}/download_bot_data");
         let bot_data_path = bot_path.join("data");
         match download_and_extract(&bot_data_download_url, &bot_data_path, player_num).await {
             Ok(_) => {}
@@ -103,11 +103,11 @@ pub async fn start_bot(
     let mut bot_path = format!("{}/{}", &state.settings.bots_directory, bot_name);
 
     let (program, filename) = match bot_type {
-        BotType::CppWin32 => ("wine".to_string(), format!("{}.exe", bot_name)),
-        BotType::CppLinux => (format!("./{}", bot_name), String::new()),
-        BotType::DotnetCore => ("dotnet".to_string(), format!("{}.dll", bot_name)),
-        BotType::Java => ("java".to_string(), format!("{}.jar", bot_name)),
-        BotType::NodeJs => ("node".to_string(), format!("{}.js", bot_name)),
+        BotType::CppWin32 => ("wine".to_string(), format!("{bot_name}.exe")),
+        BotType::CppLinux => (format!("./{bot_name}"), String::new()),
+        BotType::DotnetCore => ("dotnet".to_string(), format!("{bot_name}.dll")),
+        BotType::Java => ("java".to_string(), format!("{bot_name}.jar")),
+        BotType::NodeJs => ("node".to_string(), format!("{bot_name}.js")),
         BotType::Python => (state.settings.python.clone(), "run.py".to_string()),
     };
 
@@ -124,13 +124,13 @@ pub async fn start_bot(
                 bot_path = new_path;
             }
             Err(e) => {
-                let message = format!("Could not move bots to internal directory:\n{}", e);
+                let message = format!("Could not move bots to internal directory:\n{e}");
                 return Err(ProcessError::StartError(message).into());
             }
         }
     }
     if let Err(e) = ensure_directory_structure(&bot_path, "data").await {
-        let message = format!("Could not validate directory structure:\n{}", e);
+        let message = format!("Could not validate directory structure:\n{e}");
         return Err(ProcessError::StartError(message).into());
     }
     if !std::path::Path::new(&state.settings.log_root).exists() {
@@ -139,7 +139,7 @@ pub async fn start_bot(
         }
     }
     if let Err(e) = ensure_directory_structure(&state.settings.log_root, bot_name).await {
-        let message = format!("Could not validate directory structure:\n{}", e);
+        let message = format!("Could not validate directory structure:\n{e}");
         return Err(ProcessError::StartError(message).into());
     }
 
@@ -207,7 +207,7 @@ pub async fn start_bot(
     }
     let (proxy_host, proxy_port) = (get_proxy_host(PREFIX), get_proxy_port(PREFIX));
 
-    let temp_proxy_host = format!("{}:{}", proxy_host, proxy_port);
+    let temp_proxy_host = format!("{proxy_host}:{proxy_port}");
 
     let resolved_proxy_host = match lookup_host(temp_proxy_host).await {
         Ok(mut addrs) => addrs.next().map(|x| x.ip().to_string()),
@@ -240,15 +240,13 @@ pub async fn start_bot(
                 Ok(None) => {}
                 Ok(Some(exit_status)) => {
                     return Err(ProcessError::StartError(format!(
-                        "Bot {} has exited within 5 seconds with status {}",
-                        bot_name, exit_status
+                        "Bot {bot_name} has exited within 5 seconds with status {exit_status}"
                     ))
                     .into());
                 }
                 Err(e) => {
                     return Err(ProcessError::StartError(format!(
-                        "Error checking bot {} status: {}",
-                        bot_name, e
+                        "Error checking bot {bot_name} status: {e}"
                     ))
                     .into());
                 }
@@ -338,7 +336,7 @@ async fn download_and_extract(
     let bot_zip_bytes = resp
         .bytes()
         .await
-        .map_err(|e| ProcessError::StartError(format!("{:?}", e)))?;
+        .map_err(|e| ProcessError::StartError(format!("{e:?}")))?;
 
     if path.exists() {
         let _ = tokio::fs::remove_dir(&path).await;
@@ -431,8 +429,8 @@ pub async fn download_bot_data(
         .and_then(|x| x.get("BotDirectory"))
         .ok_or_else(|| {
             AppError::Download(DownloadError::BotFolderNotFound(format!(
-                "Could not find directory entry for bot {:?}",
-                bot_name
+                "Could not find directory entry for bot {bot_name:?}"
+                
             )))
         })?
         .clone();

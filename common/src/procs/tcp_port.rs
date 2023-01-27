@@ -33,7 +33,7 @@ mod tests {
     fn test_ip_port(host: &str) -> bool {
         let port = portpicker::pick_unused_port().unwrap();
 
-        let address = format!("{}:{}", host, port);
+        let address = format!("{host}:{port}");
         let _listener = TcpListener::bind(address).unwrap();
         let pid = std::process::id();
 

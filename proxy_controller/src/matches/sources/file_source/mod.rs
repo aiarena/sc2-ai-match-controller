@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
-use std::io::{BufRead, BufReader, BufWriter, Lines, Read, Seek, SeekFrom, Write};
+use std::io::{BufRead, BufReader, BufWriter, Lines, Read, Seek, Write};
 use tracing::log::error;
 
 pub struct FileSource {
@@ -34,7 +34,7 @@ impl FileSource {
                 File::create(&self.settings.matches_file).map_err(SubmissionError::FileCreate)?;
             let mut writer = BufWriter::new(file);
             for line in line_vec {
-                writeln!(writer, "{}", line).map_err(SubmissionError::FileWrite)?;
+                writeln!(writer, "{line}").map_err(SubmissionError::FileWrite)?;
             }
         }
         Ok(())
@@ -56,7 +56,7 @@ impl FileSource {
         results.results.push(game_result.clone());
         results_file.set_len(0).map_err(SubmissionError::Truncate)?;
         results_file
-            .seek(SeekFrom::Start(0))
+            .rewind()
             .map_err(SubmissionError::Seek)?;
         results_file
             .write_all(

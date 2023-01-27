@@ -48,7 +48,7 @@ async fn main() {
     let settings = setup_proxy_config();
     let log_level = &settings.logging_level;
     let env_log = std::env::var("RUST_LOG")
-        .unwrap_or_else(|_| format!("info,proxy_controller={}", log_level));
+    .unwrap_or_else(|_| format!("info,proxy_controller={log_level}"));
     let log_path = format!("{}/proxy_controller", &settings.log_root);
     let log_file = "proxy_controller.log";
     let full_path = Path::new(&log_path).join(log_file);
@@ -113,7 +113,7 @@ async fn main() {
                     } else {
                         Err((
                             StatusCode::INTERNAL_SERVER_ERROR,
-                            format!("Unhandled internal error: {}", error),
+                            format!("Unhandled internal error: {error}"),
                         ))
                     }
                 }))
