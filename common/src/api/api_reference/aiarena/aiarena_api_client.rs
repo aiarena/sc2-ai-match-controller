@@ -6,7 +6,7 @@ use crate::api::api_reference::{ApiError, ControllerApi, ResponseContent};
 use async_trait::async_trait;
 use bytes::Bytes;
 use reqwest::multipart::Form;
-use reqwest::{Client, StatusCode, Url};
+use reqwest::{Client, ClientBuilder, StatusCode, Url};
 use tracing::{debug, error};
 
 pub struct AiArenaApiClient {
@@ -24,7 +24,10 @@ impl AiArenaApiClient {
 
         Ok(Self {
             url,
-            client: Client::new(),
+            client: ClientBuilder::new()
+                .timeout(Duration::from_secs(2 * 60))
+                .build()
+                .unwrap(),
             token: token.to_string(),
         })
     }
@@ -148,7 +151,6 @@ impl AiArenaApiClient {
             .request(reqwest::Method::POST, api_submission_url)
             .multipart(files)
             .header(reqwest::header::AUTHORIZATION, self.token_header())
-            .timeout(Duration::from_secs(30))
             .build()
             .unwrap();
 
