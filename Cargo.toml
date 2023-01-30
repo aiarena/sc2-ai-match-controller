@@ -31,8 +31,8 @@ tower-http = { version = "0.3.0" }
 parking_lot = {version = "0.12.1"}
 futures-util = "0.3.25"
 config = { git = "https://github.com/mehcode/config-rs.git" }
-utoipa = { version="=2.4.2"}
-utoipa-swagger-ui = { version="=3.0.1" }
+utoipa = { version="=3.0.0"}
+utoipa-swagger-ui = { version="=3.0.2" }
 reqwest = { version = "0.11.12"}
 tokio-util = { version = "0.7.4" }
 urlencoding = "2.1.2"
