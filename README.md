@@ -2,8 +2,8 @@
 
 ## Overview
 
-sc2-ai-match-controller is the next iteration of the arenaclient created for [ai-arena](https://ai-arena.net/) to act as a proxy between 
-bots and StarCraft II. It is made to specifically take advantage of the container infrastructure [ai-arena](https://ai-arena.net/) uses to run
+sc2-ai-match-controller is the next iteration of the arenaclient created for [ai-arena](https://aiarena.net/) to act as a proxy between 
+bots and StarCraft II. It is made to specifically take advantage of the container infrastructure [ai-arena](https://aiarena.net/) uses to run
 its games, and it has split up into three main components:
 
 ### proxy_controller
