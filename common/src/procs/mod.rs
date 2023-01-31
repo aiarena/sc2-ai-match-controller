@@ -6,6 +6,7 @@ use std::path::PathBuf;
 pub fn create_stdout_and_stderr_files(log_file_path: &PathBuf) -> std::io::Result<(File, File)> {
     let stdout_file = OpenOptions::new()
         .create(true)
+        .write(true)
         .truncate(true)
         .open(log_file_path)?;
 
