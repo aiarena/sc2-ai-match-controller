@@ -13,7 +13,7 @@ serde = { workspace=true, features = ["derive", "rc"] }
 config = { workspace=true}
 reqwest = { workspace=true, features=["json", "multipart"]}
 rand = { workspace=true }
-tokio = { workspace=true }
+tokio = { workspace=true, features =["fs"]}
 tracing = { workspace=true }
 tracing-subscriber = { workspace=true, features = ["env-filter"] }
 async-trait = { workspace=true }

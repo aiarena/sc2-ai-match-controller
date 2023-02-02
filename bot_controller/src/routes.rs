@@ -347,11 +347,18 @@ async fn download_and_extract(
         let _ = tokio::fs::remove_file(&path).await;
     }
 
-    let zip_result =
+    let mut zip_result =
         common::utilities::zip_utils::zip_extract_from_memory(&bot_zip_bytes, &path.to_path_buf());
 
     if let Err(e) = &zip_result {
-        debug!("{:?}", e);
+        error!(
+            "Error unzipping bot data. Trying to recover. Error: {:?}",
+            e
+        );
+        zip_result = common::utilities::zip_utils::zip_extract_corrupted_from_memory(
+            &bot_zip_bytes,
+            &path.to_path_buf(),
+        );
     }
     zip_result
         .map_err(DownloadError::from)
