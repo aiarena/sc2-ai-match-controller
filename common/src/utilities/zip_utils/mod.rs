@@ -5,9 +5,10 @@ use std::io;
 use std::io::{Cursor, Read, Write};
 use std::path::Path;
 use std::path::{Component, PathBuf};
-use zip::result::ZipResult;
+use zip::result::{ZipError, ZipResult};
 use zip::{CompressionMethod, ZipWriter};
 
+use std::fs;
 use zip::write::FileOptions;
 
 #[derive(Debug, Clone)]
@@ -180,10 +181,59 @@ pub fn zip_extract_from_memory(archive_file: &Bytes, target_dir: &PathBuf) -> Zi
     archive.extract(target_dir)
 }
 
+/// Extracts a ZIP file from memory to the given directory.
+pub fn zip_extract_corrupted_from_memory(
+    archive_file: &Bytes,
+    target_dir: &PathBuf,
+) -> ZipResult<()> {
+    let mut reader = Cursor::new(archive_file);
+    extract_corrupted(&mut reader, target_dir)
+}
+
+pub fn extract_corrupted<P: AsRef<Path>, R: Read>(
+    mut archive: &mut R,
+    directory: P,
+) -> ZipResult<()> {
+    while let Ok(zipfile) = zip::read::read_zipfile_from_stream(&mut archive) {
+        match zipfile {
+            Some(mut file) => {
+                let filepath = file
+                    .enclosed_name()
+                    .ok_or(ZipError::InvalidArchive("Invalid file path"))?;
+
+                let outpath = directory.as_ref().join(filepath);
+
+                if file.name().ends_with('/') {
+                    fs::create_dir_all(&outpath)?;
+                } else {
+                    if let Some(p) = outpath.parent() {
+                        if !p.exists() {
+                            fs::create_dir_all(p)?;
+                        }
+                    }
+                    let mut outfile = File::create(&outpath)?;
+                    std::io::copy(&mut file, &mut outfile)?;
+                }
+                // Get and Set permissions
+                #[cfg(unix)]
+                {
+                    use std::os::unix::fs::PermissionsExt;
+                    if let Some(mode) = file.unix_mode() {
+                        fs::set_permissions(&outpath, fs::Permissions::from_mode(mode))?;
+                    }
+                }
+            }
+            _ => continue,
+        };
+        // That's a nice and readable `zipfile` right there.
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
-
     use super::{zip_directory, zip_extract_from_memory};
+    use crate::utilities::zip_utils::zip_extract_corrupted_from_memory;
 
     #[test]
     fn test_zip_file_size_is_smaller() {
@@ -202,5 +252,27 @@ mod tests {
             .expect("Could not read tmp file metadata")
             .len();
         assert!(zipped_archive_size < dir_size)
+    }
+
+    #[test]
+    fn test_zip_from_memory_corrupted_is_same_as_normal() {
+        let zip_file = include_bytes!("../../../../testing/unittests/test_zip.zip");
+        let temp_dir1 = tempfile::TempDir::new()
+            .expect("Could not create tmp directory")
+            .into_path();
+
+        let temp_dir2 = tempfile::TempDir::new()
+            .expect("Could not create tmp directory")
+            .into_path();
+        let zip_bytes = bytes::Bytes::from_static(zip_file);
+        zip_extract_from_memory(&zip_bytes, &temp_dir1).expect("Could not extract archive");
+        let dir_size =
+            fs_extra::dir::get_size(&temp_dir1).expect("Could not get size of directory");
+
+        zip_extract_corrupted_from_memory(&zip_bytes, &temp_dir2)
+            .expect("Could not extract archive");
+        let dir_size2 =
+            fs_extra::dir::get_size(&temp_dir1).expect("Could not get size of directory");
+        assert_eq!(dir_size, dir_size2)
     }
 }

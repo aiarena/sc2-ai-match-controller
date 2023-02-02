@@ -27,7 +27,6 @@ use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::process::Command;
 use std::time::Duration;
-use tokio::io::AsyncWriteExt;
 use tracing::log::error;
 
 #[tracing::instrument(skip(state))]
@@ -348,28 +347,41 @@ async fn download_and_extract(
         let _ = tokio::fs::remove_file(&path).await;
     }
 
-    // common::utilities::zip_utils::zip_extract_from_memory(&bot_zip_bytes, &path.to_path_buf())
-    //     .map_err(DownloadError::from)
-    //     .map_err(AppError::from)
+    let mut zip_result =
+        common::utilities::zip_utils::zip_extract_from_memory(&bot_zip_bytes, &path.to_path_buf());
 
-    let tempfile_path = path.with_extension(".zip");
-    let mut file = tokio::fs::File::create(&tempfile_path)
-        .await
-        .map_err(DownloadError::from)
-        .map_err(AppError::from)?;
-
-    file.write(bot_zip_bytes.as_ref())
-        .await
-        .map_err(DownloadError::from)
-        .map_err(AppError::from)?;
-    // tokio::fs::write(&bot_path, bot_zip_bytes).await.map_err(DownloadError::from)?;
-    let zip_result = zip_extensions::zip_extract(&tempfile_path, &path.to_path_buf());
     if let Err(e) = &zip_result {
-        debug!("{:?}", e);
+        error!(
+            "Error unzipping bot data. Trying to recover. Error: {:?}",
+            e
+        );
+        zip_result = common::utilities::zip_utils::zip_extract_corrupted_from_memory(
+            &bot_zip_bytes,
+            &path.to_path_buf(),
+        );
     }
     zip_result
         .map_err(DownloadError::from)
         .map_err(AppError::from)
+
+    // let tempfile_path = path.with_extension(".zip");
+    // let mut file = tokio::fs::File::create(&tempfile_path)
+    //     .await
+    //     .map_err(DownloadError::from)
+    //     .map_err(AppError::from)?;
+    //
+    // file.write(bot_zip_bytes.as_ref())
+    //     .await
+    //     .map_err(DownloadError::from)
+    //     .map_err(AppError::from)?;
+    // // tokio::fs::write(&bot_path, bot_zip_bytes).await.map_err(DownloadError::from)?;
+    // let zip_result = zip_extensions::zip_extract(&tempfile_path, &path.to_path_buf());
+    // if let Err(e) = &zip_result {
+    //     debug!("{:?}", e);
+    // }
+    // zip_result
+    //     .map_err(DownloadError::from)
+    //     .map_err(AppError::from)
 }
 
 #[tracing::instrument(skip(state))]
