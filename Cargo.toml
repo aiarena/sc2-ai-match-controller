@@ -51,3 +51,4 @@ protobuf = { version = "=3.2.0", features = ["with-bytes"] }
 indexmap = { version = "1.9.2", features = ["serde"] }
 zip-extensions = "0.6.1"
 tempfile = "3.3.0"
+serde-error = "0.1.2"

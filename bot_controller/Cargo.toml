@@ -21,5 +21,7 @@ tower-http = { workspace=true , features = ["add-extension", "trace"] }
 tokio-util = { workspace=true , features = ["full"] }
 urlencoding = { workspace=true  }
 zip-extensions = {workspace=true}
+serde-error = {workspace=true}
+
 [features]
 swagger = ["utoipa", "utoipa-swagger-ui"]

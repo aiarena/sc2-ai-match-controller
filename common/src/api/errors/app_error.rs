@@ -47,24 +47,47 @@ impl IntoResponse for AppError {
                 ProcessError::StartError(message) | ProcessError::TerminateError(message),
             ) => (StatusCode::BAD_REQUEST, message),
             Self::Map(MapError::NotFound(e)) => {
-                tracing::debug!("Error: {}", e.to_string());
-                (StatusCode::NOT_FOUND, e.to_string())
+                let new_error = serde_error::Error::new(&e);
+                tracing::debug!("MapError::NotFound(: {}", e.to_string());
+                (
+                    StatusCode::NOT_FOUND,
+                    serde_json::to_string(&new_error).unwrap_or(e.to_string()),
+                )
             }
             Self::Map(MapError::Other(e)) => {
-                tracing::debug!("Error: {}", e.to_string());
-                (StatusCode::BAD_REQUEST, e.to_string())
+                let new_error = serde_error::Error::new(&e);
+                tracing::debug!("MapError::Other: {}", e.to_string());
+                (
+                    StatusCode::BAD_REQUEST,
+                    serde_json::to_string(&new_error).unwrap_or(e.to_string()),
+                )
             }
             Self::Download(DownloadError::Io(e)) | Self::Download(DownloadError::TempFile(e)) => {
-                tracing::debug!("Error: {}", e);
-                (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+                let new_error = serde_error::Error::new(&e);
+                tracing::debug!(
+                    "DownloadError::Io | DownloadError::TempFile: {}",
+                    e.to_string()
+                );
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    serde_json::to_string(&new_error).unwrap_or(e.to_string()),
+                )
             }
             Self::Download(DownloadError::ZipError(e)) => {
-                tracing::debug!("Error: {}", e.to_string());
-                (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+                let new_error = serde_error::Error::new(&e);
+                tracing::debug!("ZipError: {}", e.to_string());
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    serde_json::to_string(&new_error).unwrap_or(e.to_string()),
+                )
             }
             Self::Download(DownloadError::FileNotFound(e)) => {
-                tracing::debug!("Error: {}", e.to_string());
-                (StatusCode::NOT_FOUND, e.to_string())
+                let new_error = serde_error::Error::new(&e);
+                tracing::debug!("FileNotFound: {}", e.to_string());
+                (
+                    StatusCode::NOT_FOUND,
+                    serde_json::to_string(&new_error).unwrap_or(e.to_string()),
+                )
             }
             Self::Download(DownloadError::Unauthorized) => (
                 StatusCode::UNAUTHORIZED,

@@ -45,8 +45,12 @@ async fn main() {
     let settings = get_config_from_proxy(config_url, health_url, PREFIX)
         .await
         .unwrap(); //panic if we can't get the config
-    let env_log = std::env::var("RUST_LOG")
-        .unwrap_or_else(|_| format!("info,bot_controller={}", &settings.logging_level));
+    let env_log = std::env::var("RUST_LOG").unwrap_or_else(|_| {
+        format!(
+            "info,common={},bot_controller={}",
+            &settings.logging_level, &settings.logging_level
+        )
+    });
     let log_path = format!("{}/bot_controller", &settings.log_root);
     let log_file = "bot_controller.log";
     let full_path = Path::new(&log_path).join(log_file);

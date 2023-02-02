@@ -42,8 +42,8 @@ async fn main() {
         .unwrap(); //panic if we can't get the config
 
     let log_level = &settings.logging_level;
-    let env_log =
-        std::env::var("RUST_LOG").unwrap_or_else(|_| format!("info,sc2_controller={log_level}"));
+    let env_log = std::env::var("RUST_LOG")
+        .unwrap_or_else(|_| format!("info,common={log_level},sc2_controller={log_level}"));
 
     let log_path = format!("{}/sc2_controller", &settings.log_root);
     let log_file = "sc2_controller.log";

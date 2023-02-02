@@ -21,12 +21,10 @@ use tokio_util::io::ReaderStream;
 use tracing::debug;
 
 use common::api::{BytesResponse, FileResponse};
-use common::configuration::ac_config::ACConfig;
 use common::procs::create_stdout_and_stderr_files;
 use reqwest::{Client, StatusCode};
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
-use std::io::Write;
 use std::process::Command;
 use std::time::Duration;
 use tokio::io::AsyncWriteExt;
@@ -235,7 +233,7 @@ pub async fn start_bot(
         .arg(opponent_id)
         .current_dir(&bot_path);
 
-    tracing::debug!(
+    debug!(
         "Starting bot with command {:?} {:?}",
         command.get_program(),
         command.get_args()
@@ -355,17 +353,23 @@ async fn download_and_extract(
     //     .map_err(AppError::from)
 
     let tempfile_path = path.with_extension(".zip");
-    let mut file = tokio::fs::File::create(&tempfile_path).await?;
+    let mut file = tokio::fs::File::create(&tempfile_path)
+        .await
+        .map_err(DownloadError::from)
+        .map_err(AppError::from)?;
 
-    file.write(bot_zip_bytes.as_ref()).await?;
+    file.write(bot_zip_bytes.as_ref())
+        .await
+        .map_err(DownloadError::from)
+        .map_err(AppError::from)?;
     // tokio::fs::write(&bot_path, bot_zip_bytes).await.map_err(DownloadError::from)?;
     let zip_result = zip_extensions::zip_extract(&tempfile_path, &path.to_path_buf());
     if let Err(e) = &zip_result {
         debug!("{:?}", e);
     }
-    return zip_result
+    zip_result
         .map_err(DownloadError::from)
-        .map_err(AppError::from);
+        .map_err(AppError::from)
 }
 
 #[tracing::instrument(skip(state))]

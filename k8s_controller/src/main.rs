@@ -39,8 +39,8 @@ static PREFIX: &str = "ACK8S";
 async fn main() {
     let host_url = get_host_url(PREFIX, 8085);
 
-    let env_log =
-        std::env::var("RUST_LOG").unwrap_or_else(|_| format!("info,k8s_controller={}", "debug"));
+    let env_log = std::env::var("RUST_LOG")
+        .unwrap_or_else(|_| format!("info,common={},k8s_controller={}", "debug", "debug"));
     let log_path = "/logs/k8s_controller".to_string();
     let log_file = "k8s_controller.log";
     let full_path = Path::new(&log_path).join(log_file);
