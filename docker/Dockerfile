@@ -68,8 +68,17 @@ COPY --from=builder /app/target/*/sc2_controller ${APP}/sc2_controller
 ENTRYPOINT ["./sc2_controller"]
 LABEL service=sc2_controller
 
-FROM aiarena/arenaclient-proxy-base:v0.1 as proxy_controller
+FROM debian:bullseye-slim as proxy_controller
 ARG APP=/app
+
+USER root
+WORKDIR /root/
+
+# Update system
+RUN apt-get update \
+    && apt-get upgrade --assume-yes --quiet=2 \
+    && apt-get install --assume-yes --no-install-recommends --no-show-upgraded
+
 
 RUN apt-get update \
     && apt-get install -y ca-certificates tzdata \
