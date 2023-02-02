@@ -21,12 +21,15 @@ use tokio_util::io::ReaderStream;
 use tracing::debug;
 
 use common::api::{BytesResponse, FileResponse};
+use common::configuration::ac_config::ACConfig;
 use common::procs::create_stdout_and_stderr_files;
 use reqwest::{Client, StatusCode};
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
+use std::io::Write;
 use std::process::Command;
 use std::time::Duration;
+use tokio::io::AsyncWriteExt;
 use tracing::log::error;
 
 #[tracing::instrument(skip(state))]
@@ -142,10 +145,12 @@ pub async fn start_bot(
         let message = format!("Could not validate directory structure:\n{e}");
         return Err(ProcessError::StartError(message).into());
     }
+    debug!("Bot log dir exists");
 
     let log_file_path = std::path::Path::new(&state.settings.log_root)
         .join(bot_name)
         .join("stderr.log");
+    debug!("Bot log path: {:?}", log_file_path);
 
     let (stdout_file, stderr_file) = match create_stdout_and_stderr_files(&log_file_path) {
         Ok(files) => files,
@@ -156,6 +161,8 @@ pub async fn start_bot(
             ))));
         }
     };
+
+    debug!("Log files created: {:?}", log_file_path);
 
     let encoded_bot_name = urlencoding::encode(bot_name);
 
@@ -342,10 +349,23 @@ async fn download_and_extract(
         let _ = tokio::fs::remove_dir(&path).await;
         let _ = tokio::fs::remove_file(&path).await;
     }
+
+    // common::utilities::zip_utils::zip_extract_from_memory(&bot_zip_bytes, &path.to_path_buf())
+    //     .map_err(DownloadError::from)
+    //     .map_err(AppError::from)
+
+    let tempfile_path = path.with_extension(".zip");
+    let mut file = tokio::fs::File::create(&tempfile_path).await?;
+
+    file.write(bot_zip_bytes.as_ref()).await?;
     // tokio::fs::write(&bot_path, bot_zip_bytes).await.map_err(DownloadError::from)?;
-    common::utilities::zip_utils::zip_extract_from_memory(&bot_zip_bytes, &path.to_path_buf())
+    let zip_result = zip_extensions::zip_extract(&tempfile_path, &path.to_path_buf());
+    if let Err(e) = &zip_result {
+        debug!("{:?}", e);
+    }
+    return zip_result
         .map_err(DownloadError::from)
-        .map_err(AppError::from)
+        .map_err(AppError::from);
 }
 
 #[tracing::instrument(skip(state))]
@@ -393,6 +413,8 @@ pub async fn download_bot_log(
     let log_path = std::path::Path::new(&state.settings.log_root)
         .join(&bot_name)
         .join("stderr.log");
+
+    debug!("Log path: {:?}", log_path);
 
     let file = tokio::fs::File::open(&log_path)
         .await

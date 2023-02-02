@@ -55,7 +55,7 @@ impl IntoResponse for AppError {
                 (StatusCode::BAD_REQUEST, e.to_string())
             }
             Self::Download(DownloadError::Io(e)) | Self::Download(DownloadError::TempFile(e)) => {
-                tracing::debug!("Error: {}", e.to_string());
+                tracing::debug!("Error: {}", e);
                 (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
             }
             Self::Download(DownloadError::ZipError(e)) => {
