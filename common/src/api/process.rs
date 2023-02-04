@@ -3,8 +3,8 @@ use axum::Json;
 use parking_lot::RwLock;
 
 use std::collections::HashMap;
-use std::process::Child;
 use std::sync::Arc;
+use std::time::Duration;
 
 use crate::api::errors::app_error::AppError;
 use crate::api::errors::process_error::ProcessError;
@@ -17,7 +17,7 @@ use sysinfo::{CpuRefreshKind, Pid, PidExt, ProcessExt, ProcessStatus, RefreshKin
 #[cfg(feature = "swagger")]
 use utoipa::ToSchema;
 
-pub type ProcessMap = Arc<RwLock<HashMap<Port, Child>>>;
+pub type ProcessMap = Arc<RwLock<HashMap<Port, async_process::Child>>>;
 
 #[tracing::instrument]
 #[cfg_attr(feature = "swagger", utoipa::path(
@@ -102,7 +102,6 @@ pub async fn status(
     }
 }
 
-#[tracing::instrument(skip(state))]
 #[cfg_attr(feature = "swagger", utoipa::path(
     post,
     path = "/terminate_all",
@@ -118,15 +117,27 @@ pub async fn terminate_all(
 
     for (process_key, mut child) in state.process_map.write().drain() {
         tracing::debug!("Terminating procs with on port {}", process_key);
-        if let Err(e) = child.kill() {
-            status = Status::Fail;
-            let message = format!(
-                "{temp_status_reason}Failed to terminate process with key {process_key}:\n{e}\n",
-            );
-            temp_status_reason = message;
+        let mut exited = false;
+        for _ in 0..5 {
+            if let Ok(status) = child.try_status() {
+                if status.is_some() {
+                    exited = true;
+                    break;
+                }
+            }
+
+            std::thread::sleep(Duration::from_secs(1));
+        }
+        if !exited {
+            if let Err(e) = child.kill() {
+                status = Status::Fail;
+                let message = format!(
+                    "{temp_status_reason}Failed to terminate process with key {process_key}:\n{e}\n",
+                );
+                temp_status_reason = message;
+            }
         }
     }
-
     state.extra_info.write().clear();
 
     let response = TerminateResponse { status };

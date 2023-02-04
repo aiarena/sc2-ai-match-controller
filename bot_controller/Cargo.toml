@@ -22,6 +22,7 @@ tokio-util = { workspace=true , features = ["full"] }
 urlencoding = { workspace=true  }
 zip-extensions = {workspace=true}
 serde-error = {workspace=true}
+async-process =  {workspace=true}
 
 [features]
 swagger = ["utoipa", "utoipa-swagger-ui"]

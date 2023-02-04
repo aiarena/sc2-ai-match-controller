@@ -2,7 +2,7 @@ version: "3.9"
 services:
   sc2_controller:
     build:
-      context: .
+      context: ../../
       dockerfile: ./docker/Dockerfile
       target: sc2_controller
       args:
@@ -18,7 +18,7 @@ services:
 
   bot_controller1:
     build:
-      context: .
+      context: ../../
       dockerfile: ./docker/Dockerfile
       target: bot_controller
       args:
@@ -34,7 +34,7 @@ services:
 
   bot_controller2:
     build:
-      context: .
+      context: ../../
       dockerfile: ./docker/Dockerfile
       target: bot_controller
       args:
@@ -50,7 +50,7 @@ services:
 
   proxy_controller:
     build:
-      context: .
+      context: ../../
       dockerfile: ./docker/Dockerfile
       target: proxy_controller
       args:
