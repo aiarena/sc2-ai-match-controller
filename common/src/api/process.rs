@@ -102,7 +102,6 @@ pub async fn status(
     }
 }
 
-
 #[cfg_attr(feature = "swagger", utoipa::path(
     post,
     path = "/terminate_all",
