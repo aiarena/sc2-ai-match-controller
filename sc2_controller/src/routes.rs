@@ -16,7 +16,6 @@ use common::utilities::directory::ensure_directory_structure;
 use common::utilities::portpicker::Port;
 use reqwest::header::HeaderName;
 use reqwest::Client;
-use std::process::Command;
 use tempfile::TempDir;
 use tokio::io::AsyncWriteExt;
 use tokio_util::io::ReaderStream;
@@ -132,7 +131,7 @@ pub async fn start_sc2(
         .map_err(|e| ProcessError::StartError(format!("{e:?}")))?;
 
     if let Ok(executable) = paths::executable() {
-        let process_result = (Command::new(executable)
+        let process_result = (async_process::Command::new(executable)
             .arg("-listen")
             .arg("0.0.0.0")
             .arg("-port")

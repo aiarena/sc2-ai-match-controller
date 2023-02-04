@@ -25,7 +25,6 @@ use common::procs::create_stdout_and_stderr_files;
 use reqwest::{Client, StatusCode};
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
-use std::process::Command;
 use std::time::Duration;
 use tracing::log::error;
 
@@ -174,7 +173,7 @@ pub async fn start_bot(
         }
     }
 
-    let mut command = Command::new(&program);
+    let mut command = async_process::Command::new(&program);
 
     if bot_type == &BotType::Java {
         command.arg("-jar");
@@ -232,15 +231,11 @@ pub async fn start_bot(
         .arg(opponent_id)
         .current_dir(&bot_path);
 
-    debug!(
-        "Starting bot with command {:?} {:?}",
-        command.get_program(),
-        command.get_args()
-    );
+    debug!("Starting bot with command {:?}", &command);
     let mut process = match command.spawn() {
         Ok(mut process) => {
             tokio::time::sleep(Duration::from_secs(5)).await;
-            match process.try_wait() {
+            match process.try_status() {
                 Ok(None) => {}
                 Ok(Some(exit_status)) => {
                     return Err(ProcessError::StartError(format!(

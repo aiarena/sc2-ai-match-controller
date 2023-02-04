@@ -30,6 +30,7 @@ axum = { workspace=true }
 url = { workspace=true }
 urlencoding = { workspace=true }
 serde-error = {workspace=true}
+async-process = {workspace=true}
 #[target.'cfg(not(windows))'.dependencies]
 #openssl = { version = "0.10", features = ["vendored"] }
 
