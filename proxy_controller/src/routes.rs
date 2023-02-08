@@ -6,10 +6,10 @@ use common::api::api_reference::aiarena::aiarena_api_client::AiArenaApiClient;
 use common::api::errors::app_error::AppError;
 use common::api::errors::download_error::DownloadError;
 use common::configuration::ac_config::ACConfig;
+use common::PlayerNum;
 use parking_lot::RwLock;
 use std::sync::Arc;
 use tracing::{self};
-use common::PlayerNum;
 
 #[tracing::instrument]
 pub async fn configuration(

@@ -1,9 +1,9 @@
 use common::api::api_reference::aiarena::aiarena_api_client::AiArenaApiClient;
 use common::configuration::ac_config::ACConfig;
+use common::models::aiarena::aiarena_match::AiArenaMatch;
 use httpmock::prelude::*;
 use httpmock::MockServer;
 use url::{ParseError, Url};
-use common::models::aiarena::aiarena_match::AiArenaMatch;
 
 pub fn setup_mock_server(settings: &ACConfig) -> MockServer {
     let mockserver = MockServer::start();

@@ -218,11 +218,11 @@ fn extract_match(line: &str) -> Result<(Match, AiArenaResult), FileMatchExtractE
 
 #[cfg(test)]
 mod tests {
-    use common::models::aiarena::aiarena_result::AiArenaResult;
-    use common::PlayerNum;
     use crate::game::race::BotRace;
     use crate::matches::sources::file_source::errors::FileMatchExtractError;
     use crate::matches::sources::test_source::extract_match;
+    use common::models::aiarena::aiarena_result::AiArenaResult;
+    use common::PlayerNum;
 
     #[test]
     pub fn test_match_extracts_valid() {

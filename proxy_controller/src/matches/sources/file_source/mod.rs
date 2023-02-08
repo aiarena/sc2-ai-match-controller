@@ -194,9 +194,9 @@ fn extract_match(line: &str) -> Result<Match, FileMatchExtractError> {
 
 #[cfg(test)]
 mod tests {
-    use common::PlayerNum;
     use crate::game::race::BotRace;
     use crate::matches::sources::file_source::{extract_match, FileMatchExtractError};
+    use common::PlayerNum;
 
     #[test]
     pub fn test_match_extracts_valid() {

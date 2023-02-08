@@ -182,14 +182,13 @@ impl ControllerApi for AiArenaApiClient {
 #[cfg(test)]
 mod tests {
     use crate::api::api_reference::aiarena::aiarena_api_client::AiArenaApiClient;
+    use crate::api::api_reference::aiarena::AiArenaResultForm;
     use crate::api::api_reference::bot_controller_client::BotController;
     use crate::api::api_reference::ControllerApi;
-    use httpmock::prelude::*;
-    use httpmock::MockServer;
-    use crate::api::api_reference::aiarena::AiArenaResultForm;
     use crate::models::aiarena::aiarena_game_result::AiArenaGameResult;
     use crate::models::aiarena::aiarena_result::AiArenaResult;
-
+    use httpmock::prelude::*;
+    use httpmock::MockServer;
 
     #[test_log::test(tokio::test)]
     async fn test_get_match() {
@@ -223,7 +222,7 @@ mod tests {
 
         let api =
             AiArenaApiClient::new(&mockserver.base_url(), token).expect("Could not create client");
-        let result = AiArenaGameResult{
+        let result = AiArenaGameResult {
             match_id: 1,
             bot1_avg_step_time: Some(0.1),
             bot1_tags: Some(vec!["tag1".to_string()]),

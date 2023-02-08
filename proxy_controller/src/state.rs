@@ -7,10 +7,10 @@ use common::api::api_reference::sc2_controller_client::SC2Controller;
 use common::configuration::ac_config::ACConfig;
 use common::models::StartResponse;
 use common::utilities::portpicker::Port;
+use common::PlayerNum;
 use indexmap::IndexSet;
 use std::net::SocketAddr;
 use tokio::sync::mpsc::Sender;
-use common::PlayerNum;
 
 #[derive(Debug, Clone)]
 pub struct Player {

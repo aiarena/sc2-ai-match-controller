@@ -117,11 +117,11 @@ pub struct LogsAndReplays {
 
 #[cfg(test)]
 mod tests {
-    use common::models::aiarena::aiarena_result::AiArenaResult;
     use crate::game::game_result::GameResult;
     use crate::game::player_result::PlayerResult;
     use crate::game::sc2_result::Sc2Result;
     use crate::matches::sources::AiArenaGameResult;
+    use common::models::aiarena::aiarena_result::AiArenaResult;
 
     fn game_result() -> GameResult {
         GameResult {

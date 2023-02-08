@@ -292,7 +292,7 @@ pub async fn start_bot(
 async fn download_and_extract(
     url: &str,
     path: &std::path::Path,
-    player_num: &PlayerNum
+    player_num: &PlayerNum,
 ) -> Result<(), AppError> {
     let client = Client::new();
     let request = client
@@ -343,8 +343,7 @@ async fn download_and_extract(
         let _ = tokio::fs::remove_file(&path).await;
     }
 
-    let zip_result =
-        common::utilities::zip_utils::zip_extract_from_bytes(&bot_zip_bytes, path);
+    let zip_result = common::utilities::zip_utils::zip_extract_from_bytes(&bot_zip_bytes, path);
 
     zip_result
         .map_err(DownloadError::from)

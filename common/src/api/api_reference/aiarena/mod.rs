@@ -1,4 +1,4 @@
-use reqwest::multipart::{Form};
+use reqwest::multipart::Form;
 use std::path::Path;
 use tracing::error;
 
@@ -13,7 +13,7 @@ pub struct AiArenaResultForm {
 }
 
 impl AiArenaResultForm {
-    pub fn to_inner(self) -> Form{
+    pub fn to_inner(self) -> Form {
         self.inner
     }
     pub async fn add_bot_data(self, player_num: PlayerNum, bot_data_path: &Path) -> Self {
@@ -97,8 +97,8 @@ impl AiArenaResultForm {
     fn add_bot_tag(mut self, player_num: PlayerNum, bot_tags: Option<&Vec<String>>) -> Self {
         if let Some(bot1_tags) = bot_tags {
             let part_name = match player_num {
-                PlayerNum::One => {"bot1_tags"}
-                PlayerNum::Two => {"bot2_tags"}
+                PlayerNum::One => "bot1_tags",
+                PlayerNum::Two => "bot2_tags",
             };
             for tag in bot1_tags {
                 self.inner = self

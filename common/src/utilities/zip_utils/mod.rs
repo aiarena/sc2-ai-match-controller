@@ -8,8 +8,8 @@ use std::path::Path;
 use std::path::{Component, PathBuf};
 use std::process::Command;
 use zip::result::{ZipError, ZipResult};
-use zip::{CompressionMethod, ZipWriter};
 use zip::write::FileOptions;
+use zip::{CompressionMethod, ZipWriter};
 
 #[derive(Debug, Clone)]
 pub struct ZipStruct {
@@ -280,7 +280,7 @@ pub fn extract_corrupted<P: AsRef<Path>, R: Read>(
 #[cfg(test)]
 mod tests {
     use super::{zip_directory, zip_extract_from_bytes};
-    use crate::utilities::zip_utils::{zip_extract_corrupted_from_memory};
+    use crate::utilities::zip_utils::zip_extract_corrupted_from_memory;
 
     #[test]
     fn test_zip_file_size_is_smaller() {
