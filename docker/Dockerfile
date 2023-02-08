@@ -14,7 +14,9 @@ COPY --from=planner /app/recipe.json recipe.json
 RUN cargo chef cook ${CARGO_FLAGS} --recipe-path recipe.json
 # Build application
 COPY . .
-RUN cargo build ${CARGO_FLAGS}
+
+ARG FEATURES=""
+RUN cargo build ${CARGO_FLAGS} --features="${FEATURES}"
 
 
 FROM debian:bullseye-slim as k8s_controller
@@ -39,7 +41,7 @@ FROM aiarena/arenaclient-bot-base:v0.2 as bot_controller
 ARG APP=/app
 
 RUN apt-get update \
-    && apt-get install -y ca-certificates tzdata \
+    && apt-get install -y ca-certificates tzdata p7zip-full \
     && rm -rf /var/lib/apt/lists/*
 
 ENV TZ=Etc/UTC
@@ -58,7 +60,7 @@ ARG APP=/app
 
 
 RUN apt-get update \
-    && apt-get install -y ca-certificates tzdata \
+    && apt-get install -y ca-certificates tzdata p7zip-full \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR ${APP}
@@ -81,7 +83,7 @@ RUN apt-get update \
 
 
 RUN apt-get update \
-    && apt-get install -y ca-certificates tzdata \
+    && apt-get install -y ca-certificates tzdata p7zip-full \
     && rm -rf /var/lib/apt/lists/*
 
 ENV TZ=Etc/UTC

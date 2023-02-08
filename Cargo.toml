@@ -53,3 +53,4 @@ zip-extensions = { git="https://github.com/danielvschoor/zip-extensions-rs.git" 
 tempfile = "3.3.0"
 serde-error = "0.1.2"
 async-process = "1.6.0"
+test-log = {version="0.2.11", features=["log"], default-features=false}

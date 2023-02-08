@@ -177,9 +177,9 @@ test-bot-venv/
 /matches
 logs/
 /config.toml
-testing/aiarena-test-bots/*/data
+testing/aiarena-test-bots\*\data
+testing/aiarena-test-bots\*
 api_spec
-testing/api-based
 *.SC2Replay
 arenaclients.json
 config

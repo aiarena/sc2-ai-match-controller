@@ -1,13 +1,14 @@
 use std::time::Duration;
 
 use crate::api::api_reference::aiarena::errors::AiArenaApiError;
-use crate::api::api_reference::aiarena::AiArenaMatch;
+
 use crate::api::api_reference::{ApiError, ControllerApi, ResponseContent};
+use crate::models::aiarena::aiarena_match::AiArenaMatch;
 use async_trait::async_trait;
 use bytes::Bytes;
 use reqwest::multipart::Form;
 use reqwest::{Client, ClientBuilder, StatusCode, Url};
-use tracing::{debug, error};
+use tracing::{debug, error, trace};
 
 pub struct AiArenaApiClient {
     client: Client,
@@ -16,8 +17,8 @@ pub struct AiArenaApiClient {
 }
 
 impl AiArenaApiClient {
-    const API_MATCHES_ENDPOINT: &'static str = "/api/arenaclient/matches/";
-    const API_RESULTS_ENDPOINT: &'static str = "/api/arenaclient/results/";
+    pub const API_MATCHES_ENDPOINT: &'static str = "/api/arenaclient/matches/";
+    pub const API_RESULTS_ENDPOINT: &'static str = "/api/arenaclient/results/";
 
     pub fn new(website_url: &str, token: &str) -> Result<Self, url::ParseError> {
         let url = Url::parse(website_url)?;
@@ -40,7 +41,7 @@ impl AiArenaApiClient {
             .request(reqwest::Method::POST, api_matches_url)
             .header(reqwest::header::AUTHORIZATION, self.token_header())
             .build()?;
-
+        trace!("{:?}", request);
         let response = self.client.execute(request).await?;
 
         let status = response.status();
@@ -144,12 +145,12 @@ impl AiArenaApiClient {
             }
         }
     }
-    pub async fn submit_result(&self, files: Form) -> Result<StatusCode, reqwest::Error> {
+    pub async fn submit_result(&self, form: Form) -> Result<StatusCode, reqwest::Error> {
         let api_submission_url = self.url.join(Self::API_RESULTS_ENDPOINT).unwrap();
         let request = self
             .client
             .request(reqwest::Method::POST, api_submission_url)
-            .multipart(files)
+            .multipart(form)
             .header(reqwest::header::AUTHORIZATION, self.token_header())
             .build()
             .unwrap();
@@ -180,8 +181,62 @@ impl ControllerApi for AiArenaApiClient {
 
 #[cfg(test)]
 mod tests {
+    use crate::api::api_reference::aiarena::aiarena_api_client::AiArenaApiClient;
     use crate::api::api_reference::bot_controller_client::BotController;
     use crate::api::api_reference::ControllerApi;
+    use httpmock::prelude::*;
+    use httpmock::MockServer;
+    use crate::api::api_reference::aiarena::AiArenaResultForm;
+    use crate::models::aiarena::aiarena_game_result::AiArenaGameResult;
+    use crate::models::aiarena::aiarena_result::AiArenaResult;
+
+
+    #[test_log::test(tokio::test)]
+    async fn test_get_match() {
+        let mockserver = MockServer::start();
+        mockserver.mock(|when, then| {
+            when.method(POST)
+                .path(AiArenaApiClient::API_MATCHES_ENDPOINT);
+            then.status(200)
+                .body_from_file("../testing/api-based/responses/get_match_response.json")
+                .header("Content-Type", "application/json");
+        });
+
+        let api =
+            AiArenaApiClient::new(&mockserver.base_url(), "987").expect("Could not create client");
+        let new_match = api.get_match().await;
+        assert!(new_match.is_ok());
+        let new_match = new_match.unwrap();
+        assert_eq!(new_match.id, 1);
+    }
+
+    #[test_log::test(tokio::test)]
+    async fn test_submit_result() {
+        let token = "567";
+        let mockserver = MockServer::start();
+        mockserver.mock(|when, then| {
+            when.method(POST)
+                .path(AiArenaApiClient::API_RESULTS_ENDPOINT)
+                .header("authorization", format!("Token {token}"));
+            then.status(200);
+        });
+
+        let api =
+            AiArenaApiClient::new(&mockserver.base_url(), token).expect("Could not create client");
+        let result = AiArenaGameResult{
+            match_id: 1,
+            bot1_avg_step_time: Some(0.1),
+            bot1_tags: Some(vec!["tag1".to_string()]),
+            bot2_avg_step_time: None,
+            bot2_tags: None,
+            result: AiArenaResult::Player1Win,
+            game_steps: 10,
+        };
+        let form = AiArenaResultForm::from(&result);
+        let result_post = api.submit_result(form.to_inner()).await;
+        assert!(result_post.is_ok());
+        assert!(result_post.unwrap().is_success());
+    }
 
     #[test]
     fn test_get_socket_addr() {

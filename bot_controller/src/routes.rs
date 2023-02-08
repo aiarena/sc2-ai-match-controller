@@ -9,7 +9,7 @@ use common::api::errors::download_error::DownloadError;
 use common::api::errors::process_error::ProcessError;
 use common::api::state::AppState;
 use common::configuration::{get_proxy_host, get_proxy_port, get_proxy_url_from_env};
-use common::models::bot_controller::{BotType, PlayerNum, StartBot};
+use common::models::bot_controller::{BotType, StartBot};
 use common::models::{StartResponse, Status, TerminateResponse};
 use common::procs::tcp_port::get_ipv4_port_for_pid;
 
@@ -22,6 +22,7 @@ use tracing::debug;
 
 use common::api::{BytesResponse, FileResponse};
 use common::procs::create_stdout_and_stderr_files;
+use common::PlayerNum;
 use reqwest::{Client, StatusCode};
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
@@ -291,7 +292,7 @@ pub async fn start_bot(
 async fn download_and_extract(
     url: &str,
     path: &std::path::Path,
-    player_num: &PlayerNum,
+    player_num: &PlayerNum
 ) -> Result<(), AppError> {
     let client = Client::new();
     let request = client
@@ -342,19 +343,9 @@ async fn download_and_extract(
         let _ = tokio::fs::remove_file(&path).await;
     }
 
-    let mut zip_result =
-        common::utilities::zip_utils::zip_extract_from_memory(&bot_zip_bytes, &path.to_path_buf());
+    let zip_result =
+        common::utilities::zip_utils::zip_extract_from_bytes(&bot_zip_bytes, path);
 
-    if let Err(e) = &zip_result {
-        error!(
-            "Error unzipping bot data. Trying to recover. Error: {:?}",
-            e
-        );
-        zip_result = common::utilities::zip_utils::zip_extract_corrupted_from_memory(
-            &bot_zip_bytes,
-            &path.to_path_buf(),
-        );
-    }
     zip_result
         .map_err(DownloadError::from)
         .map_err(AppError::from)

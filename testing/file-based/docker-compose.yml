@@ -24,7 +24,7 @@ services:
         CARGO_FLAGS: "${TEST_CARGO_FLAGS}"
     volumes:
       - "../aiarena-test-bots:/bots"
-      - "./logs:/logs"
+      - "./bot1_logs:/logs"
     environment:
       - "ACBOT_PORT=8081"
       - "ACBOT_PROXY_HOST=proxy_controller"
@@ -39,6 +39,7 @@ services:
         CARGO_FLAGS: "${TEST_CARGO_FLAGS}"
     volumes:
       - "../aiarena-test-bots:/bots"
+      - "./bot2_logs:/logs"
     environment:
       - "ACBOT_PORT=8082"
       - "ACBOT_PROXY_HOST=proxy_controller"
@@ -59,4 +60,5 @@ services:
     volumes:
       - "./test-matches:/app/matches"
       - "./test-config.toml:/app/config.toml"
+      - "./tempproxy2:/tmp"
 

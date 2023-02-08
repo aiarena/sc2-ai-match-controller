@@ -74,7 +74,7 @@ impl IntoResponse for AppError {
                 )
             }
             Self::Download(DownloadError::ZipError(e)) => {
-                let new_error = serde_error::Error::new(&e);
+                let new_error = serde_error::Error::new(&*e);
                 tracing::debug!("ZipError: {}", e.to_string());
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,

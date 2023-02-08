@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 #[cfg(feature = "swagger")]
 use utoipa::ToSchema;
 
+pub mod aiarena;
 pub mod bot_controller;
 pub mod proxy_controller;
 pub mod sc2_controller;

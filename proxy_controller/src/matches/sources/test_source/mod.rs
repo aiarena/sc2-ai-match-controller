@@ -1,11 +1,12 @@
-use crate::matches::aiarena_result::AiArenaResult;
 use crate::matches::sources::file_source::errors::{FileMatchExtractError, SubmissionError};
 use crate::matches::sources::file_source::open_results_file;
-use crate::matches::sources::{AiArenaGameResult, LogsAndReplays, MatchSource};
+use crate::matches::sources::{LogsAndReplays, MatchSource};
 use crate::matches::{Match, MatchPlayer};
 use async_trait::async_trait;
 use common::configuration::ac_config::ACConfig;
-use common::models::bot_controller::PlayerNum;
+use common::models::aiarena::aiarena_game_result::AiArenaGameResult;
+use common::models::aiarena::aiarena_result::AiArenaResult;
+use common::PlayerNum;
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
@@ -217,11 +218,11 @@ fn extract_match(line: &str) -> Result<(Match, AiArenaResult), FileMatchExtractE
 
 #[cfg(test)]
 mod tests {
+    use common::models::aiarena::aiarena_result::AiArenaResult;
+    use common::PlayerNum;
     use crate::game::race::BotRace;
-    use crate::matches::aiarena_result::AiArenaResult;
     use crate::matches::sources::file_source::errors::FileMatchExtractError;
     use crate::matches::sources::test_source::extract_match;
-    use common::models::bot_controller::PlayerNum;
 
     #[test]
     pub fn test_match_extracts_valid() {

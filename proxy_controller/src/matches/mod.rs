@@ -1,11 +1,11 @@
 use crate::game::race::BotRace;
 use crate::matches::sources::file_source::errors::FileMatchExtractError;
-use common::api::api_reference::aiarena::AiArenaMatch;
-use common::models::bot_controller::{BotType, PlayerNum};
+use common::models::aiarena::aiarena_match::AiArenaMatch;
+use common::models::bot_controller::BotType;
+use common::PlayerNum;
 use std::collections::HashMap;
 use std::str::FromStr;
 
-pub mod aiarena_result;
 pub mod sources;
 
 #[derive(Clone, Debug, PartialEq, Eq)]

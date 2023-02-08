@@ -10,7 +10,7 @@ pub enum DownloadError {
     BotFolderNotFound(String),
     Unauthorized,
     Io(Error),
-    ZipError(ZipError),
+    ZipError(anyhow::Error),
     NotAvailable(String),
     Other(String),
 }
@@ -22,6 +22,11 @@ impl From<io::Error> for DownloadError {
 }
 impl From<ZipError> for DownloadError {
     fn from(err: ZipError) -> Self {
+        DownloadError::ZipError(anyhow::Error::from(err))
+    }
+}
+impl From<anyhow::Error> for DownloadError {
+    fn from(err: anyhow::Error) -> Self {
         DownloadError::ZipError(err)
     }
 }

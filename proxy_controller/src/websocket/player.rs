@@ -6,7 +6,6 @@ use crate::websocket::errors::player_error::PlayerError;
 use crate::websocket::port_config::PortConfig;
 use crate::websocket::runtime_vars::RuntimeVars;
 use axum::extract::ws::{Message as AMessage, WebSocket};
-use common::models::bot_controller::PlayerNum;
 use futures_util::{SinkExt, StreamExt};
 use protobuf::{EnumOrUnknown, Message, MessageField};
 use sc2_proto::sc2api::{
@@ -22,6 +21,7 @@ use tokio::time::{sleep, timeout};
 use tokio_tungstenite::tungstenite::Message as TMessage;
 use tokio_tungstenite::WebSocketStream;
 use tracing::{debug, error, info, trace};
+use common::PlayerNum;
 
 pub struct Player {
     bot_ws: WebSocket,

@@ -28,4 +28,11 @@ parking_lot = {workspace=true, features=["deadlock_detection"]}
 tower = { workspace=true, features = ["util", "timeout"] }
 bytes = { workspace=true }
 zip ={ workspace=true }
+httpmock = {version="0.6.7", optional=true}
 
+[features]
+default = []
+mockserver = ["httpmock"]
+
+[dev-dependencies]
+httpmock = "0.6.7"

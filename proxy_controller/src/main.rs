@@ -4,6 +4,8 @@ mod docs;
 mod game;
 mod match_scheduler;
 pub mod matches;
+#[cfg(feature = "mockserver")]
+mod mocking;
 mod routes;
 mod state;
 pub mod websocket;
@@ -31,6 +33,8 @@ use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 use tower_http::BoxError;
 
+#[cfg(feature = "mockserver")]
+use crate::mocking::setup_mock_server;
 use std::net::SocketAddr;
 use std::path::Path;
 use std::str::FromStr;
@@ -45,7 +49,19 @@ static PREFIX: &str = "acproxy";
 async fn main() {
     let host_url = get_host_url(PREFIX, 8080);
 
+    #[cfg(feature = "mockserver")]
+    let mut settings = setup_proxy_config();
+
+    #[cfg(not(feature = "mockserver"))]
     let settings = setup_proxy_config();
+
+    #[cfg(feature = "mockserver")]
+    let mock_server = setup_mock_server(&settings);
+
+    #[cfg(feature = "mockserver")]
+    {
+        settings.base_website_url = mock_server.base_url();
+    }
     let log_level = &settings.logging_level;
     let env_log = std::env::var("RUST_LOG")
         .unwrap_or_else(|_| format!("info,common={log_level},proxy_controller={log_level}"));
@@ -63,6 +79,7 @@ async fn main() {
         RunType::Local => Box::new(FileSource::new(settings.clone())),
         RunType::AiArena => Box::new(HttpApiSource::new(settings.clone()).unwrap()),
         RunType::Test => Box::new(TestSource::new(settings.clone())),
+        RunType::Mock => Box::new(HttpApiSource::new(settings.clone()).unwrap()),
     };
     let (tx, mut rx) = tokio::sync::mpsc::channel::<()>(1);
     let app_state = Arc::new(RwLock::new(ProxyState {
@@ -100,10 +117,6 @@ async fn main() {
         .route("/download_bot", post(download_bot))
         .route("/download_map", get(download_map))
         .route("/download_bot_data", post(download_bot_data))
-        // .route("/start", post(start_bot))
-        // .route("/stats/:bot_name", get(stats))
-        // .route("/stats/host", get(stats_host))
-        // .route("/terminate/:bot_name", get(terminate_bot))
         // Add middleware to all routes
         .layer(
             ServiceBuilder::new()
@@ -123,7 +136,7 @@ async fn main() {
         .with_state(app_state);
     let addr = SocketAddr::from_str(&host_url).unwrap();
 
-    tracing::debug!("listening on {}", addr);
+    debug!("listening on {}", addr);
     let graceful_server = axum::Server::bind(&addr)
         .serve(app.into_make_service_with_connect_info::<SocketAddr>())
         .with_graceful_shutdown(async {

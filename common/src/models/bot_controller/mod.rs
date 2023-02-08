@@ -1,4 +1,5 @@
 use crate::utilities::portpicker::Port;
+use crate::PlayerNum;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 #[cfg(feature = "swagger")]
@@ -44,22 +45,6 @@ impl FromStr for BotType {
             "nodejs" => Ok(Self::NodeJs),
             "python" => Ok(Self::Python),
             _ => Err(()),
-        }
-    }
-}
-
-#[cfg_attr(feature = "swagger", derive(ToSchema))]
-#[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub enum PlayerNum {
-    One,
-    Two,
-}
-
-impl PlayerNum {
-    pub fn other_player(&self) -> PlayerNum {
-        match self {
-            PlayerNum::One => PlayerNum::Two,
-            PlayerNum::Two => PlayerNum::One,
         }
     }
 }

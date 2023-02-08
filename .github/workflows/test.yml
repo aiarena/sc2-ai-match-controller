@@ -40,6 +40,9 @@ jobs:
     - name: Build bin
       run: cargo build --verbose
 
+    - name: Install 7zip
+      run: sudo apt-get install -y p7zip-full
+
     - name: Run unit tests
       run: cargo test --verbose
 
@@ -88,6 +91,9 @@ jobs:
         with:
           submodules: 'true'
 
-      - name: Run integration tests
+      - name: Run file-based integration tests
         run: docker compose -f ./testing/file-based/docker-compose.yml up --exit-code-from=proxy_controller --force-recreate --build
+
+      - name: Run api-based integration tests
+        run: docker compose -f ./testing/api-based/docker-compose.yml up --exit-code-from=proxy_controller --force-recreate --build
 

@@ -1,7 +1,6 @@
 use crate::game::game_config::GameConfig;
 use crate::game::game_result::GameResult;
-use crate::matches::aiarena_result::AiArenaResult;
-use crate::matches::sources::{AiArenaGameResult, LogsAndReplays, MatchSource};
+use crate::matches::sources::{LogsAndReplays, MatchSource};
 use crate::matches::Match;
 use crate::state::{ProxyState, SC2Url};
 use bytes::Bytes;
@@ -9,9 +8,12 @@ use common::api::api_reference::bot_controller_client::BotController;
 use common::api::api_reference::sc2_controller_client::SC2Controller;
 use common::api::api_reference::{ApiError, ControllerApi};
 use common::configuration::ac_config::{ACConfig, RunType};
-use common::models::bot_controller::{PlayerNum, StartBot};
+use common::models::aiarena::aiarena_game_result::AiArenaGameResult;
+use common::models::aiarena::aiarena_result::AiArenaResult;
+use common::models::bot_controller::StartBot;
 use common::utilities::directory::ensure_directory_structure;
 use common::utilities::portpicker::Port;
+use common::PlayerNum;
 use futures_util::future::{join, join3, join4};
 use futures_util::TryFutureExt;
 use parking_lot::RwLock;
@@ -304,11 +306,12 @@ async fn build_logs_and_replays_object(
     let _ = tokio::fs::remove_dir_all(&temp_folder).await;
 
     ensure_directory_structure(&settings.temp_root, &settings.temp_path).await?;
+
+    let (bot1_dir, bot2_dir) = build_bot_logs(&temp_folder, bot_controllers).await.unwrap();
+
     let arenaclient_log_directory = build_arenaclient_logs(&temp_folder, bot_controllers)
         .await
         .unwrap(); // todo: dont unwrap
-
-    let (bot1_dir, bot2_dir) = build_bot_logs(&temp_folder, bot_controllers).await.unwrap();
 
     // Copy proxy_controller logs last to pick up any potential issues
     let proxy_log_path_str = format!(

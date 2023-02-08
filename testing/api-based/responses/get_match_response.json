@@ -1,0 +1,35 @@
+{
+    "id": 1,
+    "bot1": {
+        "id": 1,
+        "name": "basic_bot",
+        "game_display_id": "15842d51-f575-4b0a-9dc0-15c33c12accf",
+        "bot_zip": "https://aiarena.net/api/arenaclient/matches/1/1/zip/",
+        "bot_zip_md5hash": "a86757ab1eeae5d644d1a10be51af16c",
+        "bot_data": null,
+        "bot_data_md5hash": null,
+        "plays_race": "T",
+        "type": "python"
+    },
+    "bot2": {
+        "id": 2,
+        "name": "loser_bot",
+        "game_display_id": "e987f4cc-7514-4abc-bac6-da6a74046d6d",
+        "bot_zip": "https://aiarena.net/api/arenaclient/matches/1/2/zip/",
+        "bot_zip_md5hash": "23de8985b92b2e9f0577e4f416d33041",
+        "bot_data": "https://aiarena.net/api/arenaclient/matches/1/2/data/",
+        "bot_data_md5hash": "76cdb2bad9582d23c1f6f4d868218d6c",
+        "plays_race": "T",
+        "type": "python"
+    },
+    "map": {
+        "id": 1,
+        "name": "AutomatonLE",
+        "file": "https://aiarena.net/media/maps/AutomatonLE",
+        "enabled": true,
+        "game_mode": 1,
+        "competitions": [
+            1
+        ]
+    }
+}

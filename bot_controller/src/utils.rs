@@ -1,6 +1,6 @@
 use std::io;
 
-use common::{configuration::ac_config::ACConfig, models::bot_controller::PlayerNum};
+use common::{configuration::ac_config::ACConfig, PlayerNum};
 
 pub(crate) fn move_bot_to_internal_dir(
     settings: &ACConfig,

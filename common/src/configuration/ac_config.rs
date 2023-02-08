@@ -50,6 +50,8 @@ pub enum RunType {
     AiArena,
     #[serde(rename = "test")]
     Test,
+    #[serde(rename = "mock")]
+    Mock,
 }
 
 impl Default for RunType {
