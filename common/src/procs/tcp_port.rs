@@ -29,7 +29,7 @@ mod tests {
         // assert!(test_ip_port("127.0.0.1"));
         // assert!(test_ip_port("127.0.0.1"));
     }
-
+    #[allow(unused)]
     fn test_ip_port(host: &str) -> bool {
         let port = portpicker::pick_unused_port().unwrap();
 
