@@ -286,7 +286,6 @@ pub enum ApiError<T> {
     Serde(serde_json::Error),
     Io(std::io::Error),
     ResponseError(ResponseContent<T>),
-    Zip(zip::result::ZipError),
 }
 
 impl<T> Display for ApiError<T>
@@ -303,7 +302,6 @@ where
                 format!("status code {}\nError:{:?}", e.status, e.api_error_message),
             ),
             Self::Url(e) => ("url", e.to_string()),
-            Self::Zip(e) => ("zip", e.to_string()),
         };
         write!(f, "error in {module}: {e}")
     }
@@ -320,7 +318,6 @@ where
             Self::Io(e) => e,
             Self::ResponseError(_) => return None,
             Self::Url(e) => e,
-            Self::Zip(e) => e,
         })
     }
 }
@@ -346,12 +343,6 @@ impl<T> From<std::io::Error> for ApiError<T> {
 impl<T> From<url::ParseError> for ApiError<T> {
     fn from(e: url::ParseError) -> Self {
         Self::Url(e)
-    }
-}
-
-impl<T> From<zip::result::ZipError> for ApiError<T> {
-    fn from(e: zip::result::ZipError) -> Self {
-        Self::Zip(e)
     }
 }
 

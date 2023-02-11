@@ -26,7 +26,6 @@ use tokio::io::AsyncWriteExt;
 use tokio::join;
 use tokio::time::sleep;
 use tracing::{error, info};
-use zip::CompressionMethod;
 
 pub async fn match_scheduler<M: MatchSource>(
     proxy_state: Arc<RwLock<ProxyState>>,
@@ -328,10 +327,9 @@ async fn build_logs_and_replays_object(
         .await;
     }
     let arenaclient_logs_zip_path = temp_folder.join("ac_log");
-    let ac_zip_result = zip_extensions::zip_create_from_directory_with_options(
+    let ac_zip_result = common::utilities::zip_utils::zip_directory_to_path(
         &arenaclient_logs_zip_path,
         &arenaclient_log_directory,
-        zip::write::FileOptions::default().compression_method(CompressionMethod::Deflated),
     );
 
     match ac_zip_result {
@@ -367,11 +365,9 @@ async fn build_bot_logs(
             let archive_directory = bot1_dir.join("logs");
             async move {
                 match write_file(&file_path, &x).await.map_err(ApiError::from) {
-                    Ok(_) => zip_extensions::zip_create_from_directory_with_options(
+                    Ok(_) => common::utilities::zip_utils::zip_directory_to_path(
                         &archive_file,
                         &archive_directory,
-                        zip::write::FileOptions::default()
-                            .compression_method(CompressionMethod::Deflated),
                     )
                     .map_err(ApiError::from),
                     e => e,
@@ -384,11 +380,9 @@ async fn build_bot_logs(
             let archive_directory = bot2_dir.join("logs");
             async move {
                 match write_file(&file_path, &x).await.map_err(ApiError::from) {
-                    Ok(_) => zip_extensions::zip_create_from_directory_with_options(
+                    Ok(_) => common::utilities::zip_utils::zip_directory_to_path(
                         &archive_file,
                         &archive_directory,
-                        zip::write::FileOptions::default()
-                            .compression_method(CompressionMethod::Deflated),
                     )
                     .map_err(ApiError::from),
                     e => e,

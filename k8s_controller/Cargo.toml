@@ -6,20 +6,21 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-kube = { workspace=true, default-features = false, features = ["client", "rustls-tls", "runtime"] }
-k8s-openapi = { workspace=true, default-features = false, features=["v1_24"]}
-serde_json = { workspace=true }
-anyhow = { workspace=true }
-tokio = { workspace=true, features = ["macros", "rt-multi-thread"] }
-tracing = { workspace=true }
-serde_yaml = { workspace=true }
-chrono = { workspace=true }
-serde = { workspace=true, features = ["derive"] }
-common = { workspace=true }
-axum = { workspace=true }
-tower = { workspace=true, features = [ "timeout"] }
-tracing-appender = { workspace=true }
-tower-http = { workspace=true, features = ["add-extension", "trace"] }
-parking_lot = {workspace=true, features=["deadlock_detection"]}
-futures-util = { workspace=true }
-config = { workspace=true }
+anyhow = "^1.0.68"
+axum = { version = "0.6.2" }
+chrono = "0.4"
+common = { path="../common" }
+config = { git = "https://github.com/mehcode/config-rs.git" }
+futures-util = "0.3.25"
+k8s-openapi = { version = "0.17.0", default-features = false, features = ["v1_24"] }
+kube = {  version = "0.78.0", default-features = false, features = ["client", "rustls-tls", "runtime"] }
+parking_lot = {version = "0.12.1" }
+serde = {  version = "^1.0", features = ["derive"] }
+serde_json = "1.0.87"
+serde_yaml = "0.9.16"
+tokio = {version = "1.0", features = ["macros", "rt-multi-thread"] }
+tower = { version = "0.4", features = [ "timeout"] }
+tower-http = { version = "0.3.0", features = ["add-extension", "trace"] }
+tracing = "0.1"
+tracing-appender = "0.2.2"
+
