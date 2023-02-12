@@ -286,6 +286,7 @@ pub enum ApiError<T> {
     Serde(serde_json::Error),
     Io(std::io::Error),
     ResponseError(ResponseContent<T>),
+    AnyhowError(anyhow::Error),
 }
 
 impl<T> Display for ApiError<T>
@@ -302,6 +303,7 @@ where
                 format!("status code {}\nError:{:?}", e.status, e.api_error_message),
             ),
             Self::Url(e) => ("url", e.to_string()),
+            Self::AnyhowError(e) => ("anyhow", e.to_string()),
         };
         write!(f, "error in {module}: {e}")
     }
@@ -318,6 +320,7 @@ where
             Self::Io(e) => e,
             Self::ResponseError(_) => return None,
             Self::Url(e) => e,
+            Self::AnyhowError(e) => e.as_ref(),
         })
     }
 }
@@ -331,6 +334,11 @@ impl<T> From<reqwest::Error> for ApiError<T> {
 impl<T> From<serde_json::Error> for ApiError<T> {
     fn from(e: serde_json::Error) -> Self {
         Self::Serde(e)
+    }
+}
+impl<T> From<anyhow::Error> for ApiError<T> {
+    fn from(e: anyhow::Error) -> Self {
+        Self::AnyhowError(e)
     }
 }
 

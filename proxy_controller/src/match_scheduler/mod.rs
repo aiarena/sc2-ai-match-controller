@@ -25,7 +25,7 @@ use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 use tokio::join;
 use tokio::time::sleep;
-use tracing::{error, info};
+use tracing::{error, info, trace};
 
 pub async fn match_scheduler<M: MatchSource>(
     proxy_state: Arc<RwLock<ProxyState>>,
@@ -326,7 +326,8 @@ async fn build_logs_and_replays_object(
         )
         .await;
     }
-    let arenaclient_logs_zip_path = temp_folder.join("ac_log");
+    let arenaclient_logs_zip_path = temp_folder.join("ac_log.zip");
+
     let ac_zip_result = common::utilities::zip_utils::zip_directory_to_path(
         &arenaclient_logs_zip_path,
         &arenaclient_log_directory,

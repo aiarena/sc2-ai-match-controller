@@ -1,10 +1,10 @@
+use anyhow::anyhow;
 use bytes::Bytes;
-use std::fs::File;
-use std::io;
-use std::io::{BufWriter, Write};
+use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
+use tracing::trace;
 
 #[derive(Debug, Clone)]
 pub struct ZipStruct {
@@ -14,22 +14,34 @@ pub struct ZipStruct {
     pub path: PathBuf,
 }
 
-pub fn zip_directory_to_path(archive_file_path: &Path, directory: &Path) -> io::Result<()> {
-    let archive_file = File::create(archive_file_path)?;
-    zip_directory(archive_file, directory)
+pub fn zip_directory_to_path(archive_file_path: &Path, directory: &Path) -> anyhow::Result<()> {
+    trace!(
+        "Zipping directory {:?} to file {:?}",
+        &directory,
+        &archive_file_path
+    );
+    zip_directory(archive_file_path, directory)
 }
 
-pub fn zip_directory<W: Write + io::Seek>(file: W, directory: &Path) -> io::Result<()> {
+pub fn zip_directory(file: &Path, directory: &Path) -> anyhow::Result<()> {
+    let file = file.to_string_lossy().to_string();
     let dir = directory.join("*").to_string_lossy().to_string();
-    let process = Command::new("7z")
-        .arg("a")
-        .arg(".zip")
-        .arg("-so")
-        .arg(dir)
-        .output()?;
-    let mut writer = BufWriter::new(file);
-    writer.write_all(&process.stdout)?;
-    Ok(())
+    let mut command = Command::new("7z");
+    command.arg("a").arg(file).arg(dir);
+    trace!("Zipping archive with args: {:?}", command.get_args());
+    trace!("{:?}", command);
+    let process = command.output()?;
+    // let mut writer = BufWriter::new(file);
+    // writer.write_all(&process.stdout)?;
+
+    return if process.status.success() {
+        Ok(())
+    } else {
+        let str = String::from_utf8(process.stderr);
+
+        trace!("{:?}", str);
+        Err(anyhow!("Error while zipping archive: {:?}", str))
+    };
 }
 
 /// Extracts a ZIP file from memory to the given directory.
@@ -76,6 +88,7 @@ pub fn test_archive(path: &Path) -> anyhow::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::{zip_directory, zip_extract_from_bytes};
+    use std::fs::File;
 
     #[test]
     fn test_zip_file_size_is_smaller() {
@@ -87,9 +100,12 @@ mod tests {
         zip_extract_from_bytes(&zip_bytes, &temp_dir).expect("Could not extract archive");
         let dir_size = fs_extra::dir::get_size(&temp_dir).expect("Could not get size of directory");
 
-        let mut tmp_file = tempfile::tempfile().expect("Could not create tempfile");
-        zip_directory(&mut tmp_file, &temp_dir).expect("Could not zip file");
-        let zipped_archive_size = tmp_file
+        let tmp_dir = tempfile::tempdir().expect("Could not create temp directory");
+
+        let path = tmp_dir.path().join("test.zip");
+        zip_directory(&path, &temp_dir).expect("Could not zip file");
+        let file = File::open(path).expect("Could not open file");
+        let zipped_archive_size = file
             .metadata()
             .expect("Could not read tmp file metadata")
             .len();

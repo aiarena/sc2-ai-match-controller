@@ -26,8 +26,9 @@ use common::PlayerNum;
 use reqwest::{Client, StatusCode};
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
+use std::env::temp_dir;
 use std::time::Duration;
-use tracing::log::error;
+use tracing::log::{error, trace};
 
 #[tracing::instrument(skip(state))]
 #[cfg_attr(feature = "swagger", utoipa::path(
@@ -457,16 +458,17 @@ pub async fn download_bot_data(
         })?
         .clone();
     let bot_data_directory = std::path::Path::new(&bot_directory).join("data");
+    trace!("{:?}", bot_data_directory.metadata());
 
-    let buffer_size = bot_data_directory
-        .metadata()
-        .map(|x| x.len())
-        .unwrap_or(65536);
-    let mut buffer = std::io::Cursor::new(Vec::with_capacity(buffer_size as usize));
+    let zip_file = format!("{bot_name}_temp.zip");
+    let tmp_dir = tempfile::tempdir().map_err(DownloadError::from)?;
+    let path = tmp_dir.path().join(zip_file);
 
-    zip_directory(&mut buffer, &bot_data_directory).map_err(DownloadError::from)?;
-    let body = buffer.into_inner().into();
+    zip_directory(&path, &bot_data_directory).map_err(DownloadError::from)?;
+    let buffer = tokio::fs::read(&path).await.map_err(DownloadError::from)?;
+    let body = buffer.into();
     let headers = [(header::CONTENT_TYPE, "application/zip; charset=utf-8")];
+    let _ = tokio::fs::remove_file(&path).await;
 
     Ok((headers, body))
 }
