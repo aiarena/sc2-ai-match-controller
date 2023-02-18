@@ -41,7 +41,7 @@ impl AiArenaApiClient {
             .request(reqwest::Method::POST, api_matches_url)
             .header(reqwest::header::AUTHORIZATION, self.token_header())
             .build()?;
-        trace!("{:?}", request);
+        trace!("Sending request: {:?}", request);
         let response = self.client.execute(request).await?;
 
         let status = response.status();

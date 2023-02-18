@@ -4,7 +4,7 @@ use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
-use tracing::trace;
+use tracing::{debug, trace};
 
 #[derive(Debug, Clone)]
 pub struct ZipStruct {
@@ -52,20 +52,23 @@ pub fn zip_extract_from_bytes(archive_file: &Bytes, target_dir: &Path) -> anyhow
     let new_file = tmp_file.into_temp_path();
     let path = new_file.to_string_lossy().to_string();
 
-    let process = Command::new("7z")
+    let mut command = Command::new("7z");
+
+    command
         .arg("x")
         .arg(&path)
         .arg(format!("-o{}", target_dir.to_string_lossy()))
         .arg("-r")
-        .arg("-tzip")
-        .output()?;
+        .arg("-tzip");
+    debug!("{:?}", command);
+    let process = command.output()?;
 
     let exit_status = process.status;
 
     if exit_status.success() {
         Ok(())
     } else {
-        let msg = String::from_utf8(process.stderr)?;
+        let msg = format!("{exit_status:?}-{}", String::from_utf8(process.stderr)?);
         Err(anyhow::Error::msg(msg))
     }
 }

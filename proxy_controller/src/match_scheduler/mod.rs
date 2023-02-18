@@ -25,7 +25,7 @@ use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 use tokio::join;
 use tokio::time::sleep;
-use tracing::{error, info, trace};
+use tracing::{error, info};
 
 pub async fn match_scheduler<M: MatchSource>(
     proxy_state: Arc<RwLock<ProxyState>>,
