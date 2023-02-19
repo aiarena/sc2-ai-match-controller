@@ -27,7 +27,7 @@ pub fn zip_directory(file: &Path, directory: &Path) -> anyhow::Result<()> {
     let file = file.to_string_lossy().to_string();
     let dir = directory.join("*").to_string_lossy().to_string();
     let mut command = Command::new("7z");
-    command.arg("a").arg(file).arg(dir);
+    command.arg("a").arg(file).arg(dir).arg("-y");
     trace!("Zipping archive with args: {:?}", command.get_args());
     trace!("{:?}", command);
     let process = command.output()?;
@@ -59,7 +59,8 @@ pub fn zip_extract_from_bytes(archive_file: &Bytes, target_dir: &Path) -> anyhow
         .arg(&path)
         .arg(format!("-o{}", target_dir.to_string_lossy()))
         .arg("-r")
-        .arg("-tzip");
+        .arg("-tzip")
+        .arg("-y");
     debug!("{:?}", command);
     let process = command.output()?;
 
@@ -68,7 +69,11 @@ pub fn zip_extract_from_bytes(archive_file: &Bytes, target_dir: &Path) -> anyhow
     if exit_status.success() {
         Ok(())
     } else {
-        let msg = format!("{exit_status:?}-{}", String::from_utf8(process.stderr)?);
+        let msg = format!(
+            "{exit_status:?}-Err:{}\nOut:{}",
+            String::from_utf8(process.stderr)?,
+            String::from_utf8(process.stdout)?
+        );
         Err(anyhow::Error::msg(msg))
     }
 }

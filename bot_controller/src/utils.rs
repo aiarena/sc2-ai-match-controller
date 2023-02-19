@@ -30,21 +30,23 @@ pub async fn download_and_extract(
     url: &str,
     path: &std::path::Path,
     player_num: &PlayerNum,
-    md5_hash_url: &str,
+    md5_hash_url: Option<&String>,
 ) -> Result<(), AppError> {
     let client = Client::new();
 
     let bot_zip_bytes = download_zip(&client, url, player_num).await?;
 
-    if let Some(expected_md5_hash) = get_md5hash(&client, md5_hash_url, player_num).await? {
-        let actual_md5 = format!("{:x}", md5::compute(&bot_zip_bytes));
-        if actual_md5 != expected_md5_hash {
-            let msg = format!(
-                "Actual md5 hash ({:?}) does not match expected md5 hash({:?}",
-                actual_md5, expected_md5_hash
-            );
-            error!(msg);
-            return Err(AppError::Download(DownloadError::Other(msg)));
+    if let Some(md5_hash_url) = md5_hash_url {
+        if let Some(expected_md5_hash) = get_md5hash(&client, md5_hash_url, player_num).await? {
+            let actual_md5 = format!("{:x}", md5::compute(&bot_zip_bytes));
+            if actual_md5 != expected_md5_hash {
+                let msg = format!(
+                    "Actual md5 hash ({:?}) does not match expected md5 hash({:?}",
+                    actual_md5, expected_md5_hash
+                );
+                error!(msg);
+                return Err(AppError::Download(DownloadError::Other(msg)));
+            }
         }
     }
 

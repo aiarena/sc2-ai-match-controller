@@ -83,19 +83,33 @@ pub async fn start_bot(
         std::path::PathBuf::from(format!("{}/{}", &state.settings.bots_directory, bot_name));
 
     if *should_download {
+        let hash_check = state.settings.hash_check;
         let proxy_url = get_proxy_url_from_env(PREFIX);
         let bot_download_url = format!("http://{proxy_url}/download_bot");
-        let bot_md5_hash_url = format!("{bot_download_url}/md5_hash");
-        download_and_extract(&bot_download_url, &bot_path, player_num, &bot_md5_hash_url).await?;
+
+        let bot_md5_hash_url = match hash_check {
+            true => Some(format!("{bot_download_url}/md5_hash")),
+            false => None,
+        };
+        download_and_extract(
+            &bot_download_url,
+            &bot_path,
+            player_num,
+            bot_md5_hash_url.as_ref(),
+        )
+        .await?;
 
         let bot_data_download_url = format!("http://{proxy_url}/download_bot_data");
         let bot_data_path = bot_path.join("data");
-        let bot_data_md5_hash_url = format!("{bot_data_download_url}/md5_hash");
+        let bot_data_md5_hash_url = match hash_check {
+            true => Some(format!("{bot_data_download_url}/md5_hash")),
+            false => None,
+        };
         match download_and_extract(
             &bot_data_download_url,
             &bot_data_path,
             player_num,
-            &bot_data_md5_hash_url,
+            bot_data_md5_hash_url.as_ref(),
         )
         .await
         {
