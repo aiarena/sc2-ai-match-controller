@@ -6,7 +6,7 @@ use common::api::api_reference::aiarena::aiarena_api_client::AiArenaApiClient;
 use common::api::errors::app_error::AppError;
 use common::api::errors::download_error::DownloadError;
 use common::configuration::ac_config::ACConfig;
-use common::models::bot_controller::PlayerNum;
+use common::PlayerNum;
 use parking_lot::RwLock;
 use std::sync::Arc;
 use tracing::{self};
@@ -52,6 +52,54 @@ pub async fn download_bot(
     api.download_zip(&download_url)
         .await
         .map_err(|e| AppError::Download(DownloadError::Other(e.to_string())))
+}
+
+pub async fn get_bot_data_md5(
+    State(state): State<Arc<RwLock<ProxyState>>>,
+    Json(player_num): Json<PlayerNum>,
+) -> Result<String, AppError> {
+    let current_match = match state
+        .read()
+        .current_match
+        .as_ref()
+        .and_then(|x| x.aiarena_match.clone())
+    {
+        None => {
+            return Err(DownloadError::Other("current_match is None".to_string()).into());
+        }
+        Some(m) => m,
+    };
+    match player_num {
+        PlayerNum::One => Ok(current_match
+            .bot1
+            .bot_data_md5hash
+            .unwrap_or("".to_string())),
+        PlayerNum::Two => Ok(current_match
+            .bot2
+            .bot_data_md5hash
+            .unwrap_or("".to_string())),
+    }
+}
+
+pub async fn get_bot_zip_md5(
+    State(state): State<Arc<RwLock<ProxyState>>>,
+    Json(player_num): Json<PlayerNum>,
+) -> Result<String, AppError> {
+    let current_match = match state
+        .read()
+        .current_match
+        .as_ref()
+        .and_then(|x| x.aiarena_match.clone())
+    {
+        None => {
+            return Err(DownloadError::Other("current_match is None".to_string()).into());
+        }
+        Some(m) => m,
+    };
+    match player_num {
+        PlayerNum::One => Ok(current_match.bot1.bot_zip_md5hash),
+        PlayerNum::Two => Ok(current_match.bot2.bot_zip_md5hash),
+    }
 }
 
 pub async fn download_bot_data(

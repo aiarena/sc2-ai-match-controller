@@ -1,6 +1,6 @@
 use crate::game::player_result::PlayerResult;
-use crate::matches::aiarena_result::AiArenaResult;
-use common::models::bot_controller::PlayerNum;
+use common::models::aiarena::aiarena_result::AiArenaResult;
+use common::PlayerNum;
 
 #[derive(Debug, Clone)]
 pub struct GameResult {

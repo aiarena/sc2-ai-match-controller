@@ -1,6 +1,6 @@
 use crate::matches::{Match, MatchPlayer};
 use common::configuration::ac_config::ACConfig;
-use common::models::bot_controller::PlayerNum;
+use common::PlayerNum;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -24,7 +24,6 @@ services:
         CARGO_FLAGS: "${TEST_CARGO_FLAGS}"
     volumes:
       - "../aiarena-test-bots:/bots"
-      - "./logs:/logs"
     environment:
       - "ACBOT_PORT=8081"
       - "ACBOT_PROXY_HOST=proxy_controller"

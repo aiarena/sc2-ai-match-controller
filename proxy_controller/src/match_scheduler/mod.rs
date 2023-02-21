@@ -1,7 +1,6 @@
 use crate::game::game_config::GameConfig;
 use crate::game::game_result::GameResult;
-use crate::matches::aiarena_result::AiArenaResult;
-use crate::matches::sources::{AiArenaGameResult, LogsAndReplays, MatchSource};
+use crate::matches::sources::{LogsAndReplays, MatchSource};
 use crate::matches::Match;
 use crate::state::{ProxyState, SC2Url};
 use bytes::Bytes;
@@ -9,9 +8,12 @@ use common::api::api_reference::bot_controller_client::BotController;
 use common::api::api_reference::sc2_controller_client::SC2Controller;
 use common::api::api_reference::{ApiError, ControllerApi};
 use common::configuration::ac_config::{ACConfig, RunType};
-use common::models::bot_controller::{PlayerNum, StartBot};
+use common::models::aiarena::aiarena_game_result::AiArenaGameResult;
+use common::models::aiarena::aiarena_result::AiArenaResult;
+use common::models::bot_controller::StartBot;
 use common::utilities::directory::ensure_directory_structure;
 use common::utilities::portpicker::Port;
+use common::PlayerNum;
 use futures_util::future::{join, join3, join4};
 use futures_util::TryFutureExt;
 use parking_lot::RwLock;
@@ -24,7 +26,6 @@ use tokio::io::AsyncWriteExt;
 use tokio::join;
 use tokio::time::sleep;
 use tracing::{error, info};
-use zip::CompressionMethod;
 
 pub async fn match_scheduler<M: MatchSource>(
     proxy_state: Arc<RwLock<ProxyState>>,
@@ -304,11 +305,12 @@ async fn build_logs_and_replays_object(
     let _ = tokio::fs::remove_dir_all(&temp_folder).await;
 
     ensure_directory_structure(&settings.temp_root, &settings.temp_path).await?;
+
+    let (bot1_dir, bot2_dir) = build_bot_logs(&temp_folder, bot_controllers).await.unwrap();
+
     let arenaclient_log_directory = build_arenaclient_logs(&temp_folder, bot_controllers)
         .await
         .unwrap(); // todo: dont unwrap
-
-    let (bot1_dir, bot2_dir) = build_bot_logs(&temp_folder, bot_controllers).await.unwrap();
 
     // Copy proxy_controller logs last to pick up any potential issues
     let proxy_log_path_str = format!(
@@ -324,11 +326,11 @@ async fn build_logs_and_replays_object(
         )
         .await;
     }
-    let arenaclient_logs_zip_path = temp_folder.join("ac_log");
-    let ac_zip_result = zip_extensions::zip_create_from_directory_with_options(
+    let arenaclient_logs_zip_path = temp_folder.join("ac_log.zip");
+
+    let ac_zip_result = common::utilities::zip_utils::zip_directory_to_path(
         &arenaclient_logs_zip_path,
         &arenaclient_log_directory,
-        zip::write::FileOptions::default().compression_method(CompressionMethod::Deflated),
     );
 
     match ac_zip_result {
@@ -364,11 +366,9 @@ async fn build_bot_logs(
             let archive_directory = bot1_dir.join("logs");
             async move {
                 match write_file(&file_path, &x).await.map_err(ApiError::from) {
-                    Ok(_) => zip_extensions::zip_create_from_directory_with_options(
+                    Ok(_) => common::utilities::zip_utils::zip_directory_to_path(
                         &archive_file,
                         &archive_directory,
-                        zip::write::FileOptions::default()
-                            .compression_method(CompressionMethod::Deflated),
                     )
                     .map_err(ApiError::from),
                     e => e,
@@ -381,11 +381,9 @@ async fn build_bot_logs(
             let archive_directory = bot2_dir.join("logs");
             async move {
                 match write_file(&file_path, &x).await.map_err(ApiError::from) {
-                    Ok(_) => zip_extensions::zip_create_from_directory_with_options(
+                    Ok(_) => common::utilities::zip_utils::zip_directory_to_path(
                         &archive_file,
                         &archive_directory,
-                        zip::write::FileOptions::default()
-                            .compression_method(CompressionMethod::Deflated),
                     )
                     .map_err(ApiError::from),
                     e => e,

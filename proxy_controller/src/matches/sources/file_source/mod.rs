@@ -1,11 +1,12 @@
 pub mod errors;
 
 use crate::matches::sources::file_source::errors::{FileMatchExtractError, SubmissionError};
-use crate::matches::sources::{AiArenaGameResult, LogsAndReplays, MatchSource};
+use crate::matches::sources::{LogsAndReplays, MatchSource};
 use crate::matches::{Match, MatchPlayer};
 use async_trait::async_trait;
 use common::configuration::ac_config::ACConfig;
-use common::models::bot_controller::PlayerNum;
+use common::models::aiarena::aiarena_game_result::AiArenaGameResult;
+use common::PlayerNum;
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::collections::HashMap;
@@ -195,7 +196,7 @@ fn extract_match(line: &str) -> Result<Match, FileMatchExtractError> {
 mod tests {
     use crate::game::race::BotRace;
     use crate::matches::sources::file_source::{extract_match, FileMatchExtractError};
-    use common::models::bot_controller::PlayerNum;
+    use common::PlayerNum;
 
     #[test]
     pub fn test_match_extracts_valid() {

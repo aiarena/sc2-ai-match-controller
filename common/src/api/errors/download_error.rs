@@ -1,6 +1,5 @@
 use std::io;
 use std::io::Error;
-use zip::result::ZipError;
 
 /// Errors that can happen while downloading files.
 #[derive(Debug)]
@@ -10,7 +9,7 @@ pub enum DownloadError {
     BotFolderNotFound(String),
     Unauthorized,
     Io(Error),
-    ZipError(ZipError),
+    ZipError(anyhow::Error),
     NotAvailable(String),
     Other(String),
 }
@@ -20,8 +19,9 @@ impl From<io::Error> for DownloadError {
         DownloadError::Io(err)
     }
 }
-impl From<ZipError> for DownloadError {
-    fn from(err: ZipError) -> Self {
+
+impl From<anyhow::Error> for DownloadError {
+    fn from(err: anyhow::Error) -> Self {
         DownloadError::ZipError(err)
     }
 }

@@ -1,6 +1,7 @@
 use crate::matches::Match;
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
+use common::models::aiarena::aiarena_game_result::AiArenaGameResult;
+use common::models::aiarena::aiarena_result::AiArenaResult;
 use std::path::PathBuf;
 use tracing::debug;
 
@@ -10,7 +11,6 @@ pub mod test_source;
 
 use crate::game::game_result::GameResult;
 use crate::game::sc2_result::Sc2Result;
-use crate::matches::aiarena_result::AiArenaResult;
 use crate::matches::sources::file_source::errors::SubmissionError;
 pub use file_source::FileSource;
 
@@ -42,23 +42,6 @@ impl<T: MatchSource + ?Sized> MatchSource for Box<T> {
     ) -> Result<(), SubmissionError> {
         (**self).submit_result(game_result, logs_and_replays).await
     }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct AiArenaGameResult {
-    #[serde(rename = "match")]
-    match_id: u32,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    bot1_avg_step_time: Option<f32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    bot1_tags: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    bot2_avg_step_time: Option<f32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    bot2_tags: Option<Vec<String>>,
-    #[serde(rename = "type")]
-    result: AiArenaResult,
-    game_steps: u32,
 }
 
 impl From<&GameResult> for AiArenaGameResult {
@@ -137,8 +120,8 @@ mod tests {
     use crate::game::game_result::GameResult;
     use crate::game::player_result::PlayerResult;
     use crate::game::sc2_result::Sc2Result;
-    use crate::matches::aiarena_result::AiArenaResult;
     use crate::matches::sources::AiArenaGameResult;
+    use common::models::aiarena::aiarena_result::AiArenaResult;
 
     fn game_result() -> GameResult {
         GameResult {

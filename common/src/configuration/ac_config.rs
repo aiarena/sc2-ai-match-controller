@@ -19,6 +19,7 @@ pub struct ACConfig {
     pub bot_cont_2_port: Port,
     pub debug_mode: bool,
     pub disable_debug: bool,
+    pub hash_check: bool,
     pub logging_level: String,
     pub log_root: String,
     pub matches_file: String,
@@ -50,6 +51,8 @@ pub enum RunType {
     AiArena,
     #[serde(rename = "test")]
     Test,
+    #[serde(rename = "mock")]
+    Mock,
 }
 
 impl Default for RunType {
@@ -76,6 +79,7 @@ mod tests {
             bot_cont_2_port: 0,
             debug_mode: false,
             disable_debug: false,
+            hash_check: false,
             logging_level: "123".to_string(),
             log_root: "123".to_string(),
             matches_file: "123".to_string(),

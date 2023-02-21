@@ -1,16 +1,18 @@
 use crate::matches::sources::file_source::errors::SubmissionError;
-use crate::matches::sources::{AiArenaGameResult, LogsAndReplays, MatchSource};
+use crate::matches::sources::{LogsAndReplays, MatchSource};
 use crate::matches::Match;
 use async_trait::async_trait;
 use common::api::api_reference::aiarena::aiarena_api_client::AiArenaApiClient;
 use common::api::api_reference::aiarena::errors::AiArenaApiError;
-use common::api::api_reference::aiarena::AiArenaMatch;
+use common::api::api_reference::aiarena::AiArenaResultForm;
 use common::api::api_reference::ApiError;
 use common::configuration::ac_config::ACConfig;
+use common::models::aiarena::aiarena_game_result::AiArenaGameResult;
+use common::models::aiarena::aiarena_match::AiArenaMatch;
 use common::paths::base_dir;
+use common::PlayerNum;
 use serde::{Deserialize, Serialize};
 use std::fs::{File, OpenOptions};
-use std::path::Path;
 use std::time::Duration;
 use tokio::io::AsyncWriteExt;
 use tracing::log::error;
@@ -79,62 +81,22 @@ impl MatchSource for HttpApiSource {
         let mut attempt = 0;
         while attempt < 60 {
             debug!("Attempting to submit result. Attempt number: {}", attempt);
-            let mut files = reqwest::multipart::Form::new()
-                .text("match", game_result.match_id.to_string())
-                .text("type", game_result.result.to_string())
-                .text("game_steps", game_result.game_steps.to_string());
-            if let Ok(part) = create_part_from_path(&bot1_dir.join("data.zip")).await {
-                files = files.part("bot1_data", part)
-            };
+            let form = AiArenaResultForm::from(game_result)
+                .add_bot_data(PlayerNum::One, &bot1_dir.join("data.zip"))
+                .await
+                .add_bot_data(PlayerNum::Two, &bot2_dir.join("data.zip"))
+                .await
+                .add_bot_log(PlayerNum::One, &bot1_dir.join("logs.zip"))
+                .await
+                .add_bot_log(PlayerNum::Two, &bot2_dir.join("logs.zip"))
+                .await
+                .add_replay(&replay_file)
+                .await
+                .add_arenaclient_logs(&arenaclient_log)
+                .await;
 
-            if let Ok(part) = create_part_from_path(&bot2_dir.join("data.zip")).await {
-                files = files.part("bot2_data", part)
-            }
-
-            if let Ok(part) = create_part_from_path(&bot1_dir.join("logs.zip")).await {
-                files = files.part("bot1_log", part)
-            }
-            if let Ok(part) = create_part_from_path(&bot2_dir.join("logs.zip")).await {
-                files = files.part("bot2_log", part)
-            }
-            if let Ok(part) = create_part_from_path(&arenaclient_log).await {
-                files = files.part("arenaclient_log", part)
-            }
-            if let Ok(part) = create_part_from_path(&replay_file).await {
-                files = files.part("replay_file", part)
-            } else {
-                debug!("{:?}", &replay_file);
-                error!("{:?}", create_part_from_path(&replay_file).await)
-            }
-
-            if let Some(bot1_avg_step_time) = game_result.bot1_avg_step_time {
-                let avg_step_time = if bot1_avg_step_time.is_finite() {
-                    bot1_avg_step_time
-                } else {
-                    0f32
-                };
-                files = files.text("bot1_avg_step_time", avg_step_time.to_string());
-            }
-            if let Some(bot2_avg_step_time) = game_result.bot2_avg_step_time {
-                let avg_step_time = if bot2_avg_step_time.is_finite() {
-                    bot2_avg_step_time
-                } else {
-                    0f32
-                };
-                files = files.text("bot2_avg_step_time", avg_step_time.to_string());
-            }
-            if let Some(bot1_tags) = &game_result.bot1_tags {
-                for tag in bot1_tags {
-                    files = files.text("bot1_tags", serde_json::to_string(&tag).unwrap());
-                }
-            }
-            if let Some(bot2_tags) = &game_result.bot2_tags {
-                for tag in bot2_tags {
-                    files = files.text("bot2_tags", serde_json::to_string(&tag).unwrap());
-                }
-            }
             info!("{:?}", game_result);
-            let status_result = self.api.submit_result(files).await;
+            let status_result = self.api.submit_result(form.to_inner()).await;
 
             if status_result.is_err()
                 || (status_result.as_ref().unwrap().is_client_error()
@@ -151,13 +113,7 @@ impl MatchSource for HttpApiSource {
         Ok(())
     }
 }
-async fn create_part_from_path(path: &Path) -> Result<reqwest::multipart::Part, std::io::Error> {
-    let file_name = String::from(path.file_name().and_then(|p| p.to_str()).unwrap());
-    let file = tokio::fs::read(path).await?;
 
-    let file_part = reqwest::multipart::Part::bytes(file).file_name(file_name);
-    Ok(file_part)
-}
 fn open_results_file(results_file_path: &str) -> Result<File, SubmissionError> {
     let results_file_path = std::path::Path::new(results_file_path);
 
@@ -173,6 +129,3 @@ fn open_results_file(results_file_path: &str) -> Result<File, SubmissionError> {
 struct Results {
     results: Vec<AiArenaGameResult>,
 }
-
-#[cfg(test)]
-mod tests {}

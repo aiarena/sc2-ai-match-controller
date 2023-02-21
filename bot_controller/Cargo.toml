@@ -4,25 +4,25 @@ version.workspace = true
 edition = "2021"
 include = ["configs/*.toml"]
 description = "Controller that controls SC2 bot processes"
-license-file="./LICENCE"
+license-file = "./LICENCE"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-common = {workspace=true}
-axum = { workspace=true }
-utoipa = { workspace=true, features = ["axum_extras"], optional=true }
-utoipa-swagger-ui = { workspace=true,  features = ["axum"], optional=true }
-tokio = { workspace=true }
-tower = { workspace=true }
-tracing = { workspace=true  }
-tracing-appender = { workspace=true  }
-reqwest = { workspace=true , features=["json"]}
-tower-http = { workspace=true , features = ["add-extension", "trace"] }
-tokio-util = { workspace=true , features = ["full"] }
-urlencoding = { workspace=true  }
-zip-extensions = {workspace=true}
-serde-error = {workspace=true}
-async-process =  {workspace=true}
+async-process = "1.6.0"
+axum = { version = "0.6.2" }
+common = { path = "../common" }
+md5 = "0.7.0"
+reqwest = { version = "0.11.12", features = ["json"] }
+tokio = { version = "1.0", features=["macros"] }
+tokio-util = { version = "0.7.4"}
+tower = { version = "0.4" }
+tower-http = { version = "0.3.0", features = ["add-extension", "trace"] }
+tracing = "0.1"
+tracing-appender = "0.2.2"
+urlencoding = "2.1.2"
+utoipa = { version = "=3.0.0", features = ["axum_extras"], optional = true }
+utoipa-swagger-ui = { version = "=3.0.2", features = ["axum"], optional = true }
+tempfile = "3.3.0"
 
 [features]
 swagger = ["utoipa", "utoipa-swagger-ui"]

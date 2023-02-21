@@ -1,4 +1,4 @@
-use crate::utils::move_bot_to_internal_dir;
+use crate::utils::{download_and_extract, move_bot_to_internal_dir};
 use crate::PREFIX;
 use axum::body::StreamBody;
 use axum::extract::{Path, State};
@@ -9,7 +9,7 @@ use common::api::errors::download_error::DownloadError;
 use common::api::errors::process_error::ProcessError;
 use common::api::state::AppState;
 use common::configuration::{get_proxy_host, get_proxy_port, get_proxy_url_from_env};
-use common::models::bot_controller::{BotType, PlayerNum, StartBot};
+use common::models::bot_controller::{BotType, StartBot};
 use common::models::{StartResponse, Status, TerminateResponse};
 use common::procs::tcp_port::get_ipv4_port_for_pid;
 
@@ -22,11 +22,10 @@ use tracing::debug;
 
 use common::api::{BytesResponse, FileResponse};
 use common::procs::create_stdout_and_stderr_files;
-use reqwest::{Client, StatusCode};
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::time::Duration;
-use tracing::log::error;
+use tracing::log::trace;
 
 #[tracing::instrument(skip(state))]
 #[cfg_attr(feature = "swagger", utoipa::path(
@@ -84,14 +83,36 @@ pub async fn start_bot(
         std::path::PathBuf::from(format!("{}/{}", &state.settings.bots_directory, bot_name));
 
     if *should_download {
+        let hash_check = state.settings.hash_check;
         let proxy_url = get_proxy_url_from_env(PREFIX);
         let bot_download_url = format!("http://{proxy_url}/download_bot");
 
-        download_and_extract(&bot_download_url, &bot_path, player_num).await?;
+        let bot_md5_hash_url = match hash_check {
+            true => Some(format!("{bot_download_url}/md5_hash")),
+            false => None,
+        };
+        download_and_extract(
+            &bot_download_url,
+            &bot_path,
+            player_num,
+            bot_md5_hash_url.as_ref(),
+        )
+        .await?;
 
         let bot_data_download_url = format!("http://{proxy_url}/download_bot_data");
         let bot_data_path = bot_path.join("data");
-        match download_and_extract(&bot_data_download_url, &bot_data_path, player_num).await {
+        let bot_data_md5_hash_url = match hash_check {
+            true => Some(format!("{bot_data_download_url}/md5_hash")),
+            false => None,
+        };
+        match download_and_extract(
+            &bot_data_download_url,
+            &bot_data_path,
+            player_num,
+            bot_data_md5_hash_url.as_ref(),
+        )
+        .await
+        {
             Ok(_) => {}
             Err(AppError::Download(DownloadError::NotAvailable(e))) => {
                 debug!("{:?}", e)
@@ -288,97 +309,6 @@ pub async fn start_bot(
     }
 }
 
-async fn download_and_extract(
-    url: &str,
-    path: &std::path::Path,
-    player_num: &PlayerNum,
-) -> Result<(), AppError> {
-    let client = Client::new();
-    let request = client
-        .request(reqwest::Method::POST, url)
-        .json(player_num)
-        .build()
-        .map_err(|e| {
-            AppError::Process(ProcessError::StartError(format!(
-                "Could not build download request: {:?}",
-                &e
-            )))
-        })?;
-
-    let resp = match client.execute(request).await {
-        Ok(resp) => resp,
-        Err(err) => {
-            error!("{:?}", err);
-            return Err(ProcessError::StartError(format!(
-                "Could not download bot from url: {:?}",
-                &url
-            ))
-            .into());
-        }
-    };
-
-    let status = resp.status();
-
-    if status.is_client_error() || status.is_server_error() {
-        let text = resp.text().await.unwrap_or_else(|_| "Error".to_string());
-        if status == StatusCode::NOT_IMPLEMENTED {
-            return Err(AppError::Download(DownloadError::NotAvailable(text)));
-        } else {
-            return Err(ProcessError::StartError(format!(
-                "Status: {:?}\nCould not download bot from url: {:?}",
-                status, &url
-            ))
-            .into());
-        }
-    }
-
-    let bot_zip_bytes = resp
-        .bytes()
-        .await
-        .map_err(|e| ProcessError::StartError(format!("{e:?}")))?;
-
-    if path.exists() {
-        let _ = tokio::fs::remove_dir(&path).await;
-        let _ = tokio::fs::remove_file(&path).await;
-    }
-
-    let mut zip_result =
-        common::utilities::zip_utils::zip_extract_from_memory(&bot_zip_bytes, &path.to_path_buf());
-
-    if let Err(e) = &zip_result {
-        error!(
-            "Error unzipping bot data. Trying to recover. Error: {:?}",
-            e
-        );
-        zip_result = common::utilities::zip_utils::zip_extract_corrupted_from_memory(
-            &bot_zip_bytes,
-            &path.to_path_buf(),
-        );
-    }
-    zip_result
-        .map_err(DownloadError::from)
-        .map_err(AppError::from)
-
-    // let tempfile_path = path.with_extension(".zip");
-    // let mut file = tokio::fs::File::create(&tempfile_path)
-    //     .await
-    //     .map_err(DownloadError::from)
-    //     .map_err(AppError::from)?;
-    //
-    // file.write(bot_zip_bytes.as_ref())
-    //     .await
-    //     .map_err(DownloadError::from)
-    //     .map_err(AppError::from)?;
-    // // tokio::fs::write(&bot_path, bot_zip_bytes).await.map_err(DownloadError::from)?;
-    // let zip_result = zip_extensions::zip_extract(&tempfile_path, &path.to_path_buf());
-    // if let Err(e) = &zip_result {
-    //     debug!("{:?}", e);
-    // }
-    // zip_result
-    //     .map_err(DownloadError::from)
-    //     .map_err(AppError::from)
-}
-
 #[tracing::instrument(skip(state))]
 #[cfg_attr(feature = "swagger", utoipa::path(
 get,
@@ -467,16 +397,17 @@ pub async fn download_bot_data(
         })?
         .clone();
     let bot_data_directory = std::path::Path::new(&bot_directory).join("data");
+    trace!("{:?}", bot_data_directory.metadata());
 
-    let buffer_size = bot_data_directory
-        .metadata()
-        .map(|x| x.len())
-        .unwrap_or(65536);
-    let mut buffer = std::io::Cursor::new(Vec::with_capacity(buffer_size as usize));
+    let zip_file = format!("{bot_name}_temp.zip");
+    let tmp_dir = tempfile::tempdir().map_err(DownloadError::from)?;
+    let path = tmp_dir.path().join(zip_file);
 
-    zip_directory(&mut buffer, &bot_data_directory).map_err(DownloadError::from)?;
-    let body = buffer.into_inner().into();
+    zip_directory(&path, &bot_data_directory).map_err(DownloadError::from)?;
+    let buffer = tokio::fs::read(&path).await.map_err(DownloadError::from)?;
+    let body = buffer.into();
     let headers = [(header::CONTENT_TYPE, "application/zip; charset=utf-8")];
+    let _ = tokio::fs::remove_file(&path).await;
 
     Ok((headers, body))
 }
