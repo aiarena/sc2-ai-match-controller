@@ -1,12 +1,11 @@
 [workspace]
 members = [
     "bot_controller",
-    "common"
-,
+    "common",
     "k8s_controller",
     "proxy_controller",
     "sc2_controller"]
 
 [workspace.package]
-version = "0.3.11"
+version = "0.3.12"
 authors = ["danielvanschoor1997@gmail.com"]
