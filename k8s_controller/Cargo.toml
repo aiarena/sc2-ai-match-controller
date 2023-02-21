@@ -10,12 +10,12 @@ anyhow = "^1.0.68"
 axum = { version = "0.6.2" }
 chrono = "0.4"
 common = { path="../common" }
-config = { git = "https://github.com/mehcode/config-rs.git" }
+config = { git = "https://github.com/mehcode/config-rs.git", default-features=false, features=["toml"] }
 futures-util = "0.3.25"
 k8s-openapi = { version = "0.17.0", default-features = false, features = ["v1_24"] }
 kube = {  version = "0.78.0", default-features = false, features = ["client", "rustls-tls", "runtime"] }
 parking_lot = {version = "0.12.1" }
-serde = {  version = "^1.0", features = ["derive"] }
+serde = {  version = "^1.0" }
 serde_json = "1.0.87"
 serde_yaml = "0.9.16"
 tokio = {version = "1.0", features = ["macros", "rt-multi-thread"] }

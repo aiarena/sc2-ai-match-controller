@@ -161,7 +161,6 @@ fn setup_proxy_config() -> ACConfig {
         .add_source(config::File::from_str(default_config, FileFormat::Toml).required(true))
         .add_source(config::File::new("config.toml", FileFormat::Toml).required(false))
         .add_source(config::File::new("config.json", FileFormat::Json).required(false))
-        .add_source(config::File::new("config.yaml", FileFormat::Yaml).required(false))
         .add_source(config::Environment::default().prefix(PREFIX))
         .build()
         .expect("Could not load config")
