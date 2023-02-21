@@ -7,5 +7,5 @@ members = [
     "sc2_controller"]
 
 [workspace.package]
-version = "0.3.12"
+version = "0.4.0"
 authors = ["danielvanschoor1997@gmail.com"]
