@@ -34,14 +34,14 @@ pub fn zip_directory(file: &Path, directory: &Path) -> anyhow::Result<()> {
     // let mut writer = BufWriter::new(file);
     // writer.write_all(&process.stdout)?;
 
-    return if process.status.success() {
+    if process.status.success() {
         Ok(())
     } else {
         let str = String::from_utf8(process.stderr);
 
         trace!("{:?}", str);
         Err(anyhow!("Error while zipping archive: {:?}", str))
-    };
+    }
 }
 
 /// Extracts a ZIP file from memory to the given directory.
