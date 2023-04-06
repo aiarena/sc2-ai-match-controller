@@ -210,6 +210,7 @@ pub enum ProcStatus {
     Waking,
     Parked,
     LockBlocked,
+    UninterruptibleDiskSleep,
     Unknown(u32),
 }
 
@@ -225,6 +226,7 @@ impl ProcStatus {
             ProcStatus::Waking => true,
             ProcStatus::Parked => true,
             ProcStatus::LockBlocked => true,
+            ProcStatus::UninterruptibleDiskSleep => true,
             ProcStatus::Unknown(_) => true,
         }
     }
@@ -244,6 +246,7 @@ impl From<ProcessStatus> for ProcStatus {
             ProcessStatus::Waking => ProcStatus::Waking,
             ProcessStatus::Parked => ProcStatus::Parked,
             ProcessStatus::LockBlocked => ProcStatus::LockBlocked,
+            ProcessStatus::UninterruptibleDiskSleep => ProcStatus::UninterruptibleDiskSleep,
             ProcessStatus::Unknown(x) => ProcStatus::Unknown(x),
         }
     }
