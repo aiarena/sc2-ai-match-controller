@@ -23,7 +23,6 @@ impl PlayerData {
                 let mut if_opts = req.options.clone().unwrap();
 
                 if_opts.set_raw_affects_selection(true);
-                if_opts.set_raw_crop_to_playable_area(false);
                 if_opts
             },
         }
