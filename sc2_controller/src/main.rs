@@ -22,6 +22,7 @@ use tower::{BoxError, ServiceBuilder};
 use tower_http::trace::TraceLayer;
 use tracing::debug;
 use tracing::Span;
+use clap::{arg, command, value_parser};
 #[cfg(feature = "swagger")]
 use utoipa::OpenApi;
 #[cfg(feature = "swagger")]
@@ -31,7 +32,15 @@ static PREFIX: &str = "ACSC2";
 
 #[tokio::main]
 async fn main() {
-    let host_url = get_host_url(PREFIX, 8083);
+    let matches = command!()
+        .arg(arg!(--port <VALUE>)
+            .value_parser(value_parser!(u16)))
+        .get_matches();
+
+    let port = *matches
+        .get_one::<u16>("port").unwrap_or(&8083);
+    
+    let host_url = get_host_url(PREFIX, port);
 
     let proxy_url = get_proxy_url_from_env(PREFIX);
     let config_url = format!("http://{proxy_url}/configuration");

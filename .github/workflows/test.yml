@@ -94,6 +94,9 @@ jobs:
       - name: Run file-based integration tests
         run: docker compose -f ./testing/file-based/docker-compose.yml up --exit-code-from=proxy_controller --force-recreate --build
 
+      - name: Run file-based combined integration tests
+        run: docker compose -f ./testing/file-based-combined/docker-compose.yml up --exit-code-from=combined --force-recreate --build
+
       - name: Run api-based integration tests
         run: docker compose -f ./testing/api-based/docker-compose.yml up --exit-code-from=proxy_controller --force-recreate --build
 

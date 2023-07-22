@@ -34,7 +34,7 @@ use parking_lot::RwLock;
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 use tower_http::BoxError;
-
+use clap::{arg, command, value_parser};
 #[cfg(feature = "mockserver")]
 use crate::mocking::setup_mock_server;
 use std::net::SocketAddr;
@@ -49,7 +49,15 @@ static PREFIX: &str = "acproxy";
 
 #[tokio::main]
 async fn main() {
-    let host_url = get_host_url(PREFIX, 8080);
+    let matches = command!()
+        .arg(arg!(--port <VALUE>)
+            .value_parser(value_parser!(u16)))
+        .get_matches();
+
+    let port = *matches
+        .get_one::<u16>("port").unwrap_or(&8080);
+    
+    let host_url = get_host_url(PREFIX, port);
 
     #[cfg(feature = "mockserver")]
     let mut settings = setup_proxy_config();

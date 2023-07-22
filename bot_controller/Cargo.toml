@@ -11,11 +11,12 @@ license-file = "./LICENCE"
 async-process = "1.6.0"
 axum = { version = "0.6.2" }
 common = { path = "../common" }
+clap = {version="4.3.0", features = ["cargo"]}
 md5 = "0.7.0"
 reqwest = { version = "0.11.12", features = ["json"] }
-tokio = { version = "1.0", features=["macros"] }
-tokio-util = { version = "0.7.4"}
-tower = { version = "0.4" }
+tokio = { version = "1.0", features=["macros", "signal", "rt-multi-thread"] }
+tokio-util = { version = "0.7.4", features = ["io"]}
+tower = { version = "0.4", features = ["timeout"] }
 tower-http = { version = "0.4.0", features = ["add-extension", "trace"] }
 tracing = "0.1"
 tracing-appender = "0.2.2"
