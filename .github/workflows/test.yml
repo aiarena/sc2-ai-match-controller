@@ -92,11 +92,16 @@ jobs:
           submodules: 'true'
 
       - name: Run file-based integration tests
-        run: docker compose -f ./testing/file-based/docker-compose.yml up --exit-code-from=proxy_controller --force-recreate --build
-
-      - name: Run file-based combined integration tests
-        run: docker compose -f ./testing/file-based-combined/docker-compose.yml up --exit-code-from=combined --force-recreate --build
+        run: TEST_CARGO_FLAGS="--release" docker compose -f ./testing/file-based/docker-compose.yml up --exit-code-from=proxy_controller --force-recreate --build
 
       - name: Run api-based integration tests
-        run: docker compose -f ./testing/api-based/docker-compose.yml up --exit-code-from=proxy_controller --force-recreate --build
+        run: TEST_CARGO_FLAGS="--release" docker compose -f ./testing/api-based/docker-compose.yml up --exit-code-from=proxy_controller --force-recreate --build
+      
+      - name: Clean up docker images to save space
+        run: docker compose -f ./testing/api-based/docker-compose.yml down --rmi local && docker compose -f ./testing/file-based/docker-compose.yml down --rmi local
+      
+      - name: Run file-based combined integration tests
+        run: TEST_CARGO_FLAGS="--release" docker compose -f ./testing/file-based-combined/docker-compose.yml up --exit-code-from=combined --force-recreate --build
+
+      
 
