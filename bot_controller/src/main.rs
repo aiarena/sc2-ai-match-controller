@@ -28,24 +28,21 @@ use utoipa::OpenApi;
 #[cfg(feature = "swagger")]
 use utoipa_swagger_ui::SwaggerUi;
 
+use clap::{arg, command, value_parser};
 use std::path::Path;
 use std::str::FromStr;
 use std::{net::SocketAddr, time::Duration};
-use clap::{arg, command, value_parser};
 
 static PREFIX: &str = "ACBOT";
 
 #[tokio::main]
 async fn main() {
     let matches = command!()
-        .arg(arg!(--port <VALUE>)
-            .value_parser(value_parser!(u16)))
+        .arg(arg!(--port <VALUE>).value_parser(value_parser!(u16)))
         .get_matches();
-    
-    let port = *matches
-        .get_one::<u16>("port").unwrap_or(&8081);
-    
-    
+
+    let port = *matches.get_one::<u16>("port").unwrap_or(&8081);
+
     let host_url = get_host_url(PREFIX, port);
 
     let proxy_url = get_proxy_url_from_env(PREFIX);
