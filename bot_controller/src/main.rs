@@ -62,7 +62,7 @@ async fn main() {
     let log_file = "bot_controller.log";
     let full_path = Path::new(&log_path).join(log_file);
     if full_path.exists() && full_path.is_file() {
-        tokio::fs::remove_file(full_path).await;
+        let _ = tokio::fs::remove_file(full_path).await;
     }
 
     let (non_blocking_stdout, _guard) = tracing_appender::non_blocking(std::io::stdout());
