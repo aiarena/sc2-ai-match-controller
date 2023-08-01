@@ -116,7 +116,7 @@ pub async fn terminate_all(
     let mut temp_status_reason = String::new();
 
     for (process_key, mut child) in state.process_map.write().drain() {
-        tracing::debug!("Terminating procs with on port {}", process_key);
+        tracing::debug!("Terminating procs on port {}", process_key);
         let mut exited = false;
         for _ in 0..5 {
             if let Ok(status) = child.try_status() {

@@ -45,3 +45,12 @@ services:
         - aiarena/k8s-controller:${TAG:-latest}
         - aiarena/k8s-controller:latest
 
+  combined:
+    restart: unless-stopped
+    image: aiarena/arenaclient-combined:${TAG:-latest}
+    build:
+      context: ../
+      dockerfile: ./docker/Dockerfile
+      target: combined
+      args:
+        CARGO_FLAGS: "${CARGO_FLAGS}"

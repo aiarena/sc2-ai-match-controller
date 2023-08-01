@@ -66,6 +66,7 @@ pub async fn start_sc2(
     State(state): State<AppState>,
     Json(map_name): Json<String>,
 ) -> Result<Json<StartResponse>, AppError> {
+    let map_name = map_name.replace(".SC2Map", "");
     let map_path = paths::base_dir()
         .join("maps")
         .join(format!("{map_name}.SC2Map"));
