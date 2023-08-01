@@ -2,7 +2,6 @@ version: "3.9"
 services:
   sc2_controller:
     restart: unless-stopped
-    image: aiarena/arenaclient-sc2:${TAG:-latest}
     build:
       context: ../
       dockerfile: ./docker/Dockerfile
@@ -12,33 +11,39 @@ services:
 
   bot_controller:
     restart: unless-stopped
-    image: aiarena/arenaclient-bot:${TAG:-latest}
     build:
       context: ../
       dockerfile: ./docker/Dockerfile
       target: bot_controller
       args:
         CARGO_FLAGS: "${CARGO_FLAGS}"
+      tags:
+        - aiarena/arenaclient-bot:${TAG:-latest}
+        - aiarena/arenaclient-bot:latest
 
   proxy_controller:
     restart: unless-stopped
-    image: aiarena/arenaclient-proxy:${TAG:-latest}
     build:
       context: ../
       dockerfile: ./docker/Dockerfile
       target: proxy_controller
       args:
         CARGO_FLAGS: "${CARGO_FLAGS}"
+      tags:
+        - aiarena/arenaclient-proxy:${TAG:-latest}
+        - aiarena/arenaclient-proxy:latest
 
   k8s_controller:
     restart: unless-stopped
-    image: aiarena/k8s-controller:${TAG:-latest}
     build:
       context: ../
       dockerfile: ./docker/Dockerfile
       target: k8s_controller
       args:
         CARGO_FLAGS: "${CARGO_FLAGS}"
+      tags:
+        - aiarena/k8s-controller:${TAG:-latest}
+        - aiarena/k8s-controller:latest
 
   combined:
     restart: unless-stopped
