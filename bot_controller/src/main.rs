@@ -28,6 +28,7 @@ use utoipa::OpenApi;
 #[cfg(feature = "swagger")]
 use utoipa_swagger_ui::SwaggerUi;
 
+use clap::{arg, command, value_parser};
 use std::path::Path;
 use std::str::FromStr;
 use std::{net::SocketAddr, time::Duration};
@@ -36,7 +37,13 @@ static PREFIX: &str = "ACBOT";
 
 #[tokio::main]
 async fn main() {
-    let host_url = get_host_url(PREFIX, 8081);
+    let matches = command!()
+        .arg(arg!(--port <VALUE>).value_parser(value_parser!(u16)))
+        .get_matches();
+
+    let port = *matches.get_one::<u16>("port").unwrap_or(&8081);
+
+    let host_url = get_host_url(PREFIX, port);
 
     let proxy_url = get_proxy_url_from_env(PREFIX);
     let config_url = format!("http://{proxy_url}/configuration");
@@ -54,8 +61,8 @@ async fn main() {
     let log_path = format!("{}/bot_controller", &settings.log_root);
     let log_file = "bot_controller.log";
     let full_path = Path::new(&log_path).join(log_file);
-    if full_path.exists() {
-        tokio::fs::remove_file(full_path).await.unwrap();
+    if full_path.exists() && full_path.is_file() {
+        let _ = tokio::fs::remove_file(full_path).await;
     }
 
     let (non_blocking_stdout, _guard) = tracing_appender::non_blocking(std::io::stdout());

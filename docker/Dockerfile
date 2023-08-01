@@ -1,4 +1,4 @@
-FROM lukemathwalker/cargo-chef:latest-rust-1.68-bullseye AS chef
+FROM lukemathwalker/cargo-chef:latest-rust-1.71-bullseye AS chef
 WORKDIR /app
 
 FROM chef as planner
@@ -96,3 +96,37 @@ COPY --from=builder /app/target/*/proxy_controller ${APP}/proxy_controller
 
 ENTRYPOINT ["./proxy_controller"]
 LABEL service=proxy_controller
+
+
+FROM aiarena/arenaclient-bot-base:v0.3.1 as combined
+ARG APP=/app
+
+USER root
+WORKDIR /root/
+
+# Update system
+RUN apt-get update \
+    && apt-get upgrade --assume-yes --quiet=2 \
+    && apt-get install --assume-yes --no-install-recommends --no-show-upgraded
+
+
+RUN apt-get update \
+    && apt-get install -y ca-certificates tzdata p7zip-full supervisor \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN mkdir -p /var/log/supervisor
+
+ENV TZ=Etc/UTC
+
+RUN mkdir -p ${APP}
+
+WORKDIR ${APP}
+COPY --from=sc2_controller /root/StarCraftII/ /root/StarCraftII/
+COPY --from=builder /app/target/*/proxy_controller ${APP}/proxy_controller
+COPY --from=builder /app/target/*/sc2_controller ${APP}/sc2_controller
+COPY --from=builder /app/target/*/bot_controller ${APP}/bot_controller
+
+COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+CMD ["/usr/bin/supervisord"]
+LABEL service=combined

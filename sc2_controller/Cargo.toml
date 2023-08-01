@@ -9,6 +9,7 @@ edition = "2021"
 async-process = "1.6.0"
 axum = { version = "0.6.2" }
 common = { path="../common" }
+clap = {version="4.3.0", features = ["cargo"]}
 reqwest = { version = "0.11.12", features = ["json"] }
 tempfile = "3.3.0"
 tokio = { version = "1.0", features=["macros", "rt-multi-thread", "signal"] }

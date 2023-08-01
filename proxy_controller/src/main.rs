@@ -15,6 +15,8 @@ use crate::match_scheduler::match_scheduler;
 use crate::matches::sources::aiarena_api::HttpApiSource;
 use crate::matches::sources::test_source::TestSource;
 use crate::matches::sources::{FileSource, MatchSource};
+#[cfg(feature = "mockserver")]
+use crate::mocking::setup_mock_server;
 use crate::routes::{
     configuration, download_bot, download_bot_data, download_map, get_bot_data_md5, get_bot_zip_md5,
 };
@@ -25,31 +27,35 @@ use axum::http::StatusCode;
 use axum::routing::{get, post};
 use axum::Router;
 use axum::{http::Request, response::Response};
+use clap::{arg, command, value_parser};
 use common::api::health;
 use common::configuration::ac_config::{ACConfig, RunType};
 use common::configuration::get_host_url;
 use common::logging::init_logging;
 use config::{Config, FileFormat};
 use parking_lot::RwLock;
-use tower::ServiceBuilder;
-use tower_http::trace::TraceLayer;
-use tower_http::BoxError;
-
-#[cfg(feature = "mockserver")]
-use crate::mocking::setup_mock_server;
 use std::net::SocketAddr;
 use std::path::Path;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 use std::vec;
+use tower::ServiceBuilder;
+use tower_http::trace::TraceLayer;
+use tower_http::BoxError;
 use tracing::{debug, Span};
 
 static PREFIX: &str = "acproxy";
 
 #[tokio::main]
 async fn main() {
-    let host_url = get_host_url(PREFIX, 8080);
+    let matches = command!()
+        .arg(arg!(--port <VALUE>).value_parser(value_parser!(u16)))
+        .get_matches();
+
+    let port = *matches.get_one::<u16>("port").unwrap_or(&8080);
+
+    let host_url = get_host_url(PREFIX, port);
 
     #[cfg(feature = "mockserver")]
     let mut settings = setup_proxy_config();

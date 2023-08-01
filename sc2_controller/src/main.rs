@@ -9,6 +9,7 @@ use axum::http::Request;
 use axum::response::Response;
 use axum::routing::{get, post};
 use axum::{error_handling::HandleErrorLayer, http::StatusCode, Router};
+use clap::{arg, command, value_parser};
 use common::api::health;
 use common::api::process::{shutdown, stats, stats_host, status, terminate_all};
 use common::api::process::{stats_all, ProcessMap};
@@ -31,7 +32,13 @@ static PREFIX: &str = "ACSC2";
 
 #[tokio::main]
 async fn main() {
-    let host_url = get_host_url(PREFIX, 8083);
+    let matches = command!()
+        .arg(arg!(--port <VALUE>).value_parser(value_parser!(u16)))
+        .get_matches();
+
+    let port = *matches.get_one::<u16>("port").unwrap_or(&8083);
+
+    let host_url = get_host_url(PREFIX, port);
 
     let proxy_url = get_proxy_url_from_env(PREFIX);
     let config_url = format!("http://{proxy_url}/configuration");
