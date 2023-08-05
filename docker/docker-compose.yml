@@ -50,6 +50,7 @@ services:
 
   combined:
     restart: unless-stopped
+    image: aiarena/arenaclient-combined:${TAG:-latest}
     build:
       context: ../
       dockerfile: ./docker/Dockerfile
@@ -58,6 +59,3 @@ services:
         CARGO_FLAGS: "${CARGO_FLAGS}"
       tags:
         - aiarena/arenaclient-combined:latest
-      tags:
-        - aiarena/k8s-controller:${TAG:-latest}
-        - aiarena/k8s-controller:latest
