@@ -101,8 +101,17 @@ pub fn read_execute_info(path: PathBuf) -> Option<PathBuf> {
     let mut f = fs::File::open(path).ok()?;
     let mut contents = String::new();
     f.read_to_string(&mut contents).ok()?;
-    
-    let base = Path::new(contents.split("= ").last().unwrap().split("Versions").next().unwrap()).to_path_buf();
+
+    let base = Path::new(
+        contents
+            .split("= ")
+            .last()
+            .unwrap()
+            .split("Versions")
+            .next()
+            .unwrap(),
+    )
+    .to_path_buf();
 
     if base.exists() {
         Some(base)
