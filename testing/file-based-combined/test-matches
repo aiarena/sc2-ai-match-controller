@@ -3,15 +3,3 @@
 1,basic_bot,T,python,2,java_bot,T,java,AutomatonLE,Player1Win
 #1,basic_bot,T,python,2,dotnetcore_bot,T,dotnetcore,AutomatonLE,Player1Win
 1,basic_bot,T,python,2,loser_bot,T,python,AutomatonLE,Player1Win
-1,loser_bot,T,python,2,tie_bot,T,python,AutomatonLE,Tie
-1,leaver_bot,T,python,2,loser_bot,T,python,AutomatonLE,Player2Win
-1,basic_bot,T,python,2,crash_bot,T,python,AutomatonLE,Player2Crash
-1,basic_bot,T,python,2,connect_timeout_bot,T,python,AutomatonLE,InitializationError
-1,basic_bot,T,python,2,instant_crash_bot,T,python,AutomatonLE,Player2Crash
-1,basic_bot,T,python,2,infinite_loop_bot,T,python,AutomatonLE,Player2TimeOut
-1,crash_bot,T,python,2,basic_bot,T,python,AutomatonLE,Player1Crash
-1,connect_timeout_bot,T,python,2,basic_bot,T,python,AutomatonLE,InitializationError
-1,instant_crash_bot,T,python,2,basic_bot,T,python,AutomatonLE,Player1Crash
-1,infinite_loop_bot,T,python,2,basic_bot,T,python,AutomatonLE,Player1TimeOut
-1,loser_bot,T,python,2,basic_bot,T,python,AutomatonLE,Player2Win
-1,loser_bot,T,python,2,leaver_bot,T,python,AutomatonLE,Player1Win

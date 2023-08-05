@@ -29,8 +29,7 @@ pub async fn websocket_handler(
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     State(state): State<Arc<RwLock<ProxyState>>>,
 ) -> impl IntoResponse {
-    ws.max_send_queue(usize::MAX)
-        .max_message_size(128 << 20) // 128MiB
+    ws.max_message_size(128 << 20) // 128MiB
         .max_frame_size(32 << 20) // 32MiB
         .accept_unmasked_frames(true)
         .on_upgrade(move |socket| websocket(socket, state, addr))
@@ -218,12 +217,12 @@ pub async fn connect(sc2_url: &SC2Url) -> Option<WebSocketStream<TcpStream>> {
     let addr = format!("{}:{}", sc2_url.host, sc2_url.port);
 
     debug!("Connecting to the SC2 process: {:?}, {:?}", url, addr);
-    
+
     let mut config = WebSocketConfig::default();
     config.max_message_size = Some(128 << 20);
     config.max_frame_size = Some(32 << 20);
     config.accept_unmasked_frames = true;
-    
+
     for _ in 0..60 {
         sleep(Duration::new(1, 0)).await;
         let socket = match tokio::time::timeout(Duration::from_secs(120), TcpStream::connect(&addr))
