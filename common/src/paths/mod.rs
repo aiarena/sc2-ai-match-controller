@@ -6,8 +6,6 @@ use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::{fs, io};
 
-use regex::Regex;
-
 pub fn default_base() -> PathBuf {
     if let Some(base_dir) = var_os("SC2_PROXY_BASE") {
         Path::new(&base_dir).to_path_buf()
@@ -103,9 +101,8 @@ pub fn read_execute_info(path: PathBuf) -> Option<PathBuf> {
     let mut f = fs::File::open(path).ok()?;
     let mut contents = String::new();
     f.read_to_string(&mut contents).ok()?;
-
-    let re = Regex::new(r" = (.*)Versions").unwrap(); //Static string, won't panic
-    let base = Path::new(re.captures(&contents)?.get(1)?.as_str()).to_path_buf();
+    
+    let base = Path::new(contents.split("= ").last().unwrap().split("Versions").next().unwrap()).to_path_buf();
 
     if base.exists() {
         Some(base)

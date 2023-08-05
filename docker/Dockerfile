@@ -1,6 +1,8 @@
 FROM lukemathwalker/cargo-chef:latest-rust-1.71.1-bullseye AS chef
 WORKDIR /app
 
+RUN apt update && apt install -y lld clang
+
 FROM chef as planner
 COPY . .
 RUN cargo chef prepare --recipe-path recipe.json
