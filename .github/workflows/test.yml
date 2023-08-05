@@ -33,7 +33,10 @@ jobs:
           path: |
             target
           key: ${{ runner.os }}-${{ steps.rustup.outputs.rustc_hash }}-dev-target-${{ hashFiles('**/Cargo.lock') }}
-
+    
+    - name: Install lld & clang
+      run: apt install -y lld clang
+    
     - name: Run check
       run: cargo check --verbose
 

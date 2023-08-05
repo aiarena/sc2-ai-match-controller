@@ -29,8 +29,7 @@ pub async fn websocket_handler(
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     State(state): State<Arc<RwLock<ProxyState>>>,
 ) -> impl IntoResponse {
-    ws.max_send_queue(usize::MAX)
-        .max_message_size(128 << 20) // 128MiB
+    ws.max_message_size(128 << 20) // 128MiB
         .max_frame_size(32 << 20) // 32MiB
         .accept_unmasked_frames(true)
         .on_upgrade(move |socket| websocket(socket, state, addr))
