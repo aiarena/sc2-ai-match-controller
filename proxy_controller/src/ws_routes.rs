@@ -218,18 +218,12 @@ pub async fn connect(sc2_url: &SC2Url) -> Option<WebSocketStream<TcpStream>> {
     let addr = format!("{}:{}", sc2_url.host, sc2_url.port);
 
     debug!("Connecting to the SC2 process: {:?}, {:?}", url, addr);
-
-    let config = Some(WebSocketConfig {
-        max_send_queue: None,
-        max_message_size: Some(128 << 20), // 128MiB
-        max_frame_size: Some(32 << 20),    // 32MiB
-        // This setting allows to accept client frames which are not masked
-        // This is not in compliance with RFC 6455 but might be handy in some
-        // rare cases where it is necessary to integrate with existing/legacy
-        // clients which are sending unmasked frames
-        accept_unmasked_frames: true,
-    });
-
+    
+    let mut config = WebSocketConfig::default();
+    config.max_message_size = Some(128 << 20);
+    config.max_frame_size = Some(32 << 20);
+    config.accept_unmasked_frames = true;
+    
     for _ in 0..60 {
         sleep(Duration::new(1, 0)).await;
         let socket = match tokio::time::timeout(Duration::from_secs(120), TcpStream::connect(&addr))
@@ -245,7 +239,7 @@ pub async fn connect(sc2_url: &SC2Url) -> Option<WebSocketStream<TcpStream>> {
 
         socket.set_nodelay(true).unwrap();
 
-        let (ws_stream, _) = tokio_tungstenite::client_async_with_config(url, socket, config)
+        let (ws_stream, _) = tokio_tungstenite::client_async_with_config(url, socket, Some(config))
             .await
             .expect("Failed to connect");
 
