@@ -42,7 +42,7 @@ impl SC2Controller {
     }
     pub async fn start_owned(self) -> Result<StartResponse, ApiError<ApiErrorMessage>> {
         let start_url = self.url.join("/start").unwrap(); // static string, so the constructor should catch any parse
-        // errors
+                                                          // errors
 
         let request = self
             .client

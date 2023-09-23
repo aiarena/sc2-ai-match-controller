@@ -62,11 +62,7 @@ pub async fn terminate_sc2(
         (status = 200, description = "Request Completed", body = StartResponse)
     )
 ))]
-pub async fn start_sc2(
-    State(state): State<AppState>,
-) -> Result<Json<StartResponse>, AppError> {    
-    
-
+pub async fn start_sc2(State(state): State<AppState>) -> Result<Json<StartResponse>, AppError> {
     let ws_port = pick_unused_port_in_range(9000..10000)
         .ok_or_else(|| ProcessError::Custom("Could not allocate port".to_string()))?;
     let tempdir = TempDir::new()
@@ -145,7 +141,6 @@ responses(
 )
 ))]
 pub async fn find_map(Path(map_name): Path<String>) -> Result<Json<MapData>, AppError> {
-
     let map_name = map_name.replace(".SC2Map", "");
     let map_path = paths::base_dir()
         .join("maps")
@@ -173,7 +168,7 @@ pub async fn find_map(Path(map_name): Path<String>) -> Result<Json<MapData>, App
                     "Could not download map from url: {:?}",
                     &download_url
                 ))
-                    .into());
+                .into());
             }
         };
 
@@ -184,7 +179,7 @@ pub async fn find_map(Path(map_name): Path<String>) -> Result<Json<MapData>, App
                 "Status: {:?}\nCould not download map from url: {:?}",
                 status, &download_url
             ))
-                .into());
+            .into());
         }
 
         let map_bytes = resp
@@ -199,7 +194,7 @@ pub async fn find_map(Path(map_name): Path<String>) -> Result<Json<MapData>, App
             .await
             .map_err(|err| ProcessError::Custom(format!("Could not write map to disk: {err:?}")))?;
     }
-    
+
     common::paths::maps::find_map(&map_name)
         .map_err(|err| MapError::from(err).into())
         .map(|map_path| {

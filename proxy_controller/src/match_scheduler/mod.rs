@@ -71,7 +71,7 @@ pub async fn match_scheduler<M: MatchSource>(
             bot_controllers[1].health(),
             sc2_controllers[0].health(),
         )
-            .await;
+        .await;
         ready = res.0 && res.1 && res.2;
     }
 
@@ -80,7 +80,7 @@ pub async fn match_scheduler<M: MatchSource>(
         bot_controllers[1].terminate_all("graceful"),
         sc2_controllers[0].terminate_all("kill"),
     )
-        .await;
+    .await;
 
     if settings.run_type == RunType::AiArena {
         ensure_directory_structure("/", &settings.bots_directory)
@@ -98,9 +98,7 @@ pub async fn match_scheduler<M: MatchSource>(
         let response = tokio::spawn(join(
             sc2_controllers[0].clone().start_owned(),
             sc2_controllers[1].clone().start_owned(),
-        )
-        );
-
+        ));
 
         let new_match = match match_source.next_match().await {
             None => {
@@ -163,7 +161,7 @@ pub async fn match_scheduler<M: MatchSource>(
                 break 'main_loop;
             }
         };
-        
+
         tracing::debug!("Starting bots");
         let mut bots_started = false;
         let should_download = settings.run_type == RunType::AiArena;

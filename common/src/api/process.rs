@@ -112,7 +112,6 @@ pub async fn status(
 pub async fn terminate_all(
     State(state): State<AppState>,
     Json(terminate_type): Json<String>,
-    
 ) -> Result<Json<TerminateResponse>, AppError> {
     let mut status = Status::Success;
     let mut temp_status_reason = String::new();
