@@ -183,7 +183,7 @@ pub async fn stats_all(State(state): State<AppState>) -> Result<Json<Vec<Process
 pub async fn shutdown(state: State<AppState>) -> Result<Json<TerminateResponse>, AppError> {
     tracing::info!("Shutdown request received. Terminating all running processes");
     let s = state.clone();
-    terminate_all(s).await?;
+    let _ = terminate_all(s).await?;
 
     if let Err(e) = state.shutdown_sender.send(()).await {
         let message = format!("Could not send shutdown signal:\n{e}");
