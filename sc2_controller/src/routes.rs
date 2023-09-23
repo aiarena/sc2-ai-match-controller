@@ -64,61 +64,8 @@ pub async fn terminate_sc2(
 ))]
 pub async fn start_sc2(
     State(state): State<AppState>,
-    Json(map_name): Json<String>,
-) -> Result<Json<StartResponse>, AppError> {
-    let map_name = map_name.replace(".SC2Map", "");
-    let map_path = paths::base_dir()
-        .join("maps")
-        .join(format!("{map_name}.SC2Map"));
-    if !map_path.exists() {
-        let proxy_url = get_proxy_url_from_env(PREFIX);
-        let download_url = format!("http://{proxy_url}/download_map");
-
-        let client = Client::new();
-        let request = client
-            .request(reqwest::Method::GET, &download_url)
-            .build()
-            .map_err(|e| {
-                AppError::Process(ProcessError::StartError(format!(
-                    "Could not build download request: {:?}",
-                    &e
-                )))
-            })?;
-        info!("Downloading map {}", map_name);
-        let resp = match client.execute(request).await {
-            Ok(resp) => resp,
-            Err(err) => {
-                tracing::error!("{:?}", err);
-                return Err(ProcessError::StartError(format!(
-                    "Could not download map from url: {:?}",
-                    &download_url
-                ))
-                .into());
-            }
-        };
-
-        let status = resp.status();
-
-        if status.is_client_error() || status.is_server_error() {
-            return Err(ProcessError::StartError(format!(
-                "Status: {:?}\nCould not download map from url: {:?}",
-                status, &download_url
-            ))
-            .into());
-        }
-
-        let map_bytes = resp
-            .bytes()
-            .await
-            .map_err(|e| ProcessError::StartError(format!("{e:?}")))?;
-
-        let mut file = tokio::fs::File::create(map_path)
-            .await
-            .map_err(|err| ProcessError::Custom(format!("Could not download map: {err:?}")))?;
-        file.write_all(&map_bytes)
-            .await
-            .map_err(|err| ProcessError::Custom(format!("Could not write map to disk: {err:?}")))?;
-    }
+) -> Result<Json<StartResponse>, AppError> {    
+    
 
     let ws_port = pick_unused_port_in_range(9000..10000)
         .ok_or_else(|| ProcessError::Custom("Could not allocate port".to_string()))?;
@@ -198,6 +145,61 @@ responses(
 )
 ))]
 pub async fn find_map(Path(map_name): Path<String>) -> Result<Json<MapData>, AppError> {
+
+    let map_name = map_name.replace(".SC2Map", "");
+    let map_path = paths::base_dir()
+        .join("maps")
+        .join(format!("{map_name}.SC2Map"));
+    if !map_path.exists() {
+        let proxy_url = get_proxy_url_from_env(PREFIX);
+        let download_url = format!("http://{proxy_url}/download_map");
+
+        let client = Client::new();
+        let request = client
+            .request(reqwest::Method::GET, &download_url)
+            .build()
+            .map_err(|e| {
+                AppError::Process(ProcessError::StartError(format!(
+                    "Could not build download request: {:?}",
+                    &e
+                )))
+            })?;
+        info!("Downloading map {}", map_name);
+        let resp = match client.execute(request).await {
+            Ok(resp) => resp,
+            Err(err) => {
+                tracing::error!("{:?}", err);
+                return Err(ProcessError::StartError(format!(
+                    "Could not download map from url: {:?}",
+                    &download_url
+                ))
+                    .into());
+            }
+        };
+
+        let status = resp.status();
+
+        if status.is_client_error() || status.is_server_error() {
+            return Err(ProcessError::StartError(format!(
+                "Status: {:?}\nCould not download map from url: {:?}",
+                status, &download_url
+            ))
+                .into());
+        }
+
+        let map_bytes = resp
+            .bytes()
+            .await
+            .map_err(|e| ProcessError::StartError(format!("{e:?}")))?;
+
+        let mut file = tokio::fs::File::create(map_path)
+            .await
+            .map_err(|err| ProcessError::Custom(format!("Could not download map: {err:?}")))?;
+        file.write_all(&map_bytes)
+            .await
+            .map_err(|err| ProcessError::Custom(format!("Could not write map to disk: {err:?}")))?;
+    }
+    
     common::paths::maps::find_map(&map_name)
         .map_err(|err| MapError::from(err).into())
         .map(|map_path| {

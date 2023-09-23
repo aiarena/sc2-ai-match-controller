@@ -159,12 +159,13 @@ pub trait ControllerApi {
         self.url().socket_addrs(|| None).unwrap()[0]
     }
 
-    async fn terminate_all(&self) -> Result<TerminateResponse, ApiError<ApiErrorMessage>> {
+    async fn terminate_all(&self, terminate_type: &str) -> Result<TerminateResponse, ApiError<ApiErrorMessage>> {
         let terminate_url = self.url().join("/terminate_all").unwrap(); // static string, so the constructor should catch any parse
                                                                         // errors
         let request = self
             .client()
             .request(reqwest::Method::POST, terminate_url)
+            .json(terminate_type)
             .build()?;
 
         let response = self.client().execute(request).await?;

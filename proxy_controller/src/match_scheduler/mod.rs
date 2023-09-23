@@ -65,22 +65,22 @@ pub async fn match_scheduler<M: MatchSource>(
     let mut ready = false;
 
     while !ready {
-        sleep(Duration::from_secs(3)).await;
+        sleep(Duration::from_millis(500)).await;
         let res = join3(
             bot_controllers[0].health(),
             bot_controllers[1].health(),
             sc2_controllers[0].health(),
         )
-        .await;
+            .await;
         ready = res.0 && res.1 && res.2;
     }
 
     let _cleanup_res = join3(
-        bot_controllers[0].terminate_all(),
-        bot_controllers[1].terminate_all(),
-        sc2_controllers[0].terminate_all(),
+        bot_controllers[0].terminate_all("graceful"),
+        bot_controllers[1].terminate_all("graceful"),
+        sc2_controllers[0].terminate_all("kill"),
     )
-    .await;
+        .await;
 
     if settings.run_type == RunType::AiArena {
         ensure_directory_structure("/", &settings.bots_directory)
@@ -93,6 +93,15 @@ pub async fn match_scheduler<M: MatchSource>(
     'main_loop: while match_source.has_next().await
         && (match_counter < rounds_per_run || rounds_per_run == -1)
     {
+        info!("Sending start requests to SC2");
+
+        let response = tokio::spawn(join(
+            sc2_controllers[0].clone().start_owned(),
+            sc2_controllers[1].clone().start_owned(),
+        )
+        );
+
+
         let new_match = match match_source.next_match().await {
             None => {
                 sleep(Duration::from_secs(30)).await;
@@ -114,13 +123,19 @@ pub async fn match_scheduler<M: MatchSource>(
             &new_match.players[&PlayerNum::One].name,
             &new_match.players[&PlayerNum::Two].name
         );
-        info!("Sending start requests to SC2");
 
-        let response = join!(
-            sc2_controllers[0].start(&new_match.map_name),
-            sc2_controllers[1].start(&new_match.map_name)
-        );
-        let (process_key1, process_key2) = match response {
+        tracing::trace!("Finding map");
+        match sc2_controllers[0].find_map(&new_match.map_name).await {
+            Ok(map) => {
+                proxy_state.write().map = Some(map.map_path);
+            }
+            Err(e) => {
+                error!("Failed to find map: {}", e);
+                break 'main_loop;
+            }
+        }
+
+        let (process_key1, process_key2) = match response.await.unwrap() {
             (Ok(sc1_resp), Ok(sc2_resp)) => {
                 tracing::debug!("SC2-1 Response:\n{:?}", sc1_resp);
                 tracing::debug!("SC2-2 Response:\n{:?}", sc2_resp);
@@ -148,16 +163,7 @@ pub async fn match_scheduler<M: MatchSource>(
                 break 'main_loop;
             }
         };
-        tracing::trace!("Finding map");
-        match sc2_controllers[0].find_map(&new_match.map_name).await {
-            Ok(map) => {
-                proxy_state.write().map = Some(map.map_path);
-            }
-            Err(e) => {
-                error!("Failed to find map: {}", e);
-                break 'main_loop;
-            }
-        }
+        
         tracing::debug!("Starting bots");
         let mut bots_started = false;
         let should_download = settings.run_type == RunType::AiArena;
@@ -178,11 +184,11 @@ pub async fn match_scheduler<M: MatchSource>(
             (Ok(resp1), Ok(resp2)) => {
                 tracing::trace!("Bots started");
                 let mut counter = 0;
-                let max_retries = 10;
+                let max_retries = 60;
                 let (mut bot_added1, mut bot_added2) = (false, false);
                 while counter < max_retries && !(bot_added1 && bot_added2) {
                     if counter > 0 {
-                        sleep(Duration::from_secs(3)).await;
+                        sleep(Duration::from_millis(500)).await;
                     }
                     if !bot_added1 {
                         tracing::trace!("Adding bot1");
@@ -266,9 +272,9 @@ pub async fn match_scheduler<M: MatchSource>(
         }
         match_counter += 1;
         let _cleanup_res = join3(
-            bot_controllers[0].terminate_all(),
-            bot_controllers[1].terminate_all(),
-            sc2_controllers[0].terminate_all(),
+            bot_controllers[0].terminate_all("graceful"),
+            bot_controllers[1].terminate_all("graceful"),
+            sc2_controllers[0].terminate_all("kill"),
         )
         .await;
         let mut state = proxy_state.write();
