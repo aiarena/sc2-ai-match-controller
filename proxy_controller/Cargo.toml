@@ -14,7 +14,7 @@ config = { git = "https://github.com/mehcode/config-rs.git" , default-features=f
 clap = {version="4.3.0", features = ["cargo"]}
 futures-util = "0.3.25"
 httpmock = { version = "0.6.7", optional = true }
-indexmap = { version = "1.9.2", features = ["serde"] }
+indexmap = { version = "2.0.1", features = ["serde"] }
 parking_lot = { version = "0.12.1" }
 protobuf = { version = "=3.2.0" }
 sc2-proto = { git = "https://github.com/aiarena/sc2-proto-rs.git" }
