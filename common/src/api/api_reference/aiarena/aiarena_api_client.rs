@@ -110,7 +110,10 @@ impl AiArenaApiClient {
     pub async fn download_zip(&self, url: &str) -> Result<Bytes, ApiError<AiArenaApiError>> {
         // static string, so the constructor should catch any parse errors
         let url = Url::parse(url).map_err(ApiError::from)?;
-        let request = self.client.request(reqwest::Method::GET, url).build()?;
+        let request = self.client
+            .request(reqwest::Method::GET, url)
+            .header(reqwest::header::AUTHORIZATION, self.token_header())
+            .build()?;
 
         let response = self.client.execute(request).await?;
 
