@@ -5,7 +5,19 @@ members = [
     "k8s_controller",
     "proxy_controller",
     "sc2_controller"]
+resolver = "2"
 
 [workspace.package]
 version = "0.4.5"
 authors = ["danielvanschoor1997@gmail.com"]
+
+
+[profile.ci-dev]
+inherits="dev"
+incremental=false
+
+[profile.ci-dev.package."*"] # external dependencies
+opt-level = 1
+
+[profile.ci-dev.package."tokio"]
+opt-level = 3

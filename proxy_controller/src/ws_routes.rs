@@ -104,7 +104,7 @@ async fn websocket(bot_ws: WebSocket, state: Arc<RwLock<ProxyState>>, addr: Sock
         };
     }
 
-    let max_counter = 10;
+    let max_counter = 200;
     let mut counter = 0;
     loop {
         debug!("Waiting for state to become ready");
@@ -113,7 +113,7 @@ async fn websocket(bot_ws: WebSocket, state: Arc<RwLock<ProxyState>>, addr: Sock
         if ready || counter > max_counter {
             break;
         } else {
-            sleep(Duration::from_secs(5)).await;
+            sleep(Duration::from_millis(250)).await;
         }
     }
     if state.read().ready {
@@ -218,10 +218,12 @@ pub async fn connect(sc2_url: &SC2Url) -> Option<WebSocketStream<TcpStream>> {
 
     debug!("Connecting to the SC2 process: {:?}, {:?}", url, addr);
 
-    let mut config = WebSocketConfig::default();
-    config.max_message_size = Some(128 << 20);
-    config.max_frame_size = Some(32 << 20);
-    config.accept_unmasked_frames = true;
+    let config = WebSocketConfig {
+        max_message_size: Some(128 << 20),
+        max_frame_size: Some(32 << 20),
+        accept_unmasked_frames: true,
+        ..Default::default()
+    };
 
     for _ in 0..60 {
         sleep(Duration::new(1, 0)).await;

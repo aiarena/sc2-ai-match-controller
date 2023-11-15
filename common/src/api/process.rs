@@ -111,6 +111,7 @@ pub async fn status(
 ))]
 pub async fn terminate_all(
     State(state): State<AppState>,
+    Json(terminate_type): Json<String>,
 ) -> Result<Json<TerminateResponse>, AppError> {
     let mut status = Status::Success;
     let mut temp_status_reason = String::new();
@@ -118,15 +119,17 @@ pub async fn terminate_all(
     for (process_key, mut child) in state.process_map.write().drain() {
         tracing::debug!("Terminating procs on port {}", process_key);
         let mut exited = false;
-        for _ in 0..5 {
-            if let Ok(status) = child.try_status() {
-                if status.is_some() {
-                    exited = true;
-                    break;
+        if terminate_type != "kill" {
+            for _ in 0..5 {
+                if let Ok(status) = child.try_status() {
+                    if status.is_some() {
+                        exited = true;
+                        break;
+                    }
                 }
-            }
 
-            std::thread::sleep(Duration::from_secs(1));
+                std::thread::sleep(Duration::from_secs(1));
+            }
         }
         if !exited {
             if let Err(e) = child.kill() {
@@ -183,7 +186,7 @@ pub async fn stats_all(State(state): State<AppState>) -> Result<Json<Vec<Process
 pub async fn shutdown(state: State<AppState>) -> Result<Json<TerminateResponse>, AppError> {
     tracing::info!("Shutdown request received. Terminating all running processes");
     let s = state.clone();
-    terminate_all(s).await?;
+    let _ = terminate_all(s, Json("graceful".to_string())).await?;
 
     if let Err(e) = state.shutdown_sender.send(()).await {
         let message = format!("Could not send shutdown signal:\n{e}");
