@@ -57,7 +57,7 @@ COPY --from=builder /app/target/*/bot_controller ${APP}/bot_controller
 ENTRYPOINT ["./bot_controller"]
 LABEL service=bot_controller
 
-FROM aiarena/arenaclient-sc2-base:4.10 as sc2_controller
+FROM aiarena/arenaclient-sc2-base:4.10-bookworm as sc2_controller
 ARG APP=/app
 
 
