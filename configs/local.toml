@@ -32,3 +32,5 @@ VALIDATE_RACE = false
 # Local
 MATCHES_FILE=""
 RESULTS_FILE=""
+
+AWS = false
