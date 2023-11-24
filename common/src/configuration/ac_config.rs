@@ -41,6 +41,7 @@ pub struct ACConfig {
     pub temp_root: String,
     pub validate_race: bool,
     pub visualize: bool,
+    pub aws: bool
 }
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize, Eq, PartialEq)]

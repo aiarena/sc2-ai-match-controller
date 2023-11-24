@@ -36,11 +36,11 @@ impl HttpApiSource {
         })?;
         Ok(Self { api })
     }
-    async fn download_map(&self, ai_match: &AiArenaMatch) -> Result<(), ApiError<AiArenaApiError>> {
+    async fn download_map(&self, ai_match: &AiArenaMatch, add_auth_header: bool) -> Result<(), ApiError<AiArenaApiError>> {
         let map_url = &ai_match.map.file;
         let map_name = &ai_match.map.name;
         info!("Downloading map {}", map_name);
-        let map_bytes = self.api.download_map(map_url).await?;
+        let map_bytes = self.api.download_map(map_url, add_auth_header).await?;
         let map_path = base_dir().join("maps").join(format!("{map_name}.SC2Map"));
         let mut file = tokio::fs::File::create(map_path).await?;
         Ok(file.write_all(&map_bytes).await?)

@@ -49,7 +49,7 @@ pub async fn download_bot(
         PlayerNum::One => current_match.bot1.bot_zip.clone(),
         PlayerNum::Two => current_match.bot2.bot_zip.clone(),
     };
-    api.download_zip(&download_url)
+    api.download_zip(&download_url, !settings.aws)
         .await
         .map_err(|e| AppError::Download(DownloadError::Other(e.to_string())))
 }
@@ -133,7 +133,7 @@ pub async fn download_bot_data(
         PlayerNum::One => current_match.bot1.bot_data.clone(),
         PlayerNum::Two => current_match.bot2.bot_data.clone(),
     } {
-        api.download_zip(&download_url)
+        api.download_zip(&download_url, !settings.aws)
             .await
             .map_err(|e| AppError::Download(DownloadError::Other(e.to_string())))
     } else {
@@ -163,7 +163,7 @@ pub async fn download_map(State(state): State<Arc<RwLock<ProxyState>>>) -> Resul
     )
     .unwrap(); //Would've failed before this point already
     let map_url = &current_match.map.file;
-    api.download_map(map_url)
+    api.download_map(map_url, !settings.aws)
         .await
         .map_err(|e| AppError::Download(DownloadError::Other(e.to_string())))
 }

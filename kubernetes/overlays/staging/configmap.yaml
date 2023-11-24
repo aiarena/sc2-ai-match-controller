@@ -11,7 +11,7 @@ data:
   config.toml: |-
     OLD_MATCH_DELETE_AFTER_MINUTES = 10
     JOB_PREFIX= "staging"
-    WEBSITE_URL= "https://staging.aiarena.net"
+    WEBSITE_URL= "https://aiarena-test.net"
     NAMESPACE= "arenaclients"
     ARENACLIENTS_JSON_PATH = "arenaclients.json"
     INTERVAL_SECONDS = 30
