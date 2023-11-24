@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-async-process = "1.6.0"
+async-process = "2.0.0"
 axum = { version = "0.6.2" }
 common = { path="../common" }
 clap = {version="4.3.0", features = ["cargo"]}

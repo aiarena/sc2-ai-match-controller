@@ -104,7 +104,7 @@ async fn websocket(bot_ws: WebSocket, state: Arc<RwLock<ProxyState>>, addr: Sock
         };
     }
 
-    let max_counter = 10;
+    let max_counter = 200;
     let mut counter = 0;
     loop {
         debug!("Waiting for state to become ready");
@@ -113,7 +113,7 @@ async fn websocket(bot_ws: WebSocket, state: Arc<RwLock<ProxyState>>, addr: Sock
         if ready || counter > max_counter {
             break;
         } else {
-            sleep(Duration::from_secs(5)).await;
+            sleep(Duration::from_millis(250)).await;
         }
     }
     if state.read().ready {

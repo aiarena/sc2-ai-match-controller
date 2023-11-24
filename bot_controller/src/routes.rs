@@ -213,7 +213,7 @@ pub async fn start_bot(
                 debug!("Setting bot file permissions");
                 let mut perms = bot_file.permissions();
                 perms.set_mode(0o777);
-                std::fs::set_permissions(&bot_file_path, perms);
+                let _ = std::fs::set_permissions(&bot_file_path, perms);
             }
             // if std::path::Path::new(&bot_path).is_dir() {
             //     for item in std::fs::read_dir(&bot_path).unwrap() {
@@ -255,7 +255,7 @@ pub async fn start_bot(
     debug!("Starting bot with command {:?}", &command);
     let mut process = match command.spawn() {
         Ok(mut process) => {
-            tokio::time::sleep(Duration::from_secs(5)).await;
+            tokio::time::sleep(Duration::from_secs(2)).await;
             match process.try_status() {
                 Ok(None) => {}
                 Ok(Some(exit_status)) => {

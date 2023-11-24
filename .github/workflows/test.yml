@@ -14,41 +14,53 @@ jobs:
         os: [ubuntu-latest]
     steps:
     - uses: actions/checkout@v3
-
-    - name: Cache cargo registry
-      uses: actions/cache@v3
-      with:
-          path: ~/.cargo/registry
-          key: ${{ runner.os }}-${{ steps.rustup.outputs.rustc_hash }}-dev-registry-${{ hashFiles('**/Cargo.lock') }}
-
-    - name: Cache cargo index
-      uses: actions/cache@v3
-      with:
-          path: ~/.cargo/git
-          key: ${{ runner.os }}-${{ steps.rustup.outputs.rustc_hash }}-dev-index-${{ hashFiles('**/Cargo.lock') }}
-
-    - name: Cache cargo build
-      uses: actions/cache@v3
-      with:
-          path: |
-            target
-          key: ${{ runner.os }}-${{ steps.rustup.outputs.rustc_hash }}-dev-target-${{ hashFiles('**/Cargo.lock') }}
     
     - name: Install lld & clang
       run: sudo apt install -y lld clang
     
-    - name: Run check
-      run: cargo check --verbose
+    - uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        override: true
+        
+    - uses: actions-rs/cargo@v1
+      with:
+        command: check
+        args: --verbose
+    
+    - uses: actions-rs/cargo@v1
+      with:
+        command: build
+        args: --verbose
+    
+    - run: rustup component add clippy
+    - uses: actions-rs/cargo@v1
+      with:
+        command: clippy
+        args: --all-targets --all-features
+  
+  test:
+    name: Cargo Test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ ubuntu-latest ]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      
+      - name: Install lld, clang & p7zip-full
+        run: sudo apt install -y lld clang p7zip-full
 
-    - name: Build bin
-      run: cargo build --verbose
-
-    - name: Install 7zip
-      run: sudo apt-get install -y p7zip-full
-
-    - name: Run unit tests
-      run: cargo test --verbose
-
+      - uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --verbose
   fmt:
     name: Cargo Format
     runs-on: ubuntu-latest
@@ -66,22 +78,6 @@ jobs:
         with:
           command: fmt
           args: --all -- --check
-
-  clippy:
-    name: Clippy
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-      - run: rustup component add clippy
-      - uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: --all-targets --all-features
 
   docker:
     runs-on: ubuntu-latest

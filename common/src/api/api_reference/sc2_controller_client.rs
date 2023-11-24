@@ -29,14 +29,24 @@ impl SC2Controller {
         self.process_key = process_key
     }
 
-    pub async fn start(&self, map_name: &str) -> Result<StartResponse, ApiError<ApiErrorMessage>> {
+    pub async fn start(&self) -> Result<StartResponse, ApiError<ApiErrorMessage>> {
         let start_url = self.url.join("/start").unwrap(); // static string, so the constructor should catch any parse
                                                           // errors
 
         let request = self
             .client
             .request(reqwest::Method::POST, start_url)
-            .json(map_name)
+            .build()?;
+
+        self.execute_request(request).await
+    }
+    pub async fn start_owned(self) -> Result<StartResponse, ApiError<ApiErrorMessage>> {
+        let start_url = self.url.join("/start").unwrap(); // static string, so the constructor should catch any parse
+                                                          // errors
+
+        let request = self
+            .client
+            .request(reqwest::Method::POST, start_url)
             .build()?;
 
         self.execute_request(request).await
