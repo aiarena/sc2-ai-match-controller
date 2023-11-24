@@ -36,7 +36,11 @@ impl HttpApiSource {
         })?;
         Ok(Self { api })
     }
-    async fn download_map(&self, ai_match: &AiArenaMatch, add_auth_header: bool) -> Result<(), ApiError<AiArenaApiError>> {
+    async fn download_map(
+        &self,
+        ai_match: &AiArenaMatch,
+        add_auth_header: bool,
+    ) -> Result<(), ApiError<AiArenaApiError>> {
         let map_url = &ai_match.map.file;
         let map_name = &ai_match.map.name;
         info!("Downloading map {}", map_name);

@@ -74,15 +74,19 @@ impl AiArenaApiClient {
         }
     }
 
-    pub async fn download_map(&self, map_url: &str, add_auth_header: bool) -> Result<Bytes, ApiError<AiArenaApiError>> {
+    pub async fn download_map(
+        &self,
+        map_url: &str,
+        add_auth_header: bool,
+    ) -> Result<Bytes, ApiError<AiArenaApiError>> {
         // static string, so the constructor should catch any parse errors
         let map_url = Url::parse(map_url).map_err(ApiError::from)?;
-        
-        let mut request_builder = self.client
-            .request(reqwest::Method::GET, map_url);
+
+        let mut request_builder = self.client.request(reqwest::Method::GET, map_url);
 
         if add_auth_header {
-            request_builder = request_builder.header(reqwest::header::AUTHORIZATION, self.token_header())
+            request_builder =
+                request_builder.header(reqwest::header::AUTHORIZATION, self.token_header())
         }
         let request = request_builder.build()?;
 
@@ -114,19 +118,23 @@ impl AiArenaApiClient {
     fn token_header(&self) -> String {
         format!("Token {}", &self.token)
     }
-    pub async fn download_zip(&self, url: &str, add_auth_header: bool) -> Result<Bytes, ApiError<AiArenaApiError>> {
+    pub async fn download_zip(
+        &self,
+        url: &str,
+        add_auth_header: bool,
+    ) -> Result<Bytes, ApiError<AiArenaApiError>> {
         // static string, so the constructor should catch any parse errors
         let url = Url::parse(url).map_err(ApiError::from)?;
-        
-        let mut request_builder = self.client
-            .request(reqwest::Method::GET, url);
+
+        let mut request_builder = self.client.request(reqwest::Method::GET, url);
 
         if add_auth_header {
-            request_builder = request_builder.header(reqwest::header::AUTHORIZATION, self.token_header())
+            request_builder =
+                request_builder.header(reqwest::header::AUTHORIZATION, self.token_header())
         }
-        
+
         let request = request_builder.build()?;
-        
+
         let response = self.client.execute(request).await?;
 
         let status = response.status();
