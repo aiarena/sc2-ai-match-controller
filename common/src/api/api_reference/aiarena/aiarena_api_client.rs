@@ -126,7 +126,7 @@ impl AiArenaApiClient {
         // static string, so the constructor should catch any parse errors
         let url = Url::parse(url).map_err(ApiError::from)?;
 
-        let mut request_builder = self.client.request(reqwest::Method::GET, url);
+        let mut request_builder = self.client.request(reqwest::Method::GET, url.clone());
 
         if add_auth_header {
             request_builder =
@@ -144,6 +144,11 @@ impl AiArenaApiClient {
             Ok(content)
         } else {
             let content = response.text().await?;
+
+            debug!(
+                "Website:\nUrl:{}\nStatus:{}\nResponse:{}",
+                &url, status, content
+            );
             match serde_json::from_str::<AiArenaApiError>(&content).map_err(ApiError::from) {
                 Ok(api_error_message) => {
                     let error = ResponseContent {
@@ -154,7 +159,6 @@ impl AiArenaApiClient {
                 }
                 Err(e) => {
                     error!("status={},error{}", status, e);
-                    debug!("{}", &content);
                     Err(e)
                 }
             }
@@ -172,11 +176,21 @@ impl AiArenaApiClient {
 
         let response = self.client.execute(request).await?;
 
-        let status = response.status();
+        let mut status = response.status();
 
         if status.is_client_error() || status.is_server_error() {
-            error!("{:?}: {:?}", &status, &response.text().await);
+            let response_text_result = response.text().await;
+            if let Ok(response_text) = &response_text_result {
+                if response_text
+                    .to_lowercase()
+                    .contains("result with this match already exists")
+                {
+                    status = StatusCode::OK; // Don't try to resubmit error if the result already exists
+                }
+            }
+            error!("{:?}: {:?}", &status, &response_text_result);
         }
+
         Ok(status)
     }
 }

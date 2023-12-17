@@ -1,4 +1,4 @@
-FROM lukemathwalker/cargo-chef:latest-rust-1.73.0-bookworm AS chef
+FROM lukemathwalker/cargo-chef:latest-rust-1.74-bookworm AS chef
 WORKDIR /app
 
 RUN apt update && apt install -y lld clang
