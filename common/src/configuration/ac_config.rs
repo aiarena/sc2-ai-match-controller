@@ -102,6 +102,7 @@ mod tests {
             temp_root: "123".to_string(),
             validate_race: false,
             visualize: false,
+            aws: false,
         }
     }
 
