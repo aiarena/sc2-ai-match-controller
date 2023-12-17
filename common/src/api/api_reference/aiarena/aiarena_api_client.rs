@@ -84,7 +84,7 @@ impl AiArenaApiClient {
 
         let mut request_builder = self.client.request(reqwest::Method::GET, map_url.clone());
         debug!("{:?}", map_url.host_str());
-        if let Some(host) = map_url.host_str()  {
+        if let Some(host) = map_url.host_str() {
             if host.contains("aiarena.net") {
                 request_builder =
                     request_builder.header(reqwest::header::AUTHORIZATION, self.token_header())
@@ -137,7 +137,6 @@ impl AiArenaApiClient {
                     request_builder.header(reqwest::header::AUTHORIZATION, self.token_header())
             }
         }
-
 
         let request = request_builder.build()?;
 
