@@ -77,16 +77,18 @@ impl AiArenaApiClient {
     pub async fn download_map(
         &self,
         map_url: &str,
-        add_auth_header: bool,
+        _add_auth_header: bool,
     ) -> Result<Bytes, ApiError<AiArenaApiError>> {
         // static string, so the constructor should catch any parse errors
         let map_url = Url::parse(map_url).map_err(ApiError::from)?;
 
-        let mut request_builder = self.client.request(reqwest::Method::GET, map_url);
-
-        if add_auth_header {
-            request_builder =
-                request_builder.header(reqwest::header::AUTHORIZATION, self.token_header())
+        let mut request_builder = self.client.request(reqwest::Method::GET, map_url.clone());
+        debug!("{:?}", map_url.host_str());
+        if let Some(host) = map_url.host_str()  {
+            if host.contains("aiarena.net") {
+                request_builder =
+                    request_builder.header(reqwest::header::AUTHORIZATION, self.token_header())
+            }
         }
         let request = request_builder.build()?;
 
@@ -121,17 +123,21 @@ impl AiArenaApiClient {
     pub async fn download_zip(
         &self,
         url: &str,
-        add_auth_header: bool,
+        _add_auth_header: bool,
     ) -> Result<Bytes, ApiError<AiArenaApiError>> {
         // static string, so the constructor should catch any parse errors
         let url = Url::parse(url).map_err(ApiError::from)?;
 
         let mut request_builder = self.client.request(reqwest::Method::GET, url.clone());
+        debug!("{:?}", &url.host_str());
 
-        if add_auth_header {
-            request_builder =
-                request_builder.header(reqwest::header::AUTHORIZATION, self.token_header())
+        if let Some(host) = url.host_str() {
+            if host.contains("aiarena.net") {
+                request_builder =
+                    request_builder.header(reqwest::header::AUTHORIZATION, self.token_header())
+            }
         }
+
 
         let request = request_builder.build()?;
 
