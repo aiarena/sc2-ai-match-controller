@@ -6,6 +6,7 @@ use crate::portpicker::Port;
 use async_trait::async_trait;
 use bytes::Bytes;
 use reqwest::{Client, Url};
+use std::time::Duration;
 
 #[derive(Debug, Clone)]
 pub struct BotController {
@@ -22,7 +23,10 @@ impl BotController {
 
         Ok(Self {
             url,
-            client: Client::new(),
+            client: Client::builder()
+                .timeout(Duration::from_secs(180))
+                .build()
+                .unwrap(),
             process_key: 0,
             start_bot: None,
         })

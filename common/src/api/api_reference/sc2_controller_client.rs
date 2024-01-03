@@ -3,7 +3,8 @@ use crate::models::bot_controller::MapData;
 use crate::models::StartResponse;
 use crate::portpicker::Port;
 use async_trait::async_trait;
-use reqwest::{Client, Url};
+use reqwest::{Client, ClientBuilder, Url};
+use std::time::Duration;
 
 use crate::api::api_reference::{ApiError, ControllerApi};
 
@@ -21,7 +22,10 @@ impl SC2Controller {
 
         Ok(Self {
             url,
-            client: Client::new(),
+            client: ClientBuilder::new()
+                .timeout(Duration::from_secs(3 * 60))
+                .build()
+                .unwrap(),
             process_key: 0,
         })
     }

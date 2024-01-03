@@ -27,7 +27,7 @@ impl AiArenaApiClient {
         Ok(Self {
             url,
             client: ClientBuilder::new()
-                .timeout(Duration::from_secs(2 * 60))
+                .timeout(Duration::from_secs(3 * 60))
                 .build()
                 .unwrap(),
             token: token.to_string(),
