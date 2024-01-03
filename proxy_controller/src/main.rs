@@ -141,7 +141,7 @@ async fn main() {
                         ))
                     }
                 }))
-                .timeout(Duration::from_secs(120))
+                .timeout(Duration::from_secs(300))
                 .into_inner(),
         )
         .with_state(app_state);

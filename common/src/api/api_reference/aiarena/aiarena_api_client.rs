@@ -191,13 +191,20 @@ impl AiArenaApiClient {
             .request(reqwest::Method::POST, url.clone())
             .json(&json_body);
 
-        debug!("{:?}", &url.host_str());
-        debug!("{:?}", &json_body);
-
         let request = request_builder.build()?;
+        let max_retries = 3;
+        let mut retries = 0;
+        let mut response = None;
+        while retries < max_retries {
 
-        let response = self.client.execute(request).await?;
-
+            response = Some(self.client.execute(request.try_clone().unwrap()).await?);
+            if response.as_ref().unwrap().status() == StatusCode::REQUEST_TIMEOUT{
+                retries +=1
+            }else{
+                break;
+            }
+        }
+        let response = response.unwrap();
         let status = response.status();
 
         if !status.is_client_error() && !status.is_server_error() {
