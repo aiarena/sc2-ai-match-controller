@@ -8,6 +8,7 @@ use async_trait::async_trait;
 use bytes::Bytes;
 use reqwest::multipart::Form;
 use reqwest::{Client, ClientBuilder, StatusCode, Url};
+use serde::{Deserialize, Serialize};
 use tracing::{debug, error, trace};
 
 pub struct AiArenaApiClient {
@@ -169,6 +170,61 @@ impl AiArenaApiClient {
             }
         }
     }
+
+    pub async fn download_zip_cached(
+        &self,
+        url: &str,
+        source_url: &str,
+        unique_key: &str,
+        md5_hash: &str,
+    ) -> Result<Bytes, ApiError<AiArenaApiError>> {
+        // static string, so the constructor should catch any parse errors
+        let url = Url::parse(url).map_err(ApiError::from)?;
+
+        let json_body = CacheDownloadRequest {
+            unique_key: unique_key.to_string(),
+            url: source_url.to_string(),
+            md5_hash: md5_hash.to_string(),
+        };
+        let request_builder = self
+            .client
+            .request(reqwest::Method::POST, url.clone())
+            .json(&json_body);
+
+        debug!("{:?}", &url.host_str());
+        debug!("{:?}", &json_body);
+
+        let request = request_builder.build()?;
+
+        let response = self.client.execute(request).await?;
+
+        let status = response.status();
+
+        if !status.is_client_error() && !status.is_server_error() {
+            let content = response.bytes().await?;
+            Ok(content)
+        } else {
+            let content = response.text().await?;
+
+            debug!(
+                "Website:\nUrl:{}\nStatus:{}\nResponse:{}",
+                &url, status, content
+            );
+            match serde_json::from_str::<AiArenaApiError>(&content).map_err(ApiError::from) {
+                Ok(api_error_message) => {
+                    let error = ResponseContent {
+                        status,
+                        api_error_message,
+                    };
+                    Err(ApiError::ResponseError(error))
+                }
+                Err(e) => {
+                    error!("status={},error{}", status, e);
+                    Err(e)
+                }
+            }
+        }
+    }
     pub async fn submit_result(&self, form: Form) -> Result<StatusCode, reqwest::Error> {
         let api_submission_url = self.url.join(Self::API_RESULTS_ENDPOINT).unwrap();
         let request = self
@@ -213,6 +269,14 @@ impl ControllerApi for AiArenaApiClient {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct CacheDownloadRequest {
+    #[serde(rename = "uniqueKey")]
+    pub unique_key: String,
+    pub url: String,
+    #[serde(rename = "md5hash")]
+    pub md5_hash: String,
+}
 #[cfg(test)]
 mod tests {
     use crate::api::api_reference::aiarena::aiarena_api_client::AiArenaApiClient;

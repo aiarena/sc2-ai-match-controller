@@ -42,6 +42,7 @@ pub struct ACConfig {
     pub validate_race: bool,
     pub visualize: bool,
     pub aws: bool,
+    pub caching_server_url: String,
 }
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize, Eq, PartialEq)]
@@ -103,6 +104,7 @@ mod tests {
             validate_race: false,
             visualize: false,
             aws: false,
+            caching_server_url: "".to_string(),
         }
     }
 
