@@ -1,8 +1,11 @@
-use common::api::api_reference::aiarena::aiarena_api_client::AiArenaApiClient;
+use common::api::api_reference::aiarena::aiarena_api_client::{
+    AiArenaApiClient, CacheDownloadRequest,
+};
 use common::configuration::ac_config::ACConfig;
 use common::models::aiarena::aiarena_match::AiArenaMatch;
 use httpmock::prelude::*;
 use httpmock::MockServer;
+use serde_json::json;
 use url::{ParseError, Url};
 
 pub fn setup_mock_server(settings: &ACConfig) -> MockServer {
@@ -48,9 +51,7 @@ pub fn setup_mock_server(settings: &ACConfig) -> MockServer {
             .header("Content-Type", "application/json");
     });
     mockserver.mock(|when, then| {
-        when.method(GET)
-            .path("/media/maps/AutomatonLE")
-            .header("authorization", format!("Token {token}",));
+        when.method(GET).path("/media/maps/AutomatonLE");
         then.status(200).body(include_bytes!(
             "../../../testing/testing-maps/AutomatonLE.SC2Map"
         ));
@@ -59,6 +60,12 @@ pub fn setup_mock_server(settings: &ACConfig) -> MockServer {
         when.method(GET)
             .path("/api/arenaclient/matches/1/1/zip/")
             .header("Authorization", format!("Token {token}",));
+        then.status(200).body(include_bytes!(
+            "../../../testing/api-based/zip_files/basic_bot.zip"
+        ));
+    });
+    mockserver.mock(|when, then| {
+        when.method(GET).path("/api/arenaclient/matches/1/1/zip/");
         then.status(200).body(include_bytes!(
             "../../../testing/api-based/zip_files/basic_bot.zip"
         ));
@@ -73,9 +80,21 @@ pub fn setup_mock_server(settings: &ACConfig) -> MockServer {
         ));
     });
     mockserver.mock(|when, then| {
+        when.method(GET).path("/api/arenaclient/matches/1/2/zip/");
+        then.status(200).body(include_bytes!(
+            "../../../testing/api-based/zip_files/loser_bot.zip"
+        ));
+    });
+    mockserver.mock(|when, then| {
         when.method(GET)
             .path("/api/arenaclient/matches/1/1/data/")
             .header("Authorization", format!("Token {token}",));
+        then.status(200).body(include_bytes!(
+            "../../../testing/api-based/zip_files/basic_bot_data.zip"
+        ));
+    });
+    mockserver.mock(|when, then| {
+        when.method(GET).path("/api/arenaclient/matches/1/1/data/");
         then.status(200).body(include_bytes!(
             "../../../testing/api-based/zip_files/basic_bot_data.zip"
         ));
@@ -88,6 +107,12 @@ pub fn setup_mock_server(settings: &ACConfig) -> MockServer {
             "../../../testing/api-based/zip_files/loser_bot_data.zip"
         ));
     });
+    mockserver.mock(|when, then| {
+        when.method(GET).path("/api/arenaclient/matches/1/2/data/");
+        then.status(200).body(include_bytes!(
+            "../../../testing/api-based/zip_files/loser_bot_data.zip"
+        ));
+    });
 
     mockserver.mock(|when, then| {
         when.method(POST)
@@ -96,6 +121,37 @@ pub fn setup_mock_server(settings: &ACConfig) -> MockServer {
         then.status(200);
     });
 
+    let bot1_request = CacheDownloadRequest {
+        unique_key: format!("{}_zip", get_match_response.bot1.name),
+        url: get_match_response.bot1.bot_zip,
+        md5_hash: get_match_response.bot1.bot_zip_md5hash,
+    };
+
+    mockserver.mock(|when, then| {
+        when.method(POST).path("/download").json_body(json!({
+            "uniqueKey": bot1_request.unique_key,
+            "url": bot1_request.url,
+            "md5hash": bot1_request.md5_hash
+        }));
+        then.status(200).body(include_bytes!(
+            "../../../testing/api-based/zip_files/basic_bot.zip"
+        ));
+    });
+    let bot2_request = CacheDownloadRequest {
+        unique_key: format!("{}_zip", get_match_response.bot2.name),
+        url: get_match_response.bot2.bot_zip,
+        md5_hash: get_match_response.bot2.bot_zip_md5hash,
+    };
+    mockserver.mock(|when, then| {
+        when.method(POST).path("/download").json_body(json!({
+            "uniqueKey": bot2_request.unique_key,
+            "url": bot2_request.url,
+            "md5hash": bot2_request.md5_hash
+        }));
+        then.status(200).body(include_bytes!(
+            "../../../testing/api-based/zip_files/loser_bot.zip"
+        ));
+    });
     mockserver
 }
 
