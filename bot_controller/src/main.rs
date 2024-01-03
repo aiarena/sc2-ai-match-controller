@@ -121,7 +121,7 @@ async fn main() {
                         ))
                     }
                 }))
-                .timeout(Duration::from_secs(120))
+                .timeout(Duration::from_secs(300))
                 .layer(
                     TraceLayer::new_for_http()
                         .make_span_with(DefaultMakeSpan::new())
