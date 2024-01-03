@@ -9,7 +9,7 @@ use common::configuration::ac_config::ACConfig;
 use common::PlayerNum;
 use parking_lot::RwLock;
 use std::sync::Arc;
-use tracing::{self};
+use tracing::{self, error};
 
 #[tracing::instrument]
 pub async fn configuration(
@@ -23,10 +23,6 @@ pub async fn download_bot(
     //ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Json(player_num): Json<PlayerNum>,
 ) -> Result<Bytes, AppError> {
-    // todo: Implement authorization
-    // if !state.read().auth_whitelist.contains(&addr) {
-    //     return Err(DownloadError::Unauthorized.into());
-    // }
     let settings = state.read().settings.clone();
 
     let current_match = match state
@@ -45,13 +41,35 @@ pub async fn download_bot(
         settings.api_token.as_ref().unwrap(),
     )
     .unwrap(); //Would've failed before this point already
-    let download_url = match player_num {
-        PlayerNum::One => current_match.bot1.bot_zip.clone(),
-        PlayerNum::Two => current_match.bot2.bot_zip.clone(),
+    let (source_url, md5_hash, unique_key) = match player_num {
+        PlayerNum::One => (
+            current_match.bot1.bot_zip.clone(),
+            current_match.bot1.bot_zip_md5hash,
+            format!("{}_zip", current_match.bot1.name),
+        ),
+        PlayerNum::Two => (
+            current_match.bot2.bot_zip.clone(),
+            current_match.bot2.bot_zip_md5hash,
+            format!("{}_zip", current_match.bot2.name),
+        ),
     };
-    api.download_zip(&download_url, !settings.aws)
+    match api
+        .download_zip_cached(
+            &settings.caching_server_url,
+            &source_url,
+            &unique_key,
+            &md5_hash,
+        )
         .await
-        .map_err(|e| AppError::Download(DownloadError::Other(e.to_string())))
+    {
+        Ok(x) => Ok(x),
+        Err(e) => {
+            error!("{:?}", e);
+            api.download_zip(&source_url, !settings.aws)
+                .await
+                .map_err(|e| AppError::Download(DownloadError::Other(e.to_string())))
+        }
+    }
 }
 
 pub async fn get_bot_data_md5(
