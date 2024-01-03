@@ -84,7 +84,7 @@ impl AiArenaApiClient {
         let map_url = Url::parse(map_url).map_err(ApiError::from)?;
 
         let mut request_builder = self.client.request(reqwest::Method::GET, map_url.clone());
-        debug!("{:?}", map_url.host_str());
+
         if let Some(host) = map_url.host_str() {
             if host.contains("aiarena.net") {
                 request_builder =
@@ -191,13 +191,19 @@ impl AiArenaApiClient {
             .request(reqwest::Method::POST, url.clone())
             .json(&json_body);
 
-        debug!("{:?}", &url.host_str());
-        debug!("{:?}", &json_body);
-
         let request = request_builder.build()?;
-
-        let response = self.client.execute(request).await?;
-
+        let max_retries = 3;
+        let mut retries = 0;
+        let mut response = None;
+        while retries < max_retries {
+            response = Some(self.client.execute(request.try_clone().unwrap()).await?);
+            if response.as_ref().unwrap().status() == StatusCode::REQUEST_TIMEOUT {
+                retries += 1
+            } else {
+                break;
+            }
+        }
+        let response = response.unwrap();
         let status = response.status();
 
         if !status.is_client_error() && !status.is_server_error() {
