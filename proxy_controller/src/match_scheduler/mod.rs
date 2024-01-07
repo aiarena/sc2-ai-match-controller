@@ -1,7 +1,8 @@
+use std::collections::HashMap;
 use crate::game::game_config::GameConfig;
 use crate::game::game_result::GameResult;
 use crate::matches::sources::{LogsAndReplays, MatchSource};
-use crate::matches::Match;
+use crate::matches::{Match, MatchPlayer};
 use crate::state::{ProxyState, SC2Url};
 use bytes::Bytes;
 use common::api::api_reference::bot_controller_client::BotController;
@@ -249,6 +250,7 @@ pub async fn match_scheduler<M: MatchSource>(
         info!("Match finished in {:?}", start_time.elapsed());
         let game_config = GameConfig::new(&new_match, &settings);
         let logs_and_replays = match build_logs_and_replays_object(
+            &new_match.players,
             &bot_controllers,
             PathBuf::from(game_config.replay_path()).join(&game_config.replay_name),
             &settings,
@@ -301,10 +303,13 @@ pub async fn match_scheduler<M: MatchSource>(
 }
 
 async fn build_logs_and_replays_object(
+    players: &HashMap<PlayerNum, MatchPlayer>,
     bot_controllers: &[BotController],
     replay_file: PathBuf,
     settings: &ACConfig,
 ) -> io::Result<LogsAndReplays> {
+    let bot1_name = players[&PlayerNum::One].name.clone();
+    let bot2_name = players[&PlayerNum::Two].name.clone();
     let temp_folder = Path::new(&settings.temp_root).join(&settings.temp_path);
     let _ = tokio::fs::remove_dir_all(&temp_folder).await;
 
@@ -345,6 +350,9 @@ async fn build_logs_and_replays_object(
     }
 
     Ok(LogsAndReplays {
+        upload_url: format!("{}/upload", &settings.caching_server_url),
+        bot1_name,
+        bot2_name,
         bot1_dir,
         bot2_dir,
         arenaclient_log: arenaclient_logs_zip_path,

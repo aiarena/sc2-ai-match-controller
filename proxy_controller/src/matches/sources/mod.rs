@@ -109,6 +109,9 @@ impl From<&GameResult> for AiArenaGameResult {
 
 #[derive(Clone, Debug)]
 pub struct LogsAndReplays {
+    pub upload_url: String,
+    pub bot1_name: String,
+    pub bot2_name: String,
     pub bot1_dir: PathBuf,
     pub bot2_dir: PathBuf,
     pub arenaclient_log: PathBuf,

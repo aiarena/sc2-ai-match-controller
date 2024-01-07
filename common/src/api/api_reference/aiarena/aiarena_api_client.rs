@@ -231,6 +231,36 @@ impl AiArenaApiClient {
             }
         }
     }
+
+    pub async fn cache_upload(&self, url: &str, unique_key: String, file: &[u8]) -> Result<(), ApiError<String>>{
+        let mut request_builder = self
+            .client
+            .request(reqwest::Method::POST, url);
+        request_builder = request_builder.query(&[("uniqueKey", &unique_key.to_string())]);
+
+        let mut local_var_form = Form::new();
+        let part = reqwest::multipart::Part::bytes(file.to_vec()).file_name(unique_key.clone());
+        local_var_form = local_var_form.part("file", part);
+
+        request_builder = request_builder.multipart(local_var_form);
+        let local_var_req = request_builder.build()?;
+
+        let local_var_resp = self.client.execute(local_var_req).await?;
+        let local_var_status = local_var_resp.status();
+        let local_var_content = local_var_resp.text().await?;
+
+        if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
+            Ok(())
+        } else {
+            error!("{:?}: {:?}", &local_var_status, &local_var_content);
+            let error = ResponseContent {
+                status: local_var_status,
+                api_error_message: local_var_content,
+            };
+            Err(ApiError::ResponseError(error))
+        }
+
+    }
     pub async fn submit_result(&self, form: Form) -> Result<StatusCode, reqwest::Error> {
         let api_submission_url = self.url.join(Self::API_RESULTS_ENDPOINT).unwrap();
         let request = self
