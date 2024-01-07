@@ -188,5 +188,5 @@ pub async fn get_file_and_filename(path: &PathBuf) -> Result<(Vec<u8>, String), 
     let file_name = String::from(path.file_name().and_then(|p| p.to_str()).unwrap());
     let file = tokio::fs::read(path).await?;
 
-    return Ok((file, file_name));
+    Ok((file, file_name))
 }

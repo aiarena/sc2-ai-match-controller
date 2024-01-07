@@ -142,6 +142,5 @@ pub async fn create_part_from_path(
 }
 
 pub fn create_part_from_bytes(bytes: Vec<u8>, filename: String) -> reqwest::multipart::Part {
-    let file_part = reqwest::multipart::Part::bytes(bytes).file_name(filename);
-    file_part
+    reqwest::multipart::Part::bytes(bytes).file_name(filename)
 }
