@@ -131,10 +131,16 @@ impl From<&AiArenaGameResult> for AiArenaResultForm {
     }
 }
 
-async fn create_part_from_path(path: &Path) -> Result<reqwest::multipart::Part, std::io::Error> {
+pub async fn create_part_from_path(
+    path: &Path,
+) -> Result<reqwest::multipart::Part, std::io::Error> {
     let file_name = String::from(path.file_name().and_then(|p| p.to_str()).unwrap());
     let file = tokio::fs::read(path).await?;
 
     let file_part = reqwest::multipart::Part::bytes(file).file_name(file_name);
     Ok(file_part)
+}
+
+pub fn create_part_from_bytes(bytes: Vec<u8>, filename: String) -> reqwest::multipart::Part {
+    reqwest::multipart::Part::bytes(bytes).file_name(filename)
 }

@@ -53,18 +53,19 @@ pub async fn download_bot(
             format!("{}_zip", current_match.bot2.name),
         ),
     };
+    let mut url = url::Url::parse(&settings.caching_server_url).unwrap();
+    url = url.join("/download").unwrap();
+
     match api
-        .download_zip_cached(
-            &settings.caching_server_url,
-            &source_url,
-            &unique_key,
-            &md5_hash,
-        )
+        .download_zip_cached(url.as_str(), &source_url, &unique_key, &md5_hash)
         .await
     {
         Ok(x) => Ok(x),
         Err(e) => {
-            error!("{:?}", e);
+            error!(
+                "Cached data download failed, downloading from original source: {:?}",
+                e
+            );
             api.download_zip(&source_url, !settings.aws)
                 .await
                 .map_err(|e| AppError::Download(DownloadError::Other(e.to_string())))
@@ -147,13 +148,37 @@ pub async fn download_bot_data(
         settings.api_token.as_ref().unwrap(),
     )
     .unwrap(); //Would've failed before this point already
-    if let Some(download_url) = match player_num {
+    if let Some(source_url) = match player_num {
         PlayerNum::One => current_match.bot1.bot_data.clone(),
         PlayerNum::Two => current_match.bot2.bot_data.clone(),
     } {
-        api.download_zip(&download_url, !settings.aws)
+        let mut url = url::Url::parse(&settings.caching_server_url).unwrap();
+        url = url.join("/download").unwrap();
+        let (md5_hash, unique_key) = match player_num {
+            PlayerNum::One => (
+                current_match.bot1.bot_data_md5hash.unwrap(),
+                format!("{}_data", current_match.bot1.name),
+            ),
+            PlayerNum::Two => (
+                current_match.bot2.bot_data_md5hash.unwrap(),
+                format!("{}_data", current_match.bot2.name),
+            ),
+        };
+        match api
+            .download_zip_cached(url.as_str(), &source_url, &unique_key, &md5_hash)
             .await
-            .map_err(|e| AppError::Download(DownloadError::Other(e.to_string())))
+        {
+            Ok(x) => Ok(x),
+            Err(e) => {
+                error!(
+                    "Cached zip download failed, downloading from original source: {:?}",
+                    e
+                );
+                api.download_zip(&source_url, !settings.aws)
+                    .await
+                    .map_err(|e| AppError::Download(DownloadError::Other(e.to_string())))
+            }
+        }
     } else {
         Err(AppError::Download(DownloadError::NotAvailable(
             "No data url for bot".to_string(),

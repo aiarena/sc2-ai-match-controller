@@ -152,6 +152,14 @@ pub fn setup_mock_server(settings: &ACConfig) -> MockServer {
             "../../../testing/api-based/zip_files/loser_bot.zip"
         ));
     });
+
+    mockserver.mock(|when, then| {
+        when.method(POST)
+            .path("/upload")
+            .query_param_exists("uniqueKey");
+        then.status(200);
+    });
+
     mockserver
 }
 

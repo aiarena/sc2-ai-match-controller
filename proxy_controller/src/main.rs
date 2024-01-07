@@ -69,7 +69,7 @@ async fn main() {
     #[cfg(feature = "mockserver")]
     {
         settings.base_website_url = mock_server.base_url();
-        settings.caching_server_url = format!("{}/download", mock_server.base_url());
+        settings.caching_server_url = mock_server.base_url();
     }
     let log_level = &settings.logging_level;
     let env_log = std::env::var("RUST_LOG")
