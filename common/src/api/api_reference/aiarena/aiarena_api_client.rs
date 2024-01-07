@@ -232,10 +232,13 @@ impl AiArenaApiClient {
         }
     }
 
-    pub async fn cache_upload(&self, url: &str, unique_key: String, file: &[u8]) -> Result<(), ApiError<String>>{
-        let mut request_builder = self
-            .client
-            .request(reqwest::Method::POST, url);
+    pub async fn cache_upload(
+        &self,
+        url: &str,
+        unique_key: String,
+        file: &[u8],
+    ) -> Result<(), ApiError<String>> {
+        let mut request_builder = self.client.request(reqwest::Method::POST, url);
         request_builder = request_builder.query(&[("uniqueKey", &unique_key.to_string())]);
 
         let mut local_var_form = Form::new();
@@ -259,7 +262,6 @@ impl AiArenaApiClient {
             };
             Err(ApiError::ResponseError(error))
         }
-
     }
     pub async fn submit_result(&self, form: Form) -> Result<StatusCode, reqwest::Error> {
         let api_submission_url = self.url.join(Self::API_RESULTS_ENDPOINT).unwrap();

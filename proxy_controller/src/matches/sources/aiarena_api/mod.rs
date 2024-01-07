@@ -4,7 +4,7 @@ use crate::matches::Match;
 use async_trait::async_trait;
 use common::api::api_reference::aiarena::aiarena_api_client::AiArenaApiClient;
 use common::api::api_reference::aiarena::errors::AiArenaApiError;
-use common::api::api_reference::aiarena::{AiArenaResultForm, create_part_from_bytes};
+use common::api::api_reference::aiarena::{create_part_from_bytes, AiArenaResultForm};
 use common::api::api_reference::ApiError;
 use common::configuration::ac_config::ACConfig;
 use common::models::aiarena::aiarena_game_result::AiArenaGameResult;
@@ -87,22 +87,30 @@ impl MatchSource for HttpApiSource {
 
         let mut attempt = 0;
 
-        let bot1_data= get_file_and_filename(&bot1_dir.join("data.zip")).await;
+        let bot1_data = get_file_and_filename(&bot1_dir.join("data.zip")).await;
         let bot2_data = get_file_and_filename(&bot2_dir.join("data.zip")).await;
 
-         let bot1_log= get_file_and_filename(&bot1_dir.join("logs.zip")).await;
-         let bot2_log= get_file_and_filename(&bot2_dir.join("logs.zip")).await;
+        let bot1_log = get_file_and_filename(&bot1_dir.join("logs.zip")).await;
+        let bot2_log = get_file_and_filename(&bot2_dir.join("logs.zip")).await;
 
-         let replay = get_file_and_filename(&replay_file).await;
-         let arenaclient_logs = get_file_and_filename(&arenaclient_log).await;
+        let replay = get_file_and_filename(&replay_file).await;
+        let arenaclient_logs = get_file_and_filename(&arenaclient_log).await;
 
-        if let Ok(ref x) = bot1_data{
-            if let Err(e) = self.api.cache_upload(&upload_url, format!("{}_data", bot1_name), &x.0).await{
+        if let Ok(ref x) = bot1_data {
+            if let Err(e) = self
+                .api
+                .cache_upload(&upload_url, format!("{}_data", bot1_name), &x.0)
+                .await
+            {
                 error!("Error uploading to cache server: {}", e);
             }
         }
-        if let Ok(ref x) = bot2_data{
-            if let Err(e) = self.api.cache_upload(&upload_url, format!("{}_data", bot2_name), &x.0).await{
+        if let Ok(ref x) = bot2_data {
+            if let Err(e) = self
+                .api
+                .cache_upload(&upload_url, format!("{}_data", bot2_name), &x.0)
+                .await
+            {
                 error!("Error uploading to cache server: {}", e);
             }
         }
@@ -110,23 +118,35 @@ impl MatchSource for HttpApiSource {
             debug!("Attempting to submit result. Attempt number: {}", attempt);
 
             let mut form = AiArenaResultForm::from(game_result).to_inner();
-            if let Ok(ref x) = bot1_data{
-                form = form.part("bot1_data",create_part_from_bytes(x.0.clone(), x.1.clone()));
+            if let Ok(ref x) = bot1_data {
+                form = form.part(
+                    "bot1_data",
+                    create_part_from_bytes(x.0.clone(), x.1.clone()),
+                );
             }
-            if let Ok(ref x) = bot2_data{
-                form = form.part("bot2_data", create_part_from_bytes(x.0.clone(), x.1.clone()));
+            if let Ok(ref x) = bot2_data {
+                form = form.part(
+                    "bot2_data",
+                    create_part_from_bytes(x.0.clone(), x.1.clone()),
+                );
             }
-            if let Ok(ref x) = bot1_log{
+            if let Ok(ref x) = bot1_log {
                 form = form.part("bot1_log", create_part_from_bytes(x.0.clone(), x.1.clone()));
             }
-            if let Ok(ref x) = bot2_log{
+            if let Ok(ref x) = bot2_log {
                 form = form.part("bot2_log", create_part_from_bytes(x.0.clone(), x.1.clone()));
             }
-            if let Ok(ref x) = replay{
-                form = form.part("replay_file", create_part_from_bytes(x.0.clone(), x.1.clone()));
+            if let Ok(ref x) = replay {
+                form = form.part(
+                    "replay_file",
+                    create_part_from_bytes(x.0.clone(), x.1.clone()),
+                );
             }
-            if let Ok(ref x) = arenaclient_logs{
-                form = form.part("arenaclient_log", create_part_from_bytes(x.0.clone(), x.1.clone()));
+            if let Ok(ref x) = arenaclient_logs {
+                form = form.part(
+                    "arenaclient_log",
+                    create_part_from_bytes(x.0.clone(), x.1.clone()),
+                );
             }
 
             info!("{:?}", game_result);
@@ -164,10 +184,9 @@ struct Results {
     results: Vec<AiArenaGameResult>,
 }
 
-pub async fn get_file_and_filename(path: &PathBuf) -> Result<(Vec<u8>, String),std::io::Error> {
+pub async fn get_file_and_filename(path: &PathBuf) -> Result<(Vec<u8>, String), std::io::Error> {
     let file_name = String::from(path.file_name().and_then(|p| p.to_str()).unwrap());
     let file = tokio::fs::read(path).await?;
 
     return Ok((file, file_name));
-
 }

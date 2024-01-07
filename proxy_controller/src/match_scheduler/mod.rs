@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use crate::game::game_config::GameConfig;
 use crate::game::game_result::GameResult;
 use crate::matches::sources::{LogsAndReplays, MatchSource};
@@ -18,6 +17,7 @@ use common::PlayerNum;
 use futures_util::future::{join, join3, join4};
 use futures_util::TryFutureExt;
 use parking_lot::RwLock;
+use std::collections::HashMap;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;

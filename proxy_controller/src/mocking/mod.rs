@@ -154,7 +154,8 @@ pub fn setup_mock_server(settings: &ACConfig) -> MockServer {
     });
 
     mockserver.mock(|when, then| {
-        when.method(POST).path("/upload")
+        when.method(POST)
+            .path("/upload")
             .query_param_exists("uniqueKey");
         then.status(200);
     });

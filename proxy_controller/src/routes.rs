@@ -57,17 +57,15 @@ pub async fn download_bot(
     url = url.join("/download").unwrap();
 
     match api
-        .download_zip_cached(
-            url.as_str(),
-            &source_url,
-            &unique_key,
-            &md5_hash,
-        )
+        .download_zip_cached(url.as_str(), &source_url, &unique_key, &md5_hash)
         .await
     {
         Ok(x) => Ok(x),
         Err(e) => {
-            error!("Cached data download failed, downloading from original source: {:?}", e);
+            error!(
+                "Cached data download failed, downloading from original source: {:?}",
+                e
+            );
             api.download_zip(&source_url, !settings.aws)
                 .await
                 .map_err(|e| AppError::Download(DownloadError::Other(e.to_string())))
@@ -167,23 +165,20 @@ pub async fn download_bot_data(
             ),
         };
         match api
-            .download_zip_cached(
-                url.as_str(),
-                &source_url,
-                &unique_key,
-                &md5_hash,
-            )
-            .await{
-            Ok(x) => {Ok(x)}
+            .download_zip_cached(url.as_str(), &source_url, &unique_key, &md5_hash)
+            .await
+        {
+            Ok(x) => Ok(x),
             Err(e) => {
-                error!("Cached zip download failed, downloading from original source: {:?}", e);
+                error!(
+                    "Cached zip download failed, downloading from original source: {:?}",
+                    e
+                );
                 api.download_zip(&source_url, !settings.aws)
                     .await
                     .map_err(|e| AppError::Download(DownloadError::Other(e.to_string())))
             }
         }
-
-
     } else {
         Err(AppError::Download(DownloadError::NotAvailable(
             "No data url for bot".to_string(),
