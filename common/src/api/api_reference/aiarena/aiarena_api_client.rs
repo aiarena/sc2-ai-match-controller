@@ -1,5 +1,4 @@
 use std::time::Duration;
-
 use crate::api::api_reference::aiarena::errors::AiArenaApiError;
 
 use crate::api::api_reference::{ApiError, ControllerApi, ResponseContent};
@@ -26,10 +25,7 @@ impl AiArenaApiClient {
 
         Ok(Self {
             url,
-            client: ClientBuilder::new()
-                .timeout(Duration::from_secs(3 * 60))
-                .build()
-                .unwrap(),
+            client: ClientBuilder::new().build().unwrap(),
             token: token.to_string(),
         })
     }
@@ -192,18 +188,21 @@ impl AiArenaApiClient {
             .json(&json_body);
 
         let request = request_builder.build()?;
-        let max_retries = 3;
-        let mut retries = 0;
-        let mut response = None;
-        while retries < max_retries {
-            response = Some(self.client.execute(request.try_clone().unwrap()).await?);
-            if response.as_ref().unwrap().status() == StatusCode::REQUEST_TIMEOUT {
-                retries += 1
-            } else {
+        let mut local_var_resp_result;
+        let mut counter = 0;
+        loop{
+            local_var_resp_result = self.client.execute(request.try_clone().unwrap()).await;
+            if local_var_resp_result.is_ok(){
                 break;
             }
+            if counter > 10{
+                break;
+            }
+            counter +=1;
+            tokio::time::sleep(Duration::from_secs(1)).await;
         }
-        let response = response.unwrap();
+        let response = local_var_resp_result?;
+
         let status = response.status();
 
         if !status.is_client_error() && !status.is_server_error() {
@@ -238,17 +237,30 @@ impl AiArenaApiClient {
         unique_key: String,
         file: &[u8],
     ) -> Result<(), ApiError<String>> {
-        let mut request_builder = self.client.request(reqwest::Method::POST, url);
-        request_builder = request_builder.query(&[("uniqueKey", &unique_key.to_string())]);
+        let mut local_var_resp_result;
+        let mut counter = 0;
+        loop{
+            let mut request_builder = self.client.request(reqwest::Method::POST, url);
+            request_builder = request_builder.query(&[("uniqueKey", &unique_key.to_string())]);
+            let mut local_var_form = Form::new();
+            let part = reqwest::multipart::Part::bytes(file.to_vec()).file_name(unique_key.clone());
+            local_var_form = local_var_form.part("file", part);
 
-        let mut local_var_form = Form::new();
-        let part = reqwest::multipart::Part::bytes(file.to_vec()).file_name(unique_key.clone());
-        local_var_form = local_var_form.part("file", part);
+            request_builder = request_builder.multipart(local_var_form);
+            let local_var_req = request_builder.build()?;
+            local_var_resp_result = self.client.execute(local_var_req).await;
+            if local_var_resp_result.is_ok(){
+                break;
+            }
+            if counter > 10{
+                break;
+            }
+            counter +=1;
+            tokio::time::sleep(Duration::from_secs(1)).await;
+        }
+        let local_var_resp = local_var_resp_result?;
 
-        request_builder = request_builder.multipart(local_var_form);
-        let local_var_req = request_builder.build()?;
 
-        let local_var_resp = self.client.execute(local_var_req).await?;
         let local_var_status = local_var_resp.status();
         let local_var_content = local_var_resp.text().await?;
 
