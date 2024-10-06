@@ -388,7 +388,8 @@ impl Player {
                     if response.has_game_info() {
                         for pi in &mut response.mut_game_info().player_info {
                             if pi.player_id() != r_vars.player_id() {
-                                pi.player_name = Some(config.players[&player_num.other_player()].name.clone());
+                                pi.player_name =
+                                    Some(config.players[&player_num.other_player()].name.clone());
                                 pi.race_actual = pi.race_requested;
                             } else {
                                 pi.player_name = Some(config.players[&player_num].name.clone());
