@@ -23,10 +23,6 @@ use state::AppState;
 use tower::{BoxError, ServiceBuilder};
 use tower_http::trace::{DefaultMakeSpan, DefaultOnRequest, DefaultOnResponse, TraceLayer};
 use tracing::{debug, info, Span};
-#[cfg(feature = "swagger")]
-use utoipa::OpenApi;
-#[cfg(feature = "swagger")]
-use utoipa_swagger_ui::SwaggerUi;
 
 use std::path::Path;
 use std::str::FromStr;
@@ -63,11 +59,6 @@ async fn main() {
 
     #[allow(unused_mut)]
     let mut router = Router::<Arc<RwLock<AppState>>>::new();
-    #[cfg(feature = "swagger")]
-    {
-        router = router
-            .merge(SwaggerUi::new("/swagger-ui/").url("/api-doc/openapi.json", ApiDoc::openapi()));
-    }
 
     tokio::spawn(process(settings));
 
