@@ -152,6 +152,21 @@ pub fn setup_mock_server(settings: &ACConfig) -> MockServer {
             "../../../testing/api-based/zip_files/loser_bot.zip"
         ));
     });
+    let map_request = CacheDownloadRequest {
+        unique_key: format!("{}_zip", get_match_response.map.name),
+        url: get_match_response.map.file,
+        md5_hash: get_match_response.map.file_hash.unwrap(),
+    };
+    mockserver.mock(|when, then| {
+        when.method(POST).path("/download").json_body(json!({
+            "uniqueKey": map_request.unique_key,
+            "url": map_request.url,
+            "md5hash": map_request.md5_hash
+        }));
+        then.status(200).body(include_bytes!(
+            "../../../testing/testing-maps/AutomatonLE.SC2Map"
+        ));
+    });
 
     mockserver.mock(|when, then| {
         when.method(POST)

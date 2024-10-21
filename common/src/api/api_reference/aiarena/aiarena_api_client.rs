@@ -1,5 +1,5 @@
-use std::time::Duration;
 use crate::api::api_reference::aiarena::errors::AiArenaApiError;
+use std::time::Duration;
 
 use crate::api::api_reference::{ApiError, ControllerApi, ResponseContent};
 use crate::models::aiarena::aiarena_match::AiArenaMatch;
@@ -17,8 +17,8 @@ pub struct AiArenaApiClient {
 }
 
 impl AiArenaApiClient {
-    pub const API_MATCHES_ENDPOINT: &'static str = "/api/arenaclient/matches/";
-    pub const API_RESULTS_ENDPOINT: &'static str = "/api/arenaclient/results/";
+    pub const API_MATCHES_ENDPOINT: &'static str = "/api/arenaclient/v2/next-match/";
+    pub const API_RESULTS_ENDPOINT: &'static str = "/api/arenaclient/v2/submit-result/";
 
     pub fn new(website_url: &str, token: &str) -> Result<Self, url::ParseError> {
         let url = Url::parse(website_url)?;
@@ -167,7 +167,7 @@ impl AiArenaApiClient {
         }
     }
 
-    pub async fn download_zip_cached(
+    pub async fn download_cached_file(
         &self,
         url: &str,
         source_url: &str,
@@ -190,15 +190,15 @@ impl AiArenaApiClient {
         let request = request_builder.build()?;
         let mut local_var_resp_result;
         let mut counter = 0;
-        loop{
+        loop {
             local_var_resp_result = self.client.execute(request.try_clone().unwrap()).await;
-            if local_var_resp_result.is_ok(){
+            if local_var_resp_result.is_ok() {
                 break;
             }
-            if counter > 10{
+            if counter > 10 {
                 break;
             }
-            counter +=1;
+            counter += 1;
             tokio::time::sleep(Duration::from_secs(1)).await;
         }
         let response = local_var_resp_result?;
@@ -239,7 +239,7 @@ impl AiArenaApiClient {
     ) -> Result<(), ApiError<String>> {
         let mut local_var_resp_result;
         let mut counter = 0;
-        loop{
+        loop {
             let mut request_builder = self.client.request(reqwest::Method::POST, url);
             request_builder = request_builder.query(&[("uniqueKey", &unique_key.to_string())]);
             let mut local_var_form = Form::new();
@@ -249,17 +249,16 @@ impl AiArenaApiClient {
             request_builder = request_builder.multipart(local_var_form);
             let local_var_req = request_builder.build()?;
             local_var_resp_result = self.client.execute(local_var_req).await;
-            if local_var_resp_result.is_ok(){
+            if local_var_resp_result.is_ok() {
                 break;
             }
-            if counter > 10{
+            if counter > 10 {
                 break;
             }
-            counter +=1;
+            counter += 1;
             tokio::time::sleep(Duration::from_secs(1)).await;
         }
         let local_var_resp = local_var_resp_result?;
-
 
         let local_var_status = local_var_resp.status();
         let local_var_content = local_var_resp.text().await?;

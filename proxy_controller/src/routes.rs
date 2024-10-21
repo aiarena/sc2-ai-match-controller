@@ -57,7 +57,7 @@ pub async fn download_bot(
     url = url.join("/download").unwrap();
 
     match api
-        .download_zip_cached(url.as_str(), &source_url, &unique_key, &md5_hash)
+        .download_cached_file(url.as_str(), &source_url, &unique_key, &md5_hash)
         .await
     {
         Ok(x) => Ok(x),
@@ -165,7 +165,7 @@ pub async fn download_bot_data(
             ),
         };
         match api
-            .download_zip_cached(url.as_str(), &source_url, &unique_key, &md5_hash)
+            .download_cached_file(url.as_str(), &source_url, &unique_key, &md5_hash)
             .await
         {
             Ok(x) => Ok(x),
@@ -205,8 +205,29 @@ pub async fn download_map(State(state): State<Arc<RwLock<ProxyState>>>) -> Resul
         settings.api_token.as_ref().unwrap(),
     )
     .unwrap(); //Would've failed before this point already
-    let map_url = &current_match.map.file;
-    api.download_map(map_url, !settings.aws)
-        .await
-        .map_err(|e| AppError::Download(DownloadError::Other(e.to_string())))
+    let source_url = &current_match.map.file;
+    let unique_key = &current_match.map.name;
+    let mut url = url::Url::parse(&settings.caching_server_url).unwrap();
+    url = url.join("/download").unwrap();
+    if let Some(md5_hash) = &current_match.map.file_hash {
+        match api
+            .download_cached_file(url.as_str(), &source_url, &unique_key, &md5_hash)
+            .await
+        {
+            Ok(x) => Ok(x),
+            Err(e) => {
+                error!(
+                    "Cached map download failed, downloading from original source: {:?}",
+                    e
+                );
+                api.download_map(source_url, !settings.aws)
+                    .await
+                    .map_err(|e| AppError::Download(DownloadError::Other(e.to_string())))
+            }
+        }
+    } else {
+        api.download_map(source_url, !settings.aws)
+            .await
+            .map_err(|e| AppError::Download(DownloadError::Other(e.to_string())))
+    }
 }
