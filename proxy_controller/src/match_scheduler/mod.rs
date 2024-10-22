@@ -91,6 +91,7 @@ pub async fn match_scheduler<M: MatchSource>(
 
     let mut match_counter = 0;
     let rounds_per_run = settings.rounds_per_run;
+    let now = std::time::Instant::now();
     'main_loop: while match_source.has_next().await
         && (match_counter < rounds_per_run || rounds_per_run == -1)
     {
@@ -280,7 +281,7 @@ pub async fn match_scheduler<M: MatchSource>(
         let mut state = proxy_state.write();
         clean_up_state(&mut state);
     }
-
+    info!("Finished games in {:?}", now.elapsed().as_millis());
     match join3(
         bot_controllers[0].shutdown(),
         bot_controllers[1].shutdown(),

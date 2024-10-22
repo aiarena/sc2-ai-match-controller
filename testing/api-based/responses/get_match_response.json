@@ -23,13 +23,8 @@
         "type": "python"
     },
     "map": {
-        "id": 1,
         "name": "AutomatonLE",
         "file": "https://aiarena.net/media/maps/AutomatonLE",
-        "enabled": true,
-        "game_mode": 1,
-        "competitions": [
-            1
-        ]
+        "file_hash": "27223e24069f257fe95e77d6f7a3e3f2"
     }
 }

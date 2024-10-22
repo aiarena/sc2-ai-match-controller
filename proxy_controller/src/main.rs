@@ -1,6 +1,4 @@
 #![allow(dead_code)]
-#[cfg(feature = "swagger")]
-mod docs;
 mod game;
 mod match_scheduler;
 pub mod matches;

@@ -50,4 +50,4 @@ SC2_CONT_HOST="127.0.0.1"
 SC2_CONT_PORT=8083
 
 AWS = false
-CACHING_SERVER_URL="http://aiarena-caching-server-service"
+CACHING_SERVER_URL="http://aiarena-caching-nodeport-service"
