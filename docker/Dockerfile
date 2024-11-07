@@ -100,7 +100,7 @@ ENTRYPOINT ["./proxy_controller"]
 LABEL service=proxy_controller
 
 
-FROM aiarena/arenaclient-bot-base:v0.4.0 as combined
+FROM aiarena/arenaclient-bot-base:v0.5.0 as combined
 ARG APP=/app
 
 USER root
