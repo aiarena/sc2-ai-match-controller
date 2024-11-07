@@ -4,7 +4,7 @@ resources:
 namespace: arenaclients
 images:
 - name: aiarena/k8s-controller
-  newTag: v0.6.7
+  newTag: v0.6.8
 commonLabels:
   app: aiarena-k8s-controller
 apiVersion: kustomize.config.k8s.io/v1beta1
