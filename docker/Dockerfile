@@ -39,7 +39,7 @@ COPY --from=builder /app/target/*/k8s_controller ${APP}/k8s_controller
 ENTRYPOINT ["./k8s_controller"]
 LABEL service=k8s_controller
 
-FROM aiarena/arenaclient-bot-base:v0.5.4 as bot_controller
+FROM aiarena/arenaclient-bot-base:v0.6.0 as bot_controller
 ARG APP=/app
 
 RUN apt-get update \
@@ -100,7 +100,7 @@ ENTRYPOINT ["./proxy_controller"]
 LABEL service=proxy_controller
 
 
-FROM aiarena/arenaclient-bot-base:v0.5.4 as combined
+FROM aiarena/arenaclient-bot-base:v0.6.0 as combined
 ARG APP=/app
 
 USER root
