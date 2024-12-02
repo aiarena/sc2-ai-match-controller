@@ -14,7 +14,7 @@ reqwest = { version = "0.11.12", default-features = false, features = ["json", "
 tempfile = "3.3.0"
 tokio = { version = "1.0", features=["macros", "rt-multi-thread", "signal"] }
 tokio-util = { version = "0.7.4", features=["io"]}
-tower = { version = "0.4", features=["timeout"] }
+tower = { version = "0.5", features=["timeout"] }
 tower-http = { version = "0.4.0", features=["trace"] }
 tracing = "0.1"
 tracing-appender = "0.2.2"
