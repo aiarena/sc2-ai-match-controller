@@ -2,6 +2,7 @@ mod arenaclient;
 // mod old;
 mod k8s_config;
 mod k8s_processor;
+mod profile;
 mod state;
 // #[cfg(feature = "swagger")]
 // mod docs;
