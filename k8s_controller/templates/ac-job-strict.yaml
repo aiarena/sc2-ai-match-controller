@@ -138,7 +138,7 @@ spec:
       terminationGracePeriodSeconds: 30
       volumes:
         - configMap:
-            defaultMode: 424
+            defaultMode: 420
             name: placeholder
             optional: false
           name: config

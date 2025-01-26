@@ -32,11 +32,7 @@ RUN apt-get update \
 ENV TZ=Etc/UTC
 
 RUN mkdir -m 777 ${APP} \
-    && mkdir -m 777 /bots \
-    && mkdir -m 777 /logs \
-    && mkdir -m 777 /replays \
-    && chmod -R 777 /root \
-    && chmod -R 777 /tmp
+    && mkdir -m 777 /logs
 
 WORKDIR ${APP}
 
@@ -59,9 +55,7 @@ ENV TZ=Etc/UTC
 RUN mkdir -m 777 ${APP} \
     && mkdir -m 777 /bots \
     && mkdir -m 777 /logs \
-    && mkdir -m 777 /replays \
-    && chmod -R 777 /root \
-    && chmod -R 777 /tmp
+    && chmod -R 777 /root
 
 WORKDIR ${APP}
 
@@ -80,9 +74,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 RUN mkdir -m 777 ${APP} \
-    && mkdir -m 777 /bots \
     && mkdir -m 777 /logs \
-    && mkdir -m 777 /replays \
     && chmod -R 777 /root \
     && chmod -R 777 /tmp
 
@@ -116,7 +108,6 @@ RUN mkdir -m 777 ${APP} \
     && mkdir -m 777 /bots \
     && mkdir -m 777 /logs \
     && mkdir -m 777 /replays \
-    && chmod -R 777 /root \
     && chmod -R 777 /tmp
 
 WORKDIR ${APP}
