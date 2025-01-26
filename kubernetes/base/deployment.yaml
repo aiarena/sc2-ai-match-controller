@@ -62,11 +62,11 @@ spec:
       volumes:
       - name: arenaclients-json
         secret:
-          defaultMode: 424
+          defaultMode: 420
           optional: false
           secretName: arenaclients-secrets
       - configMap:
-          defaultMode: 424
+          defaultMode: 420
           name: k8s-controller-config
           optional: false
         name: config
