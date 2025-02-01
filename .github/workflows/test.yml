@@ -18,7 +18,7 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Install lld & clang
       run: sudo apt install -y lld clang
@@ -49,7 +49,7 @@ jobs:
     name: Cargo test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -68,7 +68,7 @@ jobs:
     name: Cargo format check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -87,7 +87,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: 'true'
 
@@ -99,7 +99,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: 'true'
 
@@ -110,6 +110,8 @@ jobs:
     name: API-based integration test
     runs-on: ubuntu-latest
     steps:
+
+      - uses: actions/checkout@v4
 
       - name: Run api-based integration tests
         run: TEST_CARGO_FLAGS="--release --verbose" docker compose -f ./testing/api-based/docker-compose.yml up --exit-code-from=proxy_controller --force-recreate --build
