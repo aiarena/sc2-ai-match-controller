@@ -9,7 +9,7 @@ jobs:
     uses: ./.github/workflows/test.yml
 
   Release:
-    needs: [Test]
+    needs: Test
     runs-on: ubuntu-latest
     steps:
       - name: Select release version
