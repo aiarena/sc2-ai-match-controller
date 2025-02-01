@@ -1,6 +1,7 @@
-name: "Test"
+name: Test
 
 on:
+  workflow_call:
   workflow_dispatch:
   pull_request:
     branches:
@@ -14,10 +15,8 @@ env:
 
 jobs:
   build:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
+    name: Build
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
     
@@ -47,11 +46,8 @@ jobs:
         args: --all-targets --all-features
   
   test:
-    name: Cargo Test
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ ubuntu-latest ]
+    name: Cargo test
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - uses: actions-rs/toolchain@v1
@@ -67,8 +63,9 @@ jobs:
         with:
           command: test
           args: --verbose
+
   fmt:
-    name: Cargo Format
+    name: Cargo format check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -86,11 +83,8 @@ jobs:
           args: --all -- --check
 
   docker:
+    name: Integration test
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        os: [ ubuntu-latest ]
-      fail-fast: false
     steps:
       - name: Check disk space
         run: df . -h
@@ -145,6 +139,3 @@ jobs:
       
       - name: Run file-based combined integration tests
         run: TEST_CARGO_FLAGS="--release --verbose" docker compose -f ./testing/file-based-combined/docker-compose.yml up --exit-code-from=combined --force-recreate --build
-
-      
-
