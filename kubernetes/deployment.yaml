@@ -2,15 +2,16 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
+    app: aiarena-k8s-controller
   name: k8s-controller
   namespace: arenaclients
 spec:
   progressDeadlineSeconds: 600
   replicas: 1
   revisionHistoryLimit: 5
-  selector:
-    matchLabels:
-
+  selector:	
+    matchLabels:	
+      app: aiarena-k8s-controller
   strategy:
     rollingUpdate:
       maxSurge: 25%
@@ -21,8 +22,8 @@ spec:
       annotations:
         cattle.io/timestamp: "2023-01-21T11:43:14Z"
       creationTimestamp: null
-      labels:
-  
+      labels:	
+        app: aiarena-k8s-controller
     spec:
       affinity: {}
       containers:
