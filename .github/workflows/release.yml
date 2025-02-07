@@ -32,6 +32,7 @@ jobs:
         run: |
           cp -vr kubernetes ${{ runner.temp }}
           echo 'Setting version ${{ steps.version.outputs.tag }} in deployment descriptors'
+          sed -i -e 's|0.0.0|${{ steps.version.outputs.tag }}|g' ${{ runner.temp }}/kubernetes/configmap.yaml
           sed -i -e 's|aiarena/k8s-controller|aiarena/k8s-controller:${{ steps.version.outputs.tag }}|g' ${{ runner.temp }}/kubernetes/deployment.yaml
           git fetch
           git switch kubernetes
