@@ -10,7 +10,7 @@ use common::PlayerNum;
 use futures_util::{SinkExt, StreamExt};
 use protobuf::{EnumOrUnknown, Message, MessageField};
 use sc2_proto::sc2api::{
-    Request, RequestJoinGame, RequestLeaveGame, RequestPing, RequestSaveReplay, Response, Status,
+    Request, RequestJoinGame, RequestLeaveGame, RequestPing, RequestSaveReplay, Response, ResponseDebug, Status,
 };
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -360,7 +360,6 @@ impl Player {
     ) -> Result<PlayerResult, PlayerError> {
         let mut r_vars = RuntimeVars::new(&config);
         self.bot_ws_timeout = r_vars.timeout_secs;
-        let mut debug_response = create_empty_debug_response();
         let mut response: Response;
 
         r_vars.player_id = self
@@ -373,7 +372,7 @@ impl Player {
                     r_vars.record_frame_time();
 
                     if config.disable_debug && request.has_debug() {
-                        debug_response.set_id(request.id());
+                        let debug_response = create_empty_debug_response(&request);
                         self.bot_send_response(&debug_response).await?;
                         continue;
                     } else if request.has_leave_game() || request.has_quit() {
@@ -545,10 +544,12 @@ fn proto_join_game_participant(
     request
 }
 
-fn create_empty_debug_response() -> Response {
+fn create_empty_debug_response(request: &Request) -> Response {
     let mut debug_response = Response::new();
-    debug_response.set_id(0);
+    let debug_response_debug = ResponseDebug::new();
+    debug_response.set_id(request.id());
     debug_response.set_status(Status::in_game);
+    debug_response.set_debug(debug_response_debug);
     debug_response
 }
 
