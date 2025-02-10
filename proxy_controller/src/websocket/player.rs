@@ -10,7 +10,8 @@ use common::PlayerNum;
 use futures_util::{SinkExt, StreamExt};
 use protobuf::{EnumOrUnknown, Message, MessageField};
 use sc2_proto::sc2api::{
-    Request, RequestJoinGame, RequestLeaveGame, RequestPing, RequestSaveReplay, Response, ResponseDebug, Status,
+    Request, RequestJoinGame, RequestLeaveGame, RequestPing, RequestSaveReplay, Response,
+    ResponseDebug, Status,
 };
 use std::net::SocketAddr;
 use std::path::PathBuf;
