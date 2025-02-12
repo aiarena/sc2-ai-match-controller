@@ -1,51 +1,32 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  namespace: arenaclients
+  name: k8s-controller
   labels:
     app: aiarena-k8s-controller
-  name: k8s-controller
-  namespace: arenaclients
 spec:
-  progressDeadlineSeconds: 600
   replicas: 1
-  revisionHistoryLimit: 5
   selector:	
     matchLabels:	
       app: aiarena-k8s-controller
-  strategy:
-    rollingUpdate:
-      maxSurge: 25%
-      maxUnavailable: 25%
-    type: RollingUpdate
   template:
     metadata:
-      annotations:
-        cattle.io/timestamp: "2023-01-21T11:43:14Z"
-      creationTimestamp: null
       labels:	
         app: aiarena-k8s-controller
     spec:
-      affinity: {}
       containers:
       - image: aiarena/k8s-controller
-        imagePullPolicy: Always
         name: k8s-controller
         ports:
         - containerPort: 8085
           name: 8085tcp
           protocol: TCP
         readinessProbe:
-          failureThreshold: 3
           httpGet:
             path: /health
             port: 8085
             scheme: HTTP
-          periodSeconds: 10
-          successThreshold: 1
-          timeoutSeconds: 1
-        resources: {}
-        terminationMessagePath: /dev/termination-log
-        terminationMessagePolicy: File
         volumeMounts:
         - mountPath: /app/arenaclients.json
           name: arenaclients-json
@@ -53,21 +34,15 @@ spec:
         - mountPath: /app/config.toml
           name: config
           subPath: config.toml
-      dnsPolicy: ClusterFirst
       restartPolicy: Always
-      schedulerName: default-scheduler
-      securityContext: {}
       serviceAccount: k8s-controller
       serviceAccountName: k8s-controller
-      terminationGracePeriodSeconds: 30
       volumes:
       - name: arenaclients-json
         secret:
           defaultMode: 420
-          optional: false
           secretName: arenaclients-secrets
-      - configMap:
+      - name: config
+        configMap:
           defaultMode: 420
           name: k8s-controller-config
-          optional: false
-        name: config
