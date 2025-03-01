@@ -39,6 +39,8 @@ spec:
             - mountPath: /app/config.toml
               name: config
               subPath: config.toml
+            - mountPath: /logs
+              name: logs
           __active: true
         - env:
             - name: ACBOT_PORT
@@ -100,11 +102,16 @@ spec:
               path: /health
               port: 8083
               scheme: HTTP
+          volumeMounts:
+            - mountPath: /logs
+              name: logs
       restartPolicy: Never
       volumes:
         - name: config
           configMap:
             defaultMode: 420
             name: placeholder
+        - name: logs
+          emptyDir: {}
   backoffLimit: 6
 __clone: true
