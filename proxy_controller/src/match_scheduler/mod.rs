@@ -323,10 +323,7 @@ async fn build_logs_and_replays_object(
         .unwrap(); // todo: dont unwrap
 
     // Copy sc2_controller logs
-    let sc2_log_path_str = format!(
-        "{}/sc2_controller/sc2_controller.log",
-        &settings.log_root
-    );
+    let sc2_log_path_str = format!("{}/sc2_controller/sc2_controller.log", &settings.log_root);
     let sc2_log_path = Path::new(&sc2_log_path_str).to_path_buf();
 
     if sc2_log_path.exists() {
