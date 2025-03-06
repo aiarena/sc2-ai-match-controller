@@ -5,7 +5,7 @@ metadata:
   namespace: arenaclients
 data:
   config.toml: |-
-    VERSION = "2025.02.12-20.20"
+    VERSION = "2025.03.06-10.43"
     OLD_MATCH_DELETE_AFTER_MINUTES = 10
     JOB_PREFIX= "prod"
     WEBSITE_URL= "https://aiarena.net"
