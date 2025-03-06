@@ -322,6 +322,18 @@ async fn build_logs_and_replays_object(
         .await
         .unwrap(); // todo: dont unwrap
 
+    // Copy sc2_controller logs
+    let sc2_log_path_str = format!("{}/sc2_controller/sc2_controller.log", &settings.log_root);
+    let sc2_log_path = Path::new(&sc2_log_path_str).to_path_buf();
+
+    if sc2_log_path.exists() {
+        let _ = tokio::fs::copy(
+            sc2_log_path,
+            arenaclient_log_directory.join("sc2_controller.log"),
+        )
+        .await;
+    }
+
     // Copy proxy_controller logs last to pick up any potential issues
     let proxy_log_path_str = format!(
         "{}/proxy_controller/proxy_controller.log",
@@ -336,6 +348,8 @@ async fn build_logs_and_replays_object(
         )
         .await;
     }
+
+    // Zip all log files into a single zip file
     let arenaclient_logs_zip_path = temp_folder.join("ac_log.zip");
 
     let ac_zip_result = common::utilities::zip_utils::zip_directory_to_path(
