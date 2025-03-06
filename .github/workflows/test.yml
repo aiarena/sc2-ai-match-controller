@@ -18,6 +18,14 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     steps:
+
+    - name: Free Disk Space
+      uses: jlumbroso/free-disk-space@main
+      with:
+        large-packages: false
+        tool-cache: false
+        swap-storage: false
+
     - uses: actions/checkout@v4
     
     - name: Install lld & clang
