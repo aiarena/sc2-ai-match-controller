@@ -107,31 +107,6 @@ pub async fn start_sc2(State(state): State<AppState>) -> Result<Json<StartRespon
     }
 }
 
-pub async fn download_controller_log(
-    State(state): State<AppState>,
-) -> Result<
-    (
-        [(HeaderName, &'static str); 1],
-        StreamBody<ReaderStream<tokio::fs::File>>,
-    ),
-    AppError,
-> {
-    let log_path = format!(
-        "{}/sc2_controller/sc2_controller.log",
-        &state.settings.log_root
-    );
-    let file = tokio::fs::File::open(&log_path)
-        .await
-        .map_err(|e| AppError::Download(DownloadError::FileNotFound(e)))?;
-    // convert the `AsyncRead` into a `Stream`
-    let stream = ReaderStream::new(file);
-    // convert the `Stream` into an `axum::body::HttpBody`
-    let body = StreamBody::new(stream);
-
-    let headers = [(header::CONTENT_TYPE, "text/log; charset=utf-8")];
-    Ok((headers, body))
-}
-
 #[tracing::instrument]
 #[cfg_attr(feature = "swagger",utoipa::path(
 get,
