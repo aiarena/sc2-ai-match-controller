@@ -5,9 +5,7 @@ mod utils;
 
 #[cfg(feature = "swagger")]
 use crate::docs::ApiDoc;
-use crate::routes::{
-    download_bot_data, download_bot_log, start_bot, terminate_bot,
-};
+use crate::routes::{download_bot_data, download_bot_log, start_bot, terminate_bot};
 use axum::http::Request;
 use axum::response::Response;
 use axum::routing::{get, post};
