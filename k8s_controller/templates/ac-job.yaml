@@ -39,7 +39,7 @@ spec:
             - mountPath: /app/config.toml
               name: config
               subPath: config.toml
-            - mountPath: /logs/proxy_controller
+            - mountPath: /logs
               name: logs
               subPath: proxy-controller
           __active: true
