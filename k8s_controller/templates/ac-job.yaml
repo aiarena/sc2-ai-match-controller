@@ -41,7 +41,6 @@ spec:
               subPath: config.toml
             - mountPath: /logs
               name: logs
-              subPath: proxy-controller
           __active: true
         - env:
             - name: ACBOT_PORT
