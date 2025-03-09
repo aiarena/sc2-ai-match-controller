@@ -312,33 +312,6 @@ pub async fn start_bot(
 #[tracing::instrument(skip(state))]
 #[cfg_attr(feature = "swagger", utoipa::path(
 get,
-path = "/download/controller_log",
-responses(
-(status = 200, description = "Request Completed")
-)
-))]
-pub async fn download_controller_log(
-    State(state): State<AppState>,
-) -> Result<FileResponse, AppError> {
-    let log_path = format!(
-        "{}/bot_controller/bot_controller.log",
-        &state.settings.log_root
-    );
-    let file = tokio::fs::File::open(&log_path)
-        .await
-        .map_err(|e| AppError::Download(DownloadError::FileNotFound(e)))?;
-    // convert the `AsyncRead` into a `Stream`
-    let stream = ReaderStream::new(file);
-    // convert the `Stream` into an `axum::body::HttpBody`
-    let body = StreamBody::new(stream);
-
-    let headers = [(header::CONTENT_TYPE, "text/log; charset=utf-8")];
-    Ok((headers, body))
-}
-
-#[tracing::instrument(skip(state))]
-#[cfg_attr(feature = "swagger", utoipa::path(
-get,
 path = "/download/bot/{process_key}/log",
 params(
 ("process_key" = u16, Path, description = "process_key of bot process to fetch logs for")

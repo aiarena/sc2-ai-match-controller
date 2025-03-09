@@ -318,43 +318,13 @@ async fn build_logs_and_replays_object(
 
     let (bot1_dir, bot2_dir) = build_bot_logs(&temp_folder, bot_controllers).await.unwrap();
 
-    let arenaclient_log_directory = build_arenaclient_logs(&temp_folder, bot_controllers)
-        .await
-        .unwrap(); // todo: dont unwrap
-
-    // Copy sc2_controller logs
-    let sc2_log_path_str = format!("{}/sc2_controller/sc2_controller.log", &settings.log_root);
-    let sc2_log_path = Path::new(&sc2_log_path_str).to_path_buf();
-
-    if sc2_log_path.exists() {
-        let _ = tokio::fs::copy(
-            sc2_log_path,
-            arenaclient_log_directory.join("sc2_controller.log"),
-        )
-        .await;
-    }
-
-    // Copy proxy_controller logs last to pick up any potential issues
-    let proxy_log_path_str = format!(
-        "{}/proxy_controller/proxy_controller.log",
-        &settings.log_root
-    );
-    let proxy_log_path = Path::new(&proxy_log_path_str).to_path_buf();
-
-    if proxy_log_path.exists() {
-        let _ = tokio::fs::copy(
-            proxy_log_path,
-            arenaclient_log_directory.join("proxy_controller.log"),
-        )
-        .await;
-    }
-
     // Zip all log files into a single zip file
+    let log_root_path = Path::new(&settings.log_root);
     let arenaclient_logs_zip_path = temp_folder.join("ac_log.zip");
 
     let ac_zip_result = common::utilities::zip_utils::zip_directory_to_path(
         &arenaclient_logs_zip_path,
-        &arenaclient_log_directory,
+        &log_root_path,
     );
 
     match ac_zip_result {
@@ -466,34 +436,6 @@ fn clean_up_state(state: &mut ProxyState) {
 async fn write_file(path: &Path, bytes: &Bytes) -> std::io::Result<()> {
     let mut file = File::create(path).await?;
     file.write_all(bytes.as_ref()).await
-}
-
-async fn build_arenaclient_logs(
-    temp_folder: &Path,
-    bot_controllers: &[BotController],
-) -> io::Result<PathBuf> {
-    let arenaclient_logs_dir = temp_folder.join("arenaclient");
-    tokio::fs::create_dir(&arenaclient_logs_dir).await?;
-
-    let bot_controller_dir = arenaclient_logs_dir.join("bot");
-    tokio::fs::create_dir(&bot_controller_dir).await?;
-
-    let res = join(
-        bot_controllers[0].download_controller_log().and_then(|x| {
-            let file_path = bot_controller_dir.join("bot_controller1.log");
-            async move { write_file(&file_path, &x).await.map_err(ApiError::from) }
-        }),
-        bot_controllers[1].download_controller_log().and_then(|x| {
-            let file_path = bot_controller_dir.join("bot_controller2.log");
-            async move { write_file(&file_path, &x).await.map_err(ApiError::from) }
-        }),
-    )
-    .await;
-    if let (Err(e), _) | (_, Err(e)) = res {
-        error!("{:?}", e)
-    }
-
-    Ok(arenaclient_logs_dir)
 }
 
 fn create_start_bot(

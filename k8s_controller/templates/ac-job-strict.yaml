@@ -63,6 +63,10 @@ spec:
               cpu: '2'
             requests:
               cpu: '1'
+          volumeMounts:
+            - mountPath: /logs/bot_controller
+              name: logs
+              subPath: bot-controller-1
         - env:
             - name: ACBOT_PORT
               value: '8082'
@@ -84,6 +88,10 @@ spec:
               cpu: '2'
             requests:
               cpu: '1'
+          volumeMounts:
+            - mountPath: /logs/bot_controller
+              name: logs
+              subPath: bot-controller-2
         - env:
             - name: ACSC2_PORT
               value: '8083'
@@ -103,8 +111,9 @@ spec:
               port: 8083
               scheme: HTTP
           volumeMounts:
-            - mountPath: /logs
+            - mountPath: /logs/sc2_controller
               name: logs
+              subPath: sc2-controller
       restartPolicy: Never
       volumes:
         - name: config

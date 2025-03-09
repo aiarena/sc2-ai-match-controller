@@ -1,9 +1,6 @@
-use axum::body::StreamBody;
 use axum::extract::{Path, State};
-use axum::http::header;
 use axum::Json;
 use common::api::errors::app_error::AppError;
-use common::api::errors::download_error::DownloadError;
 use common::api::errors::map_error::MapError;
 use common::api::errors::process_error::ProcessError;
 use common::api::state::AppState;
@@ -14,11 +11,9 @@ use common::paths;
 use common::portpicker::pick_unused_port_in_range;
 use common::utilities::directory::ensure_directory_structure;
 use common::utilities::portpicker::Port;
-use reqwest::header::HeaderName;
 use reqwest::Client;
 use tempfile::TempDir;
 use tokio::io::AsyncWriteExt;
-use tokio_util::io::ReaderStream;
 use tracing::info;
 
 use crate::PREFIX;
@@ -105,31 +100,6 @@ pub async fn start_sc2(State(state): State<AppState>) -> Result<Json<StartRespon
     } else {
         Err(ProcessError::StartError("Could not find executable".to_string()).into())
     }
-}
-
-pub async fn download_controller_log(
-    State(state): State<AppState>,
-) -> Result<
-    (
-        [(HeaderName, &'static str); 1],
-        StreamBody<ReaderStream<tokio::fs::File>>,
-    ),
-    AppError,
-> {
-    let log_path = format!(
-        "{}/sc2_controller/sc2_controller.log",
-        &state.settings.log_root
-    );
-    let file = tokio::fs::File::open(&log_path)
-        .await
-        .map_err(|e| AppError::Download(DownloadError::FileNotFound(e)))?;
-    // convert the `AsyncRead` into a `Stream`
-    let stream = ReaderStream::new(file);
-    // convert the `Stream` into an `axum::body::HttpBody`
-    let body = StreamBody::new(stream);
-
-    let headers = [(header::CONTENT_TYPE, "text/log; charset=utf-8")];
-    Ok((headers, body))
 }
 
 #[tracing::instrument]
