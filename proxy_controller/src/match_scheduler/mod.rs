@@ -319,11 +319,12 @@ async fn build_logs_and_replays_object(
     let (bot1_dir, bot2_dir) = build_bot_logs(&temp_folder, bot_controllers).await.unwrap();
 
     // Zip all log files into a single zip file
+    let log_root_path = Path::new(&settings.log_root);
     let arenaclient_logs_zip_path = temp_folder.join("ac_log.zip");
 
     let ac_zip_result = common::utilities::zip_utils::zip_directory_to_path(
         &arenaclient_logs_zip_path,
-        &settings.log_root,
+        &log_root_path,
     );
 
     match ac_zip_result {

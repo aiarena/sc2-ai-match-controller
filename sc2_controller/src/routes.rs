@@ -1,9 +1,6 @@
-use axum::body::StreamBody;
 use axum::extract::{Path, State};
-use axum::http::header;
 use axum::Json;
 use common::api::errors::app_error::AppError;
-use common::api::errors::download_error::DownloadError;
 use common::api::errors::map_error::MapError;
 use common::api::errors::process_error::ProcessError;
 use common::api::state::AppState;
@@ -14,11 +11,9 @@ use common::paths;
 use common::portpicker::pick_unused_port_in_range;
 use common::utilities::directory::ensure_directory_structure;
 use common::utilities::portpicker::Port;
-use reqwest::header::HeaderName;
 use reqwest::Client;
 use tempfile::TempDir;
 use tokio::io::AsyncWriteExt;
-use tokio_util::io::ReaderStream;
 use tracing::info;
 
 use crate::PREFIX;
