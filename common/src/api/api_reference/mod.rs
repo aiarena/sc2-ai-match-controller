@@ -272,15 +272,6 @@ pub trait ControllerApi {
             }
         }
     }
-    async fn download_controller_log(&self) -> Result<Bytes, ApiError<ApiErrorMessage>> {
-        let log_url = self.url().join("/download/controller_log").unwrap(); // static string, so the constructor should catch any parse
-                                                                            // errors
-        let request = self
-            .client()
-            .request(reqwest::Method::GET, log_url)
-            .build()?;
-        self.execute_request_file(request).await
-    }
 }
 
 #[derive(Debug)]

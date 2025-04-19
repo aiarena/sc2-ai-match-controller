@@ -95,6 +95,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
+      - name: Free Disk Space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          large-packages: false
+          tool-cache: false
+          swap-storage: false
+
       - uses: actions/checkout@v4
         with:
           submodules: 'true'
@@ -107,6 +114,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
+      - name: Free Disk Space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          large-packages: false
+          tool-cache: false
+          swap-storage: false
+
       - uses: actions/checkout@v4
         with:
           submodules: 'true'
@@ -118,6 +132,13 @@ jobs:
     name: API-based integration test
     runs-on: ubuntu-latest
     steps:
+
+      - name: Free Disk Space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          large-packages: false
+          tool-cache: false
+          swap-storage: false
 
       - uses: actions/checkout@v4
 
