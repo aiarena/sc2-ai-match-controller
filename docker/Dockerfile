@@ -43,7 +43,7 @@ LABEL service=k8s_controller
 
 ###########################################################
 
-FROM aiarena/arenaclient-bot-base:v0.6.1 AS bot_controller
+FROM aiarena/arenaclient-bot-base:v0.7.0 AS bot_controller
 ARG APP=/app
 
 RUN apt-get update \
@@ -119,7 +119,7 @@ LABEL service=proxy_controller
 
 ###########################################################
 
-FROM aiarena/arenaclient-bot-base:v0.6.1 AS combined
+FROM aiarena/arenaclient-bot-base:v0.7.0 AS combined
 ARG APP=/app
 
 USER root
