@@ -19,9 +19,8 @@ pub async fn configuration(
 }
 
 pub async fn download_bot(
-    State(state): State<Arc<RwLock<ProxyState>>>,
-    //ConnectInfo(addr): ConnectInfo<SocketAddr>,
-    Json(player_num): Json<PlayerNum>,
+    state: Arc<RwLock<ProxyState>>,
+    player_num: PlayerNum,
 ) -> Result<Bytes, AppError> {
     let settings = state.read().settings.clone();
 
@@ -73,58 +72,9 @@ pub async fn download_bot(
     }
 }
 
-pub async fn get_bot_data_md5(
-    State(state): State<Arc<RwLock<ProxyState>>>,
-    Json(player_num): Json<PlayerNum>,
-) -> Result<String, AppError> {
-    let current_match = match state
-        .read()
-        .current_match
-        .as_ref()
-        .and_then(|x| x.aiarena_match.clone())
-    {
-        None => {
-            return Err(DownloadError::Other("current_match is None".to_string()).into());
-        }
-        Some(m) => m,
-    };
-    match player_num {
-        PlayerNum::One => Ok(current_match
-            .bot1
-            .bot_data_md5hash
-            .unwrap_or("".to_string())),
-        PlayerNum::Two => Ok(current_match
-            .bot2
-            .bot_data_md5hash
-            .unwrap_or("".to_string())),
-    }
-}
-
-pub async fn get_bot_zip_md5(
-    State(state): State<Arc<RwLock<ProxyState>>>,
-    Json(player_num): Json<PlayerNum>,
-) -> Result<String, AppError> {
-    let current_match = match state
-        .read()
-        .current_match
-        .as_ref()
-        .and_then(|x| x.aiarena_match.clone())
-    {
-        None => {
-            return Err(DownloadError::Other("current_match is None".to_string()).into());
-        }
-        Some(m) => m,
-    };
-    match player_num {
-        PlayerNum::One => Ok(current_match.bot1.bot_zip_md5hash),
-        PlayerNum::Two => Ok(current_match.bot2.bot_zip_md5hash),
-    }
-}
-
 pub async fn download_bot_data(
-    State(state): State<Arc<RwLock<ProxyState>>>,
-    //ConnectInfo(addr): ConnectInfo<SocketAddr>,
-    Json(player_num): Json<PlayerNum>,
+    state: Arc<RwLock<ProxyState>>,
+    player_num: PlayerNum,
 ) -> Result<Bytes, AppError> {
     // todo: Implement authorization
     // if !state.read().auth_whitelist.contains(&addr) {

@@ -23,7 +23,7 @@ services:
       args:
         CARGO_FLAGS: "${TEST_CARGO_FLAGS}"
     volumes:
-      - "../aiarena-test-bots:/bots"
+      - "../aiarena-test-bots:/bots/bot1"
     environment:
       - "ACBOT_PORT=8081"
       - "ACBOT_PROXY_HOST=proxy_controller"
@@ -37,7 +37,7 @@ services:
       args:
         CARGO_FLAGS: "${TEST_CARGO_FLAGS}"
     volumes:
-      - "../aiarena-test-bots:/bots"
+      - "../aiarena-test-bots:/bots/bot2"
     environment:
       - "ACBOT_PORT=8082"
       - "ACBOT_PROXY_HOST=proxy_controller"

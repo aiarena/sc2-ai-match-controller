@@ -4,7 +4,6 @@ use crate::models::bot_controller::StartBot;
 use crate::models::StartResponse;
 use crate::portpicker::Port;
 use async_trait::async_trait;
-use bytes::Bytes;
 use reqwest::{Client, Url};
 
 #[derive(Debug, Clone)]
@@ -45,30 +44,6 @@ impl BotController {
             .json(&self.start_bot)
             .build()?;
         self.execute_request(request).await
-    }
-
-    pub async fn download_bot_log(&self) -> Result<Bytes, ApiError<ApiErrorMessage>> {
-        let path = format!(
-            "/download/bot/{}/log",
-            urlencoding::encode(&self.start_bot.as_ref().unwrap().bot_name)
-        );
-        let log_url = self.url.join(&path).unwrap(); // static string, so the constructor should catch any parse
-                                                     // errors
-        let request = self.client.request(reqwest::Method::GET, log_url).build()?;
-
-        self.execute_request_file(request).await
-    }
-
-    pub async fn download_bot_data(&self) -> Result<Bytes, ApiError<ApiErrorMessage>> {
-        let path = format!(
-            "/download/bot/{}/data",
-            urlencoding::encode(&self.start_bot.as_ref().unwrap().bot_name)
-        );
-        let log_url = self.url.join(&path).unwrap(); // static string, so the constructor should catch any parse
-                                                     // errors
-        let request = self.client.request(reqwest::Method::GET, log_url).build()?;
-
-        self.execute_request_file(request).await
     }
 }
 

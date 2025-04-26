@@ -9,7 +9,6 @@ use utoipa::OpenApi;
         paths(
             crate::routes::terminate_bot,
             crate::routes::start_bot,
-            crate::routes::download_bot_data,
             common::api::process::stats,
             common::api::process::stats_host,
             common::api::process::terminate_all,
