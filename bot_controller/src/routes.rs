@@ -1,7 +1,6 @@
 use crate::PREFIX;
 use axum::extract::{Path, State};
 use axum::Json;
-use common::PlayerNum;
 use common::api::errors::app_error::AppError;
 use common::api::errors::process_error::ProcessError;
 use common::api::state::AppState;
@@ -9,6 +8,7 @@ use common::configuration::{get_proxy_host, get_proxy_port};
 use common::models::bot_controller::{BotType, StartBot};
 use common::models::{StartResponse, Status, TerminateResponse};
 use common::procs::tcp_port::get_ipv4_port_for_pid;
+use common::PlayerNum;
 
 use common::utilities::directory::ensure_directory_structure;
 use common::utilities::portpicker::Port;
@@ -76,7 +76,10 @@ pub async fn start_bot(
         PlayerNum::One => 1,
         PlayerNum::Two => 2,
     };
-    let bot_path = format!("{}/bot{}/{}", &state.settings.bot_directory, bot_num, bot_name);
+    let bot_path = format!(
+        "{}/bot{}/{}",
+        &state.settings.bot_directory, bot_num, bot_name
+    );
 
     let (program, filename) = match bot_type {
         BotType::CppWin32 => ("wine".to_string(), format!("{bot_name}.exe")),
@@ -109,7 +112,9 @@ pub async fn start_bot(
     }
     debug!("Bot log dir exists");
 
-    let log_file_path = std::path::PathBuf::from(&bot_path).join("logs").join("stderr.log");
+    let log_file_path = std::path::PathBuf::from(&bot_path)
+        .join("logs")
+        .join("stderr.log");
     debug!("Bot log path: {:?}", log_file_path);
 
     let (stdout_file, stderr_file) = match create_stdout_and_stderr_files(&log_file_path) {

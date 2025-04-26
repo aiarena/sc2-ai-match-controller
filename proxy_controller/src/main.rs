@@ -20,7 +20,7 @@ use crate::state::ProxyState;
 use crate::ws_routes::websocket_handler;
 use axum::error_handling::HandleErrorLayer;
 use axum::http::StatusCode;
-use axum::routing::{get};
+use axum::routing::get;
 use axum::Router;
 use axum::{http::Request, response::Response};
 use clap::{arg, command, value_parser};

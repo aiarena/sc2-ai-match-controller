@@ -7,7 +7,7 @@ use crate::state::{ProxyState, SC2Url};
 use bytes::Bytes;
 use common::api::api_reference::bot_controller_client::BotController;
 use common::api::api_reference::sc2_controller_client::SC2Controller;
-use common::api::api_reference::{ControllerApi};
+use common::api::api_reference::ControllerApi;
 use common::configuration::ac_config::{ACConfig, RunType};
 use common::models::aiarena::aiarena_game_result::AiArenaGameResult;
 use common::models::aiarena::aiarena_result::AiArenaResult;
@@ -164,7 +164,9 @@ pub async fn match_scheduler<M: MatchSource>(
             match download_bot(proxy_state.clone(), PlayerNum::One).await {
                 Ok(bytes) => {
                     let bot_name = &new_match.players[&PlayerNum::One].name;
-                    let bot_path = PathBuf::from(&settings.bot_directory).join("bot1").join(bot_name);
+                    let bot_path = PathBuf::from(&settings.bot_directory)
+                        .join("bot1")
+                        .join(bot_name);
                     let bot_folder = bot_path.as_path();
                     common::utilities::zip_utils::zip_extract_from_bytes(&bytes, bot_folder);
                 }
@@ -177,7 +179,10 @@ pub async fn match_scheduler<M: MatchSource>(
             match download_bot_data(proxy_state.clone(), PlayerNum::One).await {
                 Ok(bytes) => {
                     let bot_name = &new_match.players[&PlayerNum::One].name;
-                    let bot_path = PathBuf::from(&settings.bot_directory).join("bot1").join(bot_name).join("data");
+                    let bot_path = PathBuf::from(&settings.bot_directory)
+                        .join("bot1")
+                        .join(bot_name)
+                        .join("data");
                     let bot_folder = bot_path.as_path();
                     common::utilities::zip_utils::zip_extract_from_bytes(&bytes, bot_folder);
                 }
@@ -189,7 +194,9 @@ pub async fn match_scheduler<M: MatchSource>(
             match download_bot(proxy_state.clone(), PlayerNum::Two).await {
                 Ok(bytes) => {
                     let bot_name = &new_match.players[&PlayerNum::Two].name;
-                    let bot_path = PathBuf::from(&settings.bot_directory).join("bot2").join(bot_name);
+                    let bot_path = PathBuf::from(&settings.bot_directory)
+                        .join("bot2")
+                        .join(bot_name);
                     let bot_folder = bot_path.as_path();
                     common::utilities::zip_utils::zip_extract_from_bytes(&bytes, bot_folder);
                 }
@@ -202,7 +209,10 @@ pub async fn match_scheduler<M: MatchSource>(
             match download_bot_data(proxy_state.clone(), PlayerNum::Two).await {
                 Ok(bytes) => {
                     let bot_name = &new_match.players[&PlayerNum::Two].name;
-                    let bot_path = PathBuf::from(&settings.bot_directory).join("bot2").join(bot_name).join("data");
+                    let bot_path = PathBuf::from(&settings.bot_directory)
+                        .join("bot2")
+                        .join(bot_name)
+                        .join("data");
                     let bot_folder = bot_path.as_path();
                     common::utilities::zip_utils::zip_extract_from_bytes(&bytes, bot_folder);
                 }
@@ -368,13 +378,13 @@ async fn build_logs_and_replays_object(
 
     // Zip logs and data of bot 1
     let bot1_dir = temp_folder.join("bot1");
-    let bot1_path = Path::new(&settings.bot_directory).join("bot1").join(bot1_name.clone());
+    let bot1_path = Path::new(&settings.bot_directory)
+        .join("bot1")
+        .join(bot1_name.clone());
     let bot1_logs = bot1_path.join("logs");
     let bot1_logs_zip_path = bot1_dir.join("logs.zip");
-    let bot1_logs_zip_result = common::utilities::zip_utils::zip_directory_to_path(
-        &bot1_logs_zip_path,
-        &bot1_logs,
-    );
+    let bot1_logs_zip_result =
+        common::utilities::zip_utils::zip_directory_to_path(&bot1_logs_zip_path, &bot1_logs);
     match bot1_logs_zip_result {
         Ok(_) => {}
         Err(e) => {
@@ -383,10 +393,8 @@ async fn build_logs_and_replays_object(
     }
     let bot1_data = bot1_path.join("data");
     let bot1_data_zip_path = bot1_dir.join("data.zip");
-    let bot1_data_zip_result = common::utilities::zip_utils::zip_directory_to_path(
-        &bot1_data_zip_path,
-        &bot1_data,
-    );
+    let bot1_data_zip_result =
+        common::utilities::zip_utils::zip_directory_to_path(&bot1_data_zip_path, &bot1_data);
     match bot1_data_zip_result {
         Ok(_) => {}
         Err(e) => {
@@ -396,13 +404,13 @@ async fn build_logs_and_replays_object(
 
     // Zip logs and data of bot 2
     let bot2_dir = temp_folder.join("bot2");
-    let bot2_path = Path::new(&settings.bot_directory).join("bot2").join(bot2_name.clone());
+    let bot2_path = Path::new(&settings.bot_directory)
+        .join("bot2")
+        .join(bot2_name.clone());
     let bot2_logs = bot2_path.join("logs");
     let bot2_logs_zip_path = bot2_dir.join("logs.zip");
-    let bot2_logs_zip_result = common::utilities::zip_utils::zip_directory_to_path(
-        &bot2_logs_zip_path,
-        &bot2_logs,
-    );
+    let bot2_logs_zip_result =
+        common::utilities::zip_utils::zip_directory_to_path(&bot2_logs_zip_path, &bot2_logs);
     match bot2_logs_zip_result {
         Ok(_) => {}
         Err(e) => {
@@ -411,10 +419,8 @@ async fn build_logs_and_replays_object(
     }
     let bot2_data = bot2_path.join("data");
     let bot2_data_zip_path = bot2_dir.join("data.zip");
-    let bot2_data_zip_result = common::utilities::zip_utils::zip_directory_to_path(
-        &bot2_data_zip_path,
-        &bot2_data,
-    );
+    let bot2_data_zip_result =
+        common::utilities::zip_utils::zip_directory_to_path(&bot2_data_zip_path, &bot2_data);
     match bot2_data_zip_result {
         Ok(_) => {}
         Err(e) => {
@@ -478,11 +484,7 @@ async fn write_file(path: &Path, bytes: &Bytes) -> std::io::Result<()> {
     file.write_all(bytes.as_ref()).await
 }
 
-fn create_start_bot(
-    player_num: PlayerNum,
-    new_match: &Match,
-    process_key: Port,
-) -> StartBot {
+fn create_start_bot(player_num: PlayerNum, new_match: &Match, process_key: Port) -> StartBot {
     StartBot {
         bot_name: new_match.players[&player_num].name.clone(),
         bot_type: new_match.players[&player_num].bot_type,
