@@ -126,7 +126,13 @@ jobs:
           submodules: 'true'
 
       - name: Run file-based combined integration tests
-        run: TEST_CARGO_FLAGS="--release --verbose" docker compose -f ./testing/file-based-combined/docker-compose.yml up --exit-code-from=combined --force-recreate --build
+        run: |
+          free -m
+          TEST_CARGO_FLAGS="--release --verbose" docker compose -f ./testing/file-based-combined/docker-compose.yml up --exit-code-from=combined --force-recreate --build
+          free -m
+
+      - name: Final test of memory usage
+        run: free -m
 
   api_based:
     name: API-based integration test
