@@ -41,6 +41,8 @@ spec:
               subPath: config.toml
             - mountPath: /logs
               name: logs
+            - mountPath: /bots
+              name: bots
           __active: true
         - env:
             - name: ACBOT_PORT
@@ -67,6 +69,9 @@ spec:
             - mountPath: /logs/bot_controller
               name: logs
               subPath: bot-controller-1
+            - mountPath: /bots/bot1
+              name: bots
+              subPath: bot1
         - env:
             - name: ACBOT_PORT
               value: '8082'
@@ -92,6 +97,9 @@ spec:
             - mountPath: /logs/bot_controller
               name: logs
               subPath: bot-controller-2
+            - mountPath: /bots/bot2
+              name: bots
+              subPath: bot2
         - env:
             - name: ACSC2_PORT
               value: '8083'
@@ -120,6 +128,8 @@ spec:
           configMap:
             defaultMode: 420
             name: placeholder
+        - name: bots
+          emptyDir: {}
         - name: logs
           emptyDir: {}
   backoffLimit: 6

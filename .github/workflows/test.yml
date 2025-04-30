@@ -107,7 +107,10 @@ jobs:
           submodules: 'true'
 
       - name: Run file-based integration tests
-        run: TEST_CARGO_FLAGS="--release --verbose" docker compose -f ./testing/file-based/docker-compose.yml up --exit-code-from=proxy_controller --force-recreate --build
+        run: |
+          free -m
+          TEST_CARGO_FLAGS="--release --verbose" docker compose -f ./testing/file-based/docker-compose.yml up --exit-code-from=proxy_controller --force-recreate --build
+          free -m
 
   combined:
     name: File-based integration test for the combined controllers
@@ -126,7 +129,10 @@ jobs:
           submodules: 'true'
 
       - name: Run file-based combined integration tests
-        run: TEST_CARGO_FLAGS="--release --verbose" docker compose -f ./testing/file-based-combined/docker-compose.yml up --exit-code-from=combined --force-recreate --build
+        run: |
+          free -m
+          TEST_CARGO_FLAGS="--release --verbose" docker compose -f ./testing/file-based-combined/docker-compose.yml up --exit-code-from=combined --force-recreate --build
+          free -m
 
   api_based:
     name: API-based integration test

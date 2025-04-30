@@ -15,14 +15,12 @@ use crate::matches::sources::test_source::TestSource;
 use crate::matches::sources::{FileSource, MatchSource};
 #[cfg(feature = "mockserver")]
 use crate::mocking::setup_mock_server;
-use crate::routes::{
-    configuration, download_bot, download_bot_data, download_map, get_bot_data_md5, get_bot_zip_md5,
-};
+use crate::routes::{configuration, download_map};
 use crate::state::ProxyState;
 use crate::ws_routes::websocket_handler;
 use axum::error_handling::HandleErrorLayer;
 use axum::http::StatusCode;
-use axum::routing::{get, post};
+use axum::routing::get;
 use axum::Router;
 use axum::{http::Request, response::Response};
 use clap::{arg, command, value_parser};
@@ -121,11 +119,7 @@ async fn main() {
                 }),
         )
         .route("/health", get(health))
-        .route("/download_bot", post(download_bot))
         .route("/download_map", get(download_map))
-        .route("/download_bot_data", post(download_bot_data))
-        .route("/download_bot_data/md5_hash", post(get_bot_data_md5))
-        .route("/download_bot/md5_hash", post(get_bot_zip_md5))
         // Add middleware to all routes
         .layer(
             ServiceBuilder::new()

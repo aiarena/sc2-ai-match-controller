@@ -244,7 +244,7 @@ pub trait ControllerApi {
     async fn execute_request_file(
         &self,
         request: Request,
-    ) -> Result<bytes::Bytes, ApiError<ApiErrorMessage>> {
+    ) -> Result<Bytes, ApiError<ApiErrorMessage>> {
         let response = self.client().execute(request).await?;
 
         let status = response.status();

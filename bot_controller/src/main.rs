@@ -1,11 +1,10 @@
 #[cfg(feature = "swagger")]
 mod docs;
 mod routes;
-mod utils;
 
 #[cfg(feature = "swagger")]
 use crate::docs::ApiDoc;
-use crate::routes::{download_bot_data, download_bot_log, start_bot, terminate_bot};
+use crate::routes::{start_bot, terminate_bot};
 use axum::http::Request;
 use axum::response::Response;
 use axum::routing::{get, post};
@@ -93,8 +92,6 @@ async fn main() {
         .route("/terminate_all", post(terminate_all))
         .route("/terminate/:bot_name", post(terminate_bot))
         .route("/shutdown", post(shutdown))
-        .route("/download/bot/:port/log", get(download_bot_log))
-        .route("/download/bot/:port/data", get(download_bot_data))
         // Add middleware to all routes
         .layer(
             TraceLayer::new_for_http()

@@ -25,6 +25,8 @@ services:
     environment:
       - "ACBOT_PORT=8081"
       - "ACBOT_PROXY_HOST=proxy_controller"
+    volumes:
+      - "bots:/bots"
 
   bot_controller2:
     build:
@@ -39,6 +41,8 @@ services:
     environment:
       - "ACBOT_PORT=8082"
       - "ACBOT_PROXY_HOST=proxy_controller"
+    volumes:
+      - "bots:/bots"
 
   proxy_controller:
     build:
@@ -55,3 +59,7 @@ services:
       - "ACPROXY_SC2_CONT_HOST=sc2_controller"
     volumes:
       - "./test-config.toml:/app/config.toml"
+      - "bots:/bots"
+
+volumes:
+     bots:

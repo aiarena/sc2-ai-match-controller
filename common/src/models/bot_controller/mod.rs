@@ -14,7 +14,6 @@ pub struct StartBot {
     pub player_num: PlayerNum,
     pub match_id: u32,
     pub process_key: Port,
-    pub should_download: bool,
 }
 
 #[cfg_attr(feature = "swagger", derive(ToSchema))]
