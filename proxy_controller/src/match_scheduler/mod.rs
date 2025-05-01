@@ -138,7 +138,7 @@ pub async fn match_scheduler<M: MatchSource>(
                         error!("Failed to store map: {:?}", e);
                         break 'main_loop;
                     }
-                }
+                },
                 Err(e) => {
                     error!("Failed to download map: {:?}", e);
                     break 'main_loop;
