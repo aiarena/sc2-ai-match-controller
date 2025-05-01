@@ -127,18 +127,16 @@ pub async fn match_scheduler<M: MatchSource>(
             tracing::debug!("Downloading map {:?} to {:?}", map_name, map_path);
 
             match download_map(proxy_state.clone()).await {
-                Ok(bytes) => {
-                    match tokio::fs::File::create(map_path).await {
-                        Ok(mut file) => {
-                            if let Err(e) = file.write_all(&bytes).await {
-                                error!("Failed to store map: {:?}", e);
-                                break 'main_loop;
-                            }
-                        }
-                        Err(e) => {
+                Ok(bytes) => match tokio::fs::File::create(map_path).await {
+                    Ok(mut file) => {
+                        if let Err(e) = file.write_all(&bytes).await {
                             error!("Failed to store map: {:?}", e);
                             break 'main_loop;
                         }
+                    }
+                    Err(e) => {
+                        error!("Failed to store map: {:?}", e);
+                        break 'main_loop;
                     }
                 }
                 Err(e) => {
