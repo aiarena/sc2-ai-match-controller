@@ -136,7 +136,7 @@ pub async fn download_bot_data(
     }
 }
 
-pub async fn download_map(State(state): State<Arc<RwLock<ProxyState>>>) -> Result<Bytes, AppError> {
+pub async fn download_map(state: Arc<RwLock<ProxyState>>) -> Result<Bytes, AppError> {
     let settings = state.read().settings.clone();
 
     let current_match = match state

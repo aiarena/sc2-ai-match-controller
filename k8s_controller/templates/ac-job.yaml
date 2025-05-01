@@ -43,6 +43,8 @@ spec:
               name: logs
             - mountPath: /bots
               name: bots
+            - mountPath: /game
+              name: game
           __active: true
         - env:
             - name: ACBOT_PORT
@@ -122,6 +124,8 @@ spec:
             - mountPath: /logs/sc2_controller
               name: logs
               subPath: sc2-controller
+            - mountPath: /root/StarCraftII/maps
+              name: game
       restartPolicy: Never
       volumes:
         - name: config
@@ -129,6 +133,8 @@ spec:
             defaultMode: 420
             name: placeholder
         - name: bots
+          emptyDir: {}
+        - name: game
           emptyDir: {}
         - name: logs
           emptyDir: {}

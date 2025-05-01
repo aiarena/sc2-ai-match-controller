@@ -15,7 +15,7 @@ use crate::matches::sources::test_source::TestSource;
 use crate::matches::sources::{FileSource, MatchSource};
 #[cfg(feature = "mockserver")]
 use crate::mocking::setup_mock_server;
-use crate::routes::{configuration, download_map};
+use crate::routes::configuration;
 use crate::state::ProxyState;
 use crate::ws_routes::websocket_handler;
 use axum::error_handling::HandleErrorLayer;
@@ -119,7 +119,6 @@ async fn main() {
                 }),
         )
         .route("/health", get(health))
-        .route("/download_map", get(download_map))
         // Add middleware to all routes
         .layer(
             ServiceBuilder::new()
