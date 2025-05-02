@@ -32,7 +32,6 @@ pub async fn start_bot(
     State(state): State<AppState>,
     Json(start_bot): Json<StartBot>,
 ) -> Result<Json<StartResponse>, AppError> {
-    
     // Terminate all previous bot processes
     for (port, mut child) in state.process_map.write().drain() {
         tracing::info!("Terminating bot process {}", port);

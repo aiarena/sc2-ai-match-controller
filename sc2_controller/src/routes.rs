@@ -16,8 +16,9 @@ use tempfile::TempDir;
         (status = 200, description = "Request Completed", body = StartResponse)
     )
 ))]
-pub async fn start_sc2(State(state): State<AppState>) -> Result<Json<Vec<StartResponse>>, AppError> {
-
+pub async fn start_sc2(
+    State(state): State<AppState>,
+) -> Result<Json<Vec<StartResponse>>, AppError> {
     // Terminate all previous SC2 processes
     for (port, mut child) in state.process_map.write().drain() {
         tracing::info!("Terminating SC2 on port {}", port);
@@ -28,9 +29,7 @@ pub async fn start_sc2(State(state): State<AppState>) -> Result<Json<Vec<StartRe
 
     // Start two new SC2 processes
     match (start_process(&state).await, start_process(&state).await) {
-        (Ok(response1), Ok(response2)) => {
-            Ok(Json(vec![response1, response2]))
-        }
+        (Ok(response1), Ok(response2)) => Ok(Json(vec![response1, response2])),
         (Err(e), _) | (_, Err(e)) => {
             tracing::error!("Failed to start SC2: {:?}", e);
             Err(e)
@@ -44,11 +43,17 @@ async fn start_process(state: &AppState) -> Result<StartResponse, AppError> {
     let tempdir = TempDir::new()
         .map_err(|e| ProcessError::Custom(format!("Could not create temp dir: {e:?}")))?;
 
-    let stdout_path = format!("{}/sc2_controller/stdout-{}.log", &state.settings.log_root, ws_port);
+    let stdout_path = format!(
+        "{}/sc2_controller/stdout-{}.log",
+        &state.settings.log_root, ws_port
+    );
     let stdout_file = std::fs::File::create(&stdout_path)
         .map_err(|e| ProcessError::Custom(format!("Could not create stdout file: {e:?}")))?;
     let stdout = async_process::Stdio::from(stdout_file);
-    let stderr_path = format!("{}/sc2_controller/stderr-{}.log", &state.settings.log_root, ws_port);
+    let stderr_path = format!(
+        "{}/sc2_controller/stderr-{}.log",
+        &state.settings.log_root, ws_port
+    );
     let stderr_file = std::fs::File::create(&stderr_path)
         .map_err(|e| ProcessError::Custom(format!("Could not create stderr file: {e:?}")))?;
     let stderr = async_process::Stdio::from(stderr_file);

@@ -36,10 +36,12 @@ pub async fn match_scheduler<M: MatchSource>(
 
     let settings = proxy_state.read().settings.clone();
 
-    let mut bot_controllers = init_bot_controllers(&settings).expect("Failed to initialize the bot controllers");
+    let mut bot_controllers =
+        init_bot_controllers(&settings).expect("Failed to initialize the bot controllers");
     proxy_state.write().bot_controllers = bot_controllers.to_vec();
 
-    let sc2_controller = SC2Controller::new(&settings.sc2_cont_host, settings.sc2_cont_port).expect("Failed to create SC2 controller");
+    let sc2_controller = SC2Controller::new(&settings.sc2_cont_host, settings.sc2_cont_port)
+        .expect("Failed to create SC2 controller");
     proxy_state.write().sc2_controller = Some(sc2_controller.clone());
 
     // TODO: Enable when auth is implemented
