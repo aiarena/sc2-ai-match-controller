@@ -1,6 +1,6 @@
 use crate::api::errors::app_error::ApiErrorMessage;
 use crate::models::stats::{HostStats, ProcessStats};
-use crate::models::{ProcessStatusResponse, TerminateResponse};
+use crate::models::{ProcessStatusResponse};
 use crate::utilities::portpicker::Port;
 use async_trait::async_trait;
 use bytes::Bytes;
@@ -109,98 +109,8 @@ pub trait ControllerApi {
         Ok(self.client().get(status_url).send().await?.json().await?)
     }
 
-    async fn shutdown(&self) -> Result<TerminateResponse, ApiError<ApiErrorMessage>> {
-        let shutdown_url = self.url().join("/shutdown").unwrap();
-        // static string, so the constructor should catch any parse
-        // errors
-        tracing::debug!(
-            api = Self::API_TYPE,
-            url = shutdown_url.as_str(),
-            "Calling shutdown endpoint"
-        );
-        let request = self
-            .client()
-            .request(reqwest::Method::POST, shutdown_url)
-            .build()?;
-
-        let response = self.client().execute(request).await?;
-
-        let status = response.status();
-        let content = response.text().await?;
-
-        if !status.is_client_error() && !status.is_server_error() {
-            match serde_json::from_str::<TerminateResponse>(&content).map_err(ApiError::from) {
-                Err(e) => {
-                    tracing::error!("{}", e);
-                    tracing::debug!("{}", &content);
-                    Err(e)
-                }
-                e => e,
-            }
-        } else {
-            match serde_json::from_str::<ApiErrorMessage>(&content).map_err(ApiError::from) {
-                Ok(api_error_message) => {
-                    let error = ResponseContent {
-                        status,
-                        api_error_message,
-                    };
-                    Err(ApiError::ResponseError(error))
-                }
-                Err(e) => {
-                    tracing::error!("status={},error{}", status, e);
-                    tracing::debug!("{}", &content);
-                    Err(e)
-                }
-            }
-        }
-    }
-
     fn sock_addr(&self) -> SocketAddr {
         self.url().socket_addrs(|| None).unwrap()[0]
-    }
-
-    async fn terminate_all(
-        &self,
-        terminate_type: &str,
-    ) -> Result<TerminateResponse, ApiError<ApiErrorMessage>> {
-        let terminate_url = self.url().join("/terminate_all").unwrap(); // static string, so the constructor should catch any parse
-                                                                        // errors
-        let request = self
-            .client()
-            .request(reqwest::Method::POST, terminate_url)
-            .json(terminate_type)
-            .build()?;
-
-        let response = self.client().execute(request).await?;
-
-        let status = response.status();
-        let content = response.text().await?;
-
-        if !status.is_client_error() && !status.is_server_error() {
-            match serde_json::from_str::<TerminateResponse>(&content).map_err(ApiError::from) {
-                Err(e) => {
-                    tracing::error!("{}", e);
-                    tracing::debug!("{}", &content);
-                    Err(e)
-                }
-                e => e,
-            }
-        } else {
-            match serde_json::from_str::<ApiErrorMessage>(&content).map_err(ApiError::from) {
-                Ok(api_error_message) => {
-                    let error = ResponseContent {
-                        status,
-                        api_error_message,
-                    };
-                    Err(ApiError::ResponseError(error))
-                }
-                Err(e) => {
-                    tracing::error!("status={},error{}", status, e);
-                    tracing::debug!("{}", &content);
-                    Err(e)
-                }
-            }
-        }
     }
 
     async fn execute_request<T>(&self, request: Request) -> Result<T, ApiError<ApiErrorMessage>>

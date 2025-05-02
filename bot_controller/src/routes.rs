@@ -1,17 +1,16 @@
 use crate::PREFIX;
-use axum::extract::{Path, State};
+use axum::extract::State;
 use axum::Json;
 use common::api::errors::app_error::AppError;
 use common::api::errors::process_error::ProcessError;
 use common::api::state::AppState;
 use common::configuration::{get_proxy_host, get_proxy_port};
 use common::models::bot_controller::{BotType, StartBot};
-use common::models::{StartResponse, Status, TerminateResponse};
+use common::models::{StartResponse, Status};
 use common::procs::tcp_port::get_ipv4_port_for_pid;
 use common::PlayerNum;
 
 use common::utilities::directory::ensure_directory_structure;
-use common::utilities::portpicker::Port;
 use tokio::net::lookup_host;
 use tracing::debug;
 
@@ -19,36 +18,6 @@ use common::procs::create_stdout_and_stderr_files;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::time::Duration;
-
-#[tracing::instrument(skip(state))]
-#[cfg_attr(feature = "swagger", utoipa::path(
-post,
-path = "/terminate/{process_key}",
-params(
-("process_key" = u16, Path, description = "Key of process to terminate")
-),
-responses(
-(status = 200, description = "Request Completed", body = TerminateResponse)
-)
-))]
-pub async fn terminate_bot(
-    Path(process_key): Path<Port>,
-    State(state): State<AppState>,
-) -> Result<Json<TerminateResponse>, AppError> {
-    tracing::info!("Terminating bot with key {}", process_key);
-    if let Some((_, mut child)) = state.process_map.write().remove_entry(&process_key) {
-        if let Err(e) = child.kill() {
-            return Err(ProcessError::TerminateError(e.to_string()).into());
-        }
-    } else {
-        let message = format!("Bot {process_key} entry does not exist");
-        return Err(ProcessError::TerminateError(message).into());
-    }
-
-    Ok(Json(TerminateResponse {
-        status: Status::Success,
-    }))
-}
 
 #[tracing::instrument(skip(state))]
 #[cfg_attr(feature = "swagger", utoipa::path(
@@ -63,6 +32,15 @@ pub async fn start_bot(
     State(state): State<AppState>,
     Json(start_bot): Json<StartBot>,
 ) -> Result<Json<StartResponse>, AppError> {
+    
+    // Terminate all previous bot processes
+    for (port, mut child) in state.process_map.write().drain() {
+        tracing::info!("Terminating bot process {}", port);
+        if let Err(e) = child.kill() {
+            tracing::error!("Failed to terminate bot process {}: {:?}", port, e);
+        }
+    }
+
     let StartBot {
         bot_name,
         bot_type,

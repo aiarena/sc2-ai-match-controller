@@ -4,13 +4,12 @@ use parking_lot::RwLock;
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::Duration;
 
 use crate::api::errors::app_error::AppError;
 use crate::api::errors::process_error::ProcessError;
 use crate::api::state::AppState;
 use crate::models::stats::{HostStats, ProcessStats};
-use crate::models::{ProcessStatusResponse, Status, TerminateResponse};
+use crate::models::ProcessStatusResponse;
 use crate::utilities::portpicker::Port;
 use serde::{Deserialize, Serialize};
 use sysinfo::{CpuRefreshKind, Pid, PidExt, ProcessExt, ProcessStatus, RefreshKind, SystemExt};
@@ -102,56 +101,6 @@ pub async fn status(
     }
 }
 
-#[cfg_attr(feature = "swagger", utoipa::path(
-    post,
-    path = "/terminate_all",
-    responses(
-        (status = 200, description = "Kill all processes")
-    )
-))]
-pub async fn terminate_all(
-    State(state): State<AppState>,
-    Json(terminate_type): Json<String>,
-) -> Result<Json<TerminateResponse>, AppError> {
-    let mut status = Status::Success;
-    let mut temp_status_reason = String::new();
-
-    for (process_key, mut child) in state.process_map.write().drain() {
-        tracing::debug!("Terminating procs on port {}", process_key);
-        let mut exited = false;
-        if terminate_type != "kill" {
-            for _ in 0..5 {
-                if let Ok(status) = child.try_status() {
-                    if status.is_some() {
-                        exited = true;
-                        break;
-                    }
-                }
-
-                std::thread::sleep(Duration::from_secs(1));
-            }
-        }
-        if !exited {
-            if let Err(e) = child.kill() {
-                status = Status::Fail;
-                let message = format!(
-                    "{temp_status_reason}Failed to terminate process with key {process_key}:\n{e}\n",
-                );
-                temp_status_reason = message;
-            }
-        }
-    }
-    state.extra_info.write().clear();
-
-    let response = TerminateResponse { status };
-    if temp_status_reason.is_empty() {
-        Ok(Json(response))
-    } else {
-        tracing::error!("{}", &temp_status_reason);
-        Err(ProcessError::Custom(temp_status_reason).into())
-    }
-}
-
 #[tracing::instrument(skip(state))]
 #[cfg_attr(feature = "swagger", utoipa::path(
     get,
@@ -174,32 +123,6 @@ pub async fn stats_all(State(state): State<AppState>) -> Result<Json<Vec<Process
     Ok(Json(process_stats))
 }
 
-#[tracing::instrument(skip(state))]
-#[allow(dead_code)]
-#[cfg_attr(feature = "swagger", utoipa::path(
-    post,
-    path = "/shutdown",
-    responses(
-        (status = 200, description = "Kill all processes and shutdown")
-    )
-))]
-pub async fn shutdown(state: State<AppState>) -> Result<Json<TerminateResponse>, AppError> {
-    tracing::info!("Shutdown request received. Terminating all running processes");
-    let s = state.clone();
-
-    let _ = terminate_all(s, Json("graceful".to_string())).await?;
-
-    if let Err(e) = state.shutdown_sender.send(()).await {
-        let message = format!("Could not send shutdown signal:\n{e}");
-        Err(ProcessError::TerminateError(message).into())
-    } else {
-        tracing::info!("Shutting down...");
-        let response = TerminateResponse {
-            status: Status::Success,
-        };
-        Ok(Json(response))
-    }
-}
 #[cfg_attr(feature = "swagger", derive(ToSchema))]
 #[derive(Serialize, Deserialize, Copy, Clone)]
 pub enum ProcStatus {

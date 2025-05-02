@@ -45,7 +45,7 @@ pub struct ProxyState {
     pub auth_whitelist: IndexSet<SocketAddr>,
     pub shutdown_sender: Sender<()>,
     pub bot_controllers: Vec<BotController>,
-    pub sc2_controllers: Vec<SC2Controller>,
+    pub sc2_controller: Option<SC2Controller>,
 }
 
 impl ProxyState {

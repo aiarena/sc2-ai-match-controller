@@ -100,7 +100,7 @@ async fn main() {
         auth_whitelist: indexmap::IndexSet::default(),
         shutdown_sender: tx,
         bot_controllers: vec![],
-        sc2_controllers: vec![],
+        sc2_controller: None,
     }));
 
     tokio::spawn(match_scheduler(app_state.clone(), match_source));
