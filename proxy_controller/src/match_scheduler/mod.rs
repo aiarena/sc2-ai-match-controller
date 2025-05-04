@@ -15,7 +15,7 @@ use common::models::bot_controller::StartBot;
 use common::utilities::directory::ensure_directory_structure;
 use common::utilities::portpicker::Port;
 use common::PlayerNum;
-use futures_util::future::{join, join3};
+use futures_util::future::join3;
 use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::io;
@@ -36,25 +36,14 @@ pub async fn match_scheduler<M: MatchSource>(
 
     let settings = proxy_state.read().settings.clone();
 
-    let mut bot_controllers = match init_bot_controllers(&settings) {
-        Ok(c) => c,
-        Err(e) => {
-            error!("{}", e);
-
-            std::process::exit(2);
-        }
-    };
+    let mut bot_controllers =
+        init_bot_controllers(&settings).expect("Failed to initialize the bot controllers");
     proxy_state.write().bot_controllers = bot_controllers.to_vec();
 
-    let mut sc2_controllers = match init_sc2_controllers(&settings) {
-        Ok(c) => c,
-        Err(e) => {
-            error!("{}", e);
+    let sc2_controller = SC2Controller::new(&settings.sc2_cont_host, settings.sc2_cont_port)
+        .expect("Failed to create SC2 controller");
+    proxy_state.write().sc2_controller = Some(sc2_controller.clone());
 
-            std::process::exit(2);
-        }
-    };
-    proxy_state.write().sc2_controllers = sc2_controllers.to_vec();
     // TODO: Enable when auth is implemented
     // let sock_addrs = vec![
     //     bot_controllers[0].sock_addr(),
@@ -70,18 +59,11 @@ pub async fn match_scheduler<M: MatchSource>(
         let res = join3(
             bot_controllers[0].health(),
             bot_controllers[1].health(),
-            sc2_controllers[0].health(),
+            sc2_controller.health(),
         )
         .await;
         ready = res.0 && res.1 && res.2;
     }
-
-    let _cleanup_res = join3(
-        bot_controllers[0].terminate_all("graceful"),
-        bot_controllers[1].terminate_all("graceful"),
-        sc2_controllers[0].terminate_all("kill"),
-    )
-    .await;
 
     let mut match_counter = 0;
     let rounds_per_run = settings.rounds_per_run;
@@ -89,13 +71,6 @@ pub async fn match_scheduler<M: MatchSource>(
     'main_loop: while match_source.has_next().await
         && (match_counter < rounds_per_run || rounds_per_run == -1)
     {
-        info!("Sending start requests to SC2");
-
-        let response = tokio::spawn(join(
-            sc2_controllers[0].clone().start_owned(),
-            sc2_controllers[1].clone().start_owned(),
-        ));
-
         let new_match = match match_source.next_match().await {
             None => {
                 sleep(Duration::from_secs(30)).await;
@@ -146,22 +121,19 @@ pub async fn match_scheduler<M: MatchSource>(
             }
         }
 
-        let (process_key1, process_key2) = match response.await.unwrap() {
-            (Ok(sc1_resp), Ok(sc2_resp)) => {
-                tracing::debug!("SC2-1 Response:\n{:?}", sc1_resp);
-                tracing::debug!("SC2-2 Response:\n{:?}", sc2_resp);
+        info!("Sending start requests to SC2");
+        let (process_key1, process_key2) = match sc2_controller.start().await {
+            Ok(responses) if responses.len() == 2 => {
+                let sc1_resp = &responses[0];
+                let sc2_resp = &responses[1];
                 let urls = vec![
                     SC2Url::new(&settings.sc2_cont_host, &sc1_resp),
                     SC2Url::new(&settings.sc2_cont_host, &sc2_resp),
                 ];
-                tracing::trace!("Adding SC2 urls");
+
+                tracing::debug!("SC2 listens on {:?} and {:?}", &urls[0], &urls[1]);
                 proxy_state.write().sc2_urls.extend(urls);
 
-                tracing::trace!("SC2 urls added");
-                sc2_controllers[0].set_process_key(sc1_resp.process_key);
-                proxy_state.write().sc2_controllers[0].set_process_key(sc1_resp.process_key);
-                sc2_controllers[1].set_process_key(sc2_resp.process_key);
-                proxy_state.write().sc2_controllers[1].set_process_key(sc2_resp.process_key);
                 bot_controllers[0].set_process_key(sc1_resp.process_key);
                 proxy_state.write().bot_controllers[0].set_process_key(sc1_resp.process_key);
                 bot_controllers[1].set_process_key(sc2_resp.process_key);
@@ -169,8 +141,12 @@ pub async fn match_scheduler<M: MatchSource>(
 
                 (sc1_resp.process_key, sc2_resp.process_key)
             }
-            (Err(e), _) | (_, Err(e)) => {
+            Err(e) => {
                 error!("Failed to start SC2: {}", e);
+                break 'main_loop;
+            }
+            _ => {
+                error!("Unexpected response from SC2 start");
                 break 'main_loop;
             }
         };
@@ -350,28 +326,12 @@ pub async fn match_scheduler<M: MatchSource>(
         }
 
         match_counter += 1;
-        let _cleanup_res = join3(
-            bot_controllers[0].terminate_all("graceful"),
-            bot_controllers[1].terminate_all("graceful"),
-            sc2_controllers[0].terminate_all("kill"),
-        )
-        .await;
+
         let mut state = proxy_state.write();
         clean_up_state(&mut state);
     }
     info!("Finished games in {:?}", now.elapsed().as_millis());
-    match join3(
-        bot_controllers[0].shutdown(),
-        bot_controllers[1].shutdown(),
-        sc2_controllers[0].shutdown(),
-    )
-    .await
-    {
-        (Err(e), _, _) | (_, Err(e), _) | (_, _, Err(e)) => {
-            error!("Failed to shutdown one or more controllers: {:?}", e);
-        }
-        _ => {}
-    };
+
     let shutdown_sender = proxy_state.read().shutdown_sender.clone();
     if let Err(e) = shutdown_sender.send(()).await {
         error!("Failed graceful shutdown. Killing process: {:?}", e);
@@ -474,13 +434,6 @@ fn init_bot_controllers(settings: &ACConfig) -> Result<[BotController; 2], url::
     Ok([
         BotController::new(&settings.bot_cont_1_host, settings.bot_cont_1_port)?,
         BotController::new(&settings.bot_cont_2_host, settings.bot_cont_2_port)?,
-    ])
-}
-
-fn init_sc2_controllers(settings: &ACConfig) -> Result<[SC2Controller; 2], url::ParseError> {
-    Ok([
-        SC2Controller::new(&settings.sc2_cont_host, settings.sc2_cont_port)?,
-        SC2Controller::new(&settings.sc2_cont_host, settings.sc2_cont_port)?,
     ])
 }
 

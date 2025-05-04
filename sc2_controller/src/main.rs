@@ -4,14 +4,14 @@ mod routes;
 
 #[cfg(feature = "swagger")]
 use crate::docs::ApiDoc;
-use crate::routes::{start_sc2, terminate_sc2};
+use crate::routes::start_sc2;
 use axum::http::Request;
 use axum::response::Response;
 use axum::routing::{get, post};
 use axum::{error_handling::HandleErrorLayer, http::StatusCode, Router};
 use clap::{arg, command, value_parser};
 use common::api::health;
-use common::api::process::{shutdown, stats, stats_host, status, terminate_all};
+use common::api::process::{stats, stats_host, status};
 use common::api::process::{stats_all, ProcessMap};
 use common::api::state::AppState;
 use common::configuration::{get_config_from_proxy, get_host_url, get_proxy_url_from_env};
@@ -85,9 +85,6 @@ async fn main() {
         .route("/stats/host", get(stats_host))
         .route("/stats_all", get(stats_all))
         .route("/status/:port", get(status))
-        .route("/terminate/:port", post(terminate_sc2))
-        .route("/terminate_all", post(terminate_all))
-        .route("/shutdown", post(shutdown))
         .layer(
             TraceLayer::new_for_http()
                 .on_request(|request: &Request<_>, _span: &Span| {

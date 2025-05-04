@@ -9,5 +9,4 @@ pub enum ProcessError {
     NotInProcessMap(Port),
     Custom(String),
     StartError(String),
-    TerminateError(String),
 }

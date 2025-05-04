@@ -4,16 +4,14 @@ mod routes;
 
 #[cfg(feature = "swagger")]
 use crate::docs::ApiDoc;
-use crate::routes::{start_bot, terminate_bot};
+use crate::routes::start_bot;
 use axum::http::Request;
 use axum::response::Response;
 use axum::routing::{get, post};
 use axum::Router;
 use axum::{error_handling::HandleErrorLayer, http::StatusCode};
 use common::api::health;
-use common::api::process::{
-    shutdown, stats, stats_all, stats_host, status, terminate_all, ProcessMap,
-};
+use common::api::process::{stats, stats_all, stats_host, status, ProcessMap};
 use common::api::state::AppState;
 use common::configuration::{get_config_from_proxy, get_host_url, get_proxy_url_from_env};
 use common::logging::init_logging;
@@ -89,9 +87,6 @@ async fn main() {
         .route("/status/:port", get(status))
         .route("/stats/host", get(stats_host))
         .route("/stats_all", get(stats_all))
-        .route("/terminate_all", post(terminate_all))
-        .route("/terminate/:bot_name", post(terminate_bot))
-        .route("/shutdown", post(shutdown))
         // Add middleware to all routes
         .layer(
             TraceLayer::new_for_http()

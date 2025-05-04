@@ -43,9 +43,7 @@ impl IntoResponse for AppError {
                 (StatusCode::NOT_FOUND, message)
             }
             Self::Process(ProcessError::Custom(message)) => (StatusCode::BAD_REQUEST, message),
-            Self::Process(
-                ProcessError::StartError(message) | ProcessError::TerminateError(message),
-            ) => (StatusCode::BAD_REQUEST, message),
+            Self::Process(ProcessError::StartError(message)) => (StatusCode::BAD_REQUEST, message),
             Self::Map(MapError::NotFound(e)) => {
                 let new_error = serde_error::Error::new(&e);
                 tracing::debug!("MapError::NotFound(: {}", e.to_string());

@@ -18,11 +18,6 @@ pub enum Status {
 }
 #[cfg_attr(feature = "swagger", derive(ToSchema))]
 #[derive(Debug, Deserialize, Serialize)]
-pub struct TerminateResponse {
-    pub status: Status,
-}
-#[cfg_attr(feature = "swagger", derive(ToSchema))]
-#[derive(Debug, Deserialize, Serialize)]
 pub struct StartResponse {
     pub status: Status,
     pub status_reason: String,
