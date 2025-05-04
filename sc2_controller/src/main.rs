@@ -4,7 +4,7 @@ mod routes;
 
 #[cfg(feature = "swagger")]
 use crate::docs::ApiDoc;
-use crate::routes::{find_map, start_sc2, terminate_sc2};
+use crate::routes::{start_sc2, terminate_sc2};
 use axum::http::Request;
 use axum::response::Response;
 use axum::routing::{get, post};
@@ -88,7 +88,6 @@ async fn main() {
         .route("/terminate/:port", post(terminate_sc2))
         .route("/terminate_all", post(terminate_all))
         .route("/shutdown", post(shutdown))
-        .route("/find_map/:map_name", get(find_map))
         .layer(
             TraceLayer::new_for_http()
                 .on_request(|request: &Request<_>, _span: &Span| {

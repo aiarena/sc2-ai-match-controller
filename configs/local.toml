@@ -11,6 +11,7 @@ LOGGING_LEVEL = "debug" #info,debug,error,trace
 # Directories
 REPLAYS_DIRECTORY = "/replays"
 BOT_DIRECTORY = "/bots"
+GAME_DIRECTORY = "/game"
 
 # STARCRAFT
 MAX_GAME_TIME = 60486

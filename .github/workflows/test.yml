@@ -109,7 +109,7 @@ jobs:
       - name: Run file-based integration tests
         run: |
           free -m
-          TEST_CARGO_FLAGS="--release --verbose" docker compose -f ./testing/file-based/docker-compose.yml up --exit-code-from=proxy_controller --force-recreate --build
+          TEST_CARGO_FLAGS="--release --verbose" docker compose -f ./testing/file-based/docker-compose.yml up --exit-code-from=proxy_controller --timeout 20 --force-recreate --build
           free -m
 
   combined:
@@ -131,7 +131,7 @@ jobs:
       - name: Run file-based combined integration tests
         run: |
           free -m
-          TEST_CARGO_FLAGS="--release --verbose" docker compose -f ./testing/file-based-combined/docker-compose.yml up --exit-code-from=combined --force-recreate --build
+          TEST_CARGO_FLAGS="--release --verbose" docker compose -f ./testing/file-based-combined/docker-compose.yml up --exit-code-from=combined --timeout 20 --force-recreate --build
           free -m
 
   api_based:
@@ -149,4 +149,4 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Run api-based integration tests
-        run: TEST_CARGO_FLAGS="--release --verbose" docker compose -f ./testing/api-based/docker-compose.yml up --exit-code-from=proxy_controller --force-recreate --build
+        run: TEST_CARGO_FLAGS="--release --verbose" docker compose -f ./testing/api-based/docker-compose.yml up --exit-code-from=proxy_controller --timeout 20 --force-recreate --build

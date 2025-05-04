@@ -1,5 +1,3 @@
-pub mod maps;
-
 use std::env::var_os;
 use std::io::prelude::*;
 use std::io::ErrorKind;

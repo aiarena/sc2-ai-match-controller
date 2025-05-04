@@ -2,7 +2,7 @@ use crate::game::game_config::GameConfig;
 use crate::game::game_result::GameResult;
 use crate::matches::sources::{LogsAndReplays, MatchSource};
 use crate::matches::{Match, MatchPlayer};
-use crate::routes::{download_bot, download_bot_data};
+use crate::routes::{download_bot, download_bot_data, download_map};
 use crate::state::{ProxyState, SC2Url};
 use bytes::Bytes;
 use common::api::api_reference::bot_controller_client::BotController;
@@ -118,14 +118,31 @@ pub async fn match_scheduler<M: MatchSource>(
             &new_match.players[&PlayerNum::Two].name
         );
 
-        tracing::trace!("Finding map");
-        match sc2_controllers[0].find_map(&new_match.map_name).await {
-            Ok(map) => {
-                proxy_state.write().map = Some(map.map_path);
-            }
-            Err(e) => {
-                error!("Failed to find map: {}", e);
-                break 'main_loop;
+        let map_name = format!("{}.SC2Map", &new_match.map_name.replace(".SC2Map", ""));
+        proxy_state.write().map = Some(map_name.clone());
+
+        if settings.run_type == RunType::AiArena {
+            let map_path = PathBuf::from(&settings.game_directory).join(&map_name);
+
+            tracing::debug!("Downloading map {:?} to {:?}", map_name, map_path);
+
+            match download_map(proxy_state.clone()).await {
+                Ok(bytes) => match tokio::fs::File::create(map_path).await {
+                    Ok(mut file) => {
+                        if let Err(e) = file.write_all(&bytes).await {
+                            error!("Failed to store map: {:?}", e);
+                            break 'main_loop;
+                        }
+                    }
+                    Err(e) => {
+                        error!("Failed to store map: {:?}", e);
+                        break 'main_loop;
+                    }
+                },
+                Err(e) => {
+                    error!("Failed to download map: {:?}", e);
+                    break 'main_loop;
+                }
             }
         }
 

@@ -1,5 +1,4 @@
 use crate::api::errors::app_error::ApiErrorMessage;
-use crate::models::bot_controller::MapData;
 use crate::models::StartResponse;
 use crate::portpicker::Port;
 use async_trait::async_trait;
@@ -48,15 +47,6 @@ impl SC2Controller {
             .client
             .request(reqwest::Method::POST, start_url)
             .build()?;
-
-        self.execute_request(request).await
-    }
-
-    pub async fn find_map(&self, map_name: &str) -> Result<MapData, ApiError<ApiErrorMessage>> {
-        let path = format!("/find_map/{map_name}");
-        let map_url = self.url.join(&path)?;
-
-        let request = self.client.request(reqwest::Method::GET, map_url).build()?;
 
         self.execute_request(request).await
     }
