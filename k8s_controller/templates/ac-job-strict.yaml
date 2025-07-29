@@ -12,6 +12,90 @@ spec:
         runAsUser: 65532
         runAsGroup: 65532
         fsGroup: 65532
+      initContainers:
+        - env:
+            - name: ACBOT_PORT
+              value: '8081'
+            - name: ACBOT_PROXY_HOST
+              value: 127.0.0.1
+          image: aiarena/arenaclient-bot:latest
+          name: bot-controller-1
+          restartPolicy: Always
+          ports:
+            - containerPort: 8081
+              name: 8081tcp
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8081
+              scheme: HTTP
+          resources:
+            limits:
+              cpu: '2'
+            requests:
+              cpu: '1'
+          volumeMounts:
+            - mountPath: /logs/bot_controller
+              name: logs
+              subPath: bot-controller-1
+            - mountPath: /bots/bot1
+              name: bots
+              subPath: bot1
+        - env:
+            - name: ACBOT_PORT
+              value: '8082'
+            - name: ACBOT_PROXY_HOST
+              value: 127.0.0.1
+          image: aiarena/arenaclient-bot:latest
+          name: bot-controller-2
+          restartPolicy: Always
+          ports:
+            - containerPort: 8082
+              name: 8082tcp
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8082
+              scheme: HTTP
+          resources:
+            limits:
+              cpu: '2'
+            requests:
+              cpu: '1'
+          volumeMounts:
+            - mountPath: /logs/bot_controller
+              name: logs
+              subPath: bot-controller-2
+            - mountPath: /bots/bot2
+              name: bots
+              subPath: bot2
+        - env:
+            - name: ACSC2_PORT
+              value: '8083'
+            - name: ACSC2_PROXY_HOST
+              value: 127.0.0.1
+            - name: SC2PATH
+              value: /root/StarCraftII
+          image: aiarena/arenaclient-sc2:latest
+          name: sc2-controller
+          restartPolicy: Always
+          ports:
+            - containerPort: 8083
+              name: 8083tcp
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8083
+              scheme: HTTP
+          volumeMounts:
+            - mountPath: /logs/sc2_controller
+              name: logs
+              subPath: sc2-controller
+            - mountPath: /root/StarCraftII/maps
+              name: game
       containers:
         - env:
             - name: ACPROXY_PORT
@@ -46,86 +130,6 @@ spec:
             - mountPath: /game
               name: game
           __active: true
-        - env:
-            - name: ACBOT_PORT
-              value: '8081'
-            - name: ACBOT_PROXY_HOST
-              value: 127.0.0.1
-          image: aiarena/arenaclient-bot:latest
-          name: bot-controller-1
-          ports:
-            - containerPort: 8081
-              name: 8081tcp
-              protocol: TCP
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: 8081
-              scheme: HTTP
-          resources:
-            limits:
-              cpu: '2'
-            requests:
-              cpu: '1'
-          volumeMounts:
-            - mountPath: /logs/bot_controller
-              name: logs
-              subPath: bot-controller-1
-            - mountPath: /bots/bot1
-              name: bots
-              subPath: bot1
-        - env:
-            - name: ACBOT_PORT
-              value: '8082'
-            - name: ACBOT_PROXY_HOST
-              value: 127.0.0.1
-          image: aiarena/arenaclient-bot:latest
-          name: bot-controller-2
-          ports:
-            - containerPort: 8082
-              name: 8082tcp
-              protocol: TCP
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: 8082
-              scheme: HTTP
-          resources:
-            limits:
-              cpu: '2'
-            requests:
-              cpu: '1'
-          volumeMounts:
-            - mountPath: /logs/bot_controller
-              name: logs
-              subPath: bot-controller-2
-            - mountPath: /bots/bot2
-              name: bots
-              subPath: bot2
-        - env:
-            - name: ACSC2_PORT
-              value: '8083'
-            - name: ACSC2_PROXY_HOST
-              value: 127.0.0.1
-            - name: SC2PATH
-              value: /root/StarCraftII
-          image: aiarena/arenaclient-sc2:latest
-          name: sc2-controller
-          ports:
-            - containerPort: 8083
-              name: 8083tcp
-              protocol: TCP
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: 8083
-              scheme: HTTP
-          volumeMounts:
-            - mountPath: /logs/sc2_controller
-              name: logs
-              subPath: sc2-controller
-            - mountPath: /root/StarCraftII/maps
-              name: game
       restartPolicy: Never
       volumes:
         - name: config
