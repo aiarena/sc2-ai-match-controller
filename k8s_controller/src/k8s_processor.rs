@@ -341,8 +341,8 @@ fn set_config_configmap_name(job: &mut Job, configmap_name: &str) -> anyhow::Res
         .iter_mut()
     {
         for x in volume.config_map.iter_mut() {
-            if x.name == Some("placeholder".to_string()) {
-                x.name = Some(configmap_name.to_string())
+            if x.name == "placeholder" {
+                x.name = configmap_name.to_string()
             }
         }
     }
