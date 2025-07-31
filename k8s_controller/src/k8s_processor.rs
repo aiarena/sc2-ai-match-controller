@@ -479,7 +479,7 @@ mod tests {
             .expect("Volumes is None")
             .iter()
             .map(|x| x.config_map.as_ref())
-            .any(|x| x.and_then(|c| c.name.as_ref()) == Some(&configmap_name)))
+            .any(|x| x.and_then(|c| Some(c.name.clone())) == Some(configmap_name.clone())))
     }
 
     #[test]
