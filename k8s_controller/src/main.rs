@@ -35,7 +35,9 @@ static PREFIX: &str = "ACK8S";
 #[tokio::main]
 async fn main() {
     // Install the default CryptoProvider for rustls
-    rustls::crypto::ring::default_provider().install_default().expect("Failed to install rustls crypto provider");
+    rustls::crypto::ring::default_provider()
+        .install_default()
+        .expect("Failed to install rustls crypto provider");
 
     let host_url = get_host_url(PREFIX, 8085);
 
