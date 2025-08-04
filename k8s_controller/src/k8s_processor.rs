@@ -234,6 +234,20 @@ fn set_image_tags(job: &mut Job, container_names: &[&str], image_tag: &str) -> a
             }
         }
     }
+    if let Some(init_containers) = mut_inner_spec(job)?.init_containers.as_mut() {
+        for container in init_containers.iter_mut() {
+            if container_names.contains(&container.name.as_str()) {
+                if let Some(image_name) = container
+                    .image
+                    .as_ref()
+                    .and_then(|x| x.clone().split(':').map(|x| x.to_string()).next())
+                {
+                    let new_name = format!("{image_name}:{image_tag}");
+                    container.image = Some(new_name);
+                }
+            }
+        }
+    }
     Ok(())
 }
 
