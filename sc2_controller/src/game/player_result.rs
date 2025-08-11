@@ -1,5 +1,6 @@
-use crate::game::sc2_result::Sc2Result;
 use serde::{Deserialize, Serialize};
+
+use crate::game::sc2_result::Sc2Result;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PlayerResult {

@@ -1,4 +1,3 @@
-use sc2_proto::common::Race;
 use serde::{Deserialize, Serialize};
 
 #[derive(PartialOrd, PartialEq, Eq, Debug, Clone, Copy, Serialize, Deserialize)]
@@ -18,14 +17,6 @@ impl BotRace {
             "r" | "random" | "race.random" | "4" => Self::Random,
             "z" | "zerg" | "race.zerg" | "2" => Self::Zerg,
             _ => Self::NoRace,
-        }
-    }
-    pub const fn to_race(self) -> Race {
-        match self {
-            Self::Terran => Race::Terran,
-            Self::Zerg => Race::Zerg,
-            Self::Protoss => Race::Protoss,
-            Self::Random | Self::NoRace => Race::Random,
         }
     }
 }
@@ -98,13 +89,5 @@ mod tests {
         let race = "whatever";
         let bot_race = BotRace::from_str(race);
         assert_eq!(bot_race, BotRace::NoRace);
-    }
-    #[test]
-    pub fn test_conversion() {
-        assert_eq!(Race::Random, BotRace::Random.to_race());
-        assert_eq!(Race::Random, BotRace::NoRace.to_race());
-        assert_eq!(Race::Terran, BotRace::Terran.to_race());
-        assert_eq!(Race::Zerg, BotRace::Zerg.to_race());
-        assert_eq!(Race::Protoss, BotRace::Protoss.to_race());
     }
 }

@@ -13,6 +13,7 @@ services:
       - "ACSC2_PROXY_HOST=proxy_controller"
     volumes:
       - "game:/root/StarCraftII/maps"
+      - "logs:/logs"
 
   bot_controller1:
     build:
@@ -27,6 +28,8 @@ services:
     environment:
       - "ACBOT_PORT=8081"
       - "ACBOT_PROXY_HOST=proxy_controller"
+      - "ACBOT_GAME_HOST=sc2_controller"
+      - "ACBOT_GAME_PORT=8083"
     volumes:
       - "bots:/bots"
 
@@ -43,6 +46,8 @@ services:
     environment:
       - "ACBOT_PORT=8082"
       - "ACBOT_PROXY_HOST=proxy_controller"
+      - "ACBOT_GAME_HOST=sc2_controller"
+      - "ACBOT_GAME_PORT=8083"
     volumes:
       - "bots:/bots"
 
@@ -63,7 +68,9 @@ services:
       - "./test-config.toml:/app/config.toml"
       - "bots:/bots"
       - "game:/game"
+      - "logs:/logs"
 
 volumes:
      bots:
      game:
+     logs:

@@ -76,10 +76,6 @@ pub async fn download_bot_data(
     state: Arc<RwLock<ProxyState>>,
     player_num: PlayerNum,
 ) -> Result<Bytes, AppError> {
-    // todo: Implement authorization
-    // if !state.read().auth_whitelist.contains(&addr) {
-    //     return Err(DownloadError::Unauthorized.into());
-    // }
     let settings = state.read().settings.clone();
 
     let current_match = match state

@@ -1,10 +1,10 @@
 use crate::matches::sources::file_source::errors::{FileMatchExtractError, SubmissionError};
 use crate::matches::sources::file_source::open_results_file;
 use crate::matches::sources::{LogsAndReplays, MatchSource};
-use crate::matches::{Match, MatchPlayer};
 use async_trait::async_trait;
 use common::configuration::ac_config::ACConfig;
 use common::models::aiarena::aiarena_game_result::AiArenaGameResult;
+use common::models::aiarena::aiarena_match::{Match, MatchPlayer};
 use common::models::aiarena::aiarena_result::AiArenaResult;
 use common::PlayerNum;
 use parking_lot::RwLock;
@@ -218,10 +218,10 @@ fn extract_match(line: &str) -> Result<(Match, AiArenaResult), FileMatchExtractE
 
 #[cfg(test)]
 mod tests {
-    use crate::game::race::BotRace;
     use crate::matches::sources::file_source::errors::FileMatchExtractError;
     use crate::matches::sources::test_source::extract_match;
     use common::models::aiarena::aiarena_result::AiArenaResult;
+    use common::models::aiarena::bot_race::BotRace;
     use common::PlayerNum;
 
     #[test]

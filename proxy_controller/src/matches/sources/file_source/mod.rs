@@ -2,10 +2,10 @@ pub mod errors;
 
 use crate::matches::sources::file_source::errors::{FileMatchExtractError, SubmissionError};
 use crate::matches::sources::{LogsAndReplays, MatchSource};
-use crate::matches::{Match, MatchPlayer};
 use async_trait::async_trait;
 use common::configuration::ac_config::ACConfig;
 use common::models::aiarena::aiarena_game_result::AiArenaGameResult;
+use common::models::aiarena::aiarena_match::{Match, MatchPlayer};
 use common::PlayerNum;
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
@@ -194,8 +194,8 @@ fn extract_match(line: &str) -> Result<Match, FileMatchExtractError> {
 
 #[cfg(test)]
 mod tests {
-    use crate::game::race::BotRace;
     use crate::matches::sources::file_source::{extract_match, FileMatchExtractError};
+    use common::models::aiarena::bot_race::BotRace;
     use common::PlayerNum;
 
     #[test]
