@@ -268,14 +268,21 @@ fn store_game_result(match_id: u32) {
     let game_result = GAME_RESULT.read().unwrap().clone();
 
     if game_result.match_id == match_id {
-        let aiarena_game_result = AiArenaGameResult::from(&game_result);
+        if game_result.is_ready() {
+            let aiarena_game_result = AiArenaGameResult::from(&game_result);
 
-        info!("Game result: {:?}", &aiarena_game_result);
+            info!("Game result: {:?}", &aiarena_game_result);
 
-        aiarena_game_result.to_json_file();
+            aiarena_game_result.to_json_file();
 
-        info!("Game result stored successfully");
+            info!("Game result stored successfully");
+        } else {
+            info!("Waiting for results from both players before storing the game result");
+        }
     } else {
-        info!("Ignoring game result for match {} as current match is {}", match_id, game_result.match_id);
+        info!(
+            "Ignoring game result for match {} as current match is {}",
+            match_id, game_result.match_id
+        );
     }
 }
