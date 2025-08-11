@@ -35,8 +35,11 @@ impl GameResult {
         self.result = None;
     }
     pub fn is_ready(&self) -> bool {
-        (self.player1_result.is_some() && self.player2_result.is_some()) ||
-        matches!(self.result, Some(AiArenaResult::Error | AiArenaResult::InitializationError))
+        (self.player1_result.is_some() && self.player2_result.is_some())
+            || matches!(
+                self.result,
+                Some(AiArenaResult::Error | AiArenaResult::InitializationError)
+            )
     }
     pub fn has_any_result(&self) -> bool {
         self.player1_result.is_some() || self.player2_result.is_some()
@@ -52,7 +55,12 @@ impl GameResult {
         }
     }
 
-    pub fn add_player_result(&mut self, match_id: u32, player_num: PlayerNum, player_result: PlayerResult) {
+    pub fn add_player_result(
+        &mut self,
+        match_id: u32,
+        player_num: PlayerNum,
+        player_result: PlayerResult,
+    ) {
         if match_id == self.match_id {
             match player_num {
                 PlayerNum::One => {
