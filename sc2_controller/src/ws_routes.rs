@@ -70,8 +70,8 @@ async fn websocket(bot_ws: WebSocket, state: AppState, addr: SocketAddr) {
         Some(seat) => seat,
         None => {
             error!("No free player seats available");
-            GAME_RESULT.write().unwrap().result = Some(AiArenaResult::Error);
-            return store_game_result();
+            GAME_RESULT.write().unwrap().set_error(match_id);
+            return store_game_result(match_id);
         }
     };
 
@@ -79,8 +79,8 @@ async fn websocket(bot_ws: WebSocket, state: AppState, addr: SocketAddr) {
 
     if sc2_ws.is_none() {
         error!("Could not connect to SC2");
-        GAME_RESULT.write().unwrap().result = Some(AiArenaResult::Error);
-        return store_game_result();
+        GAME_RESULT.write().unwrap().set_error(match_id);
+        return store_game_result(match_id);
     }
 
     let sc2_ws = sc2_ws.unwrap();
@@ -112,8 +112,8 @@ async fn websocket(bot_ws: WebSocket, state: AppState, addr: SocketAddr) {
                 error!("{:?}", e);
                 //TODO: Initiate cleanup and early exit
                 //TODO: Test invalid creategame
-                GAME_RESULT.write().unwrap().result = Some(AiArenaResult::InitializationError);
-                return store_game_result();
+                GAME_RESULT.write().unwrap().set_init_error(match_id);
+                return store_game_result(match_id);
             }
         };
     }
@@ -149,7 +149,7 @@ async fn websocket(bot_ws: WebSocket, state: AppState, addr: SocketAddr) {
                     PlayerError::BotQuit => temp_result = Sc2Result::Defeat,
                     PlayerError::NoMessageAvailable => {
                         temp_result = Sc2Result::SC2Crash;
-                        GAME_RESULT.write().unwrap().set_error();
+                        GAME_RESULT.write().unwrap().set_error(match_id);
                     }
                     PlayerError::BotWebsocket(e) => {
                         error!("{:?}", e);
@@ -166,24 +166,24 @@ async fn websocket(bot_ws: WebSocket, state: AppState, addr: SocketAddr) {
                     PlayerError::Sc2UnexpectedMessage(e) => {
                         error!("{:?}", e);
                         temp_result = Sc2Result::SC2Crash;
-                        GAME_RESULT.write().unwrap().set_error();
+                        GAME_RESULT.write().unwrap().set_error(match_id);
                     }
                     PlayerError::UnexpectedRequest(e) => {
                         error!("{:?}", e);
-                        GAME_RESULT.write().unwrap().set_init_error();
+                        GAME_RESULT.write().unwrap().set_init_error(match_id);
                     }
                     PlayerError::ProtoParseError(e) => {
                         error!("{:?}", e);
                         temp_result = Sc2Result::SC2Crash;
-                        GAME_RESULT.write().unwrap().set_error();
+                        GAME_RESULT.write().unwrap().set_error(match_id);
                     }
                     PlayerError::CreateGame(e) => {
                         error!("{:?}", e);
-                        GAME_RESULT.write().unwrap().set_init_error();
+                        GAME_RESULT.write().unwrap().set_init_error(match_id);
                     }
                     PlayerError::JoinGameTimeout(e) => {
                         error!("{:?}", e);
-                        GAME_RESULT.write().unwrap().set_init_error();
+                        GAME_RESULT.write().unwrap().set_init_error(match_id);
                     }
                     PlayerError::Sc2Timeout(e) => {
                         error!("{:?}", e);
@@ -191,13 +191,13 @@ async fn websocket(bot_ws: WebSocket, state: AppState, addr: SocketAddr) {
                         // from sc2. Check if there is a result before erroring the match
 
                         if !GAME_RESULT.read().unwrap().has_any_result() {
-                            GAME_RESULT.write().unwrap().set_error();
+                            GAME_RESULT.write().unwrap().set_error(match_id);
                         }
                     }
                     PlayerError::BotTimeout(e) => {
                         error!("{:?}", e);
                         temp_result = Sc2Result::Timeout;
-                        GAME_RESULT.write().unwrap().set_error();
+                        GAME_RESULT.write().unwrap().set_error(match_id);
                     }
                 }
                 PlayerResult {
@@ -213,14 +213,14 @@ async fn websocket(bot_ws: WebSocket, state: AppState, addr: SocketAddr) {
         GAME_RESULT
             .write()
             .unwrap()
-            .add_player_result(player_num, p_result);
+            .add_player_result(match_id, player_num, p_result);
     } else {
         error!("Timeout while waiting for game to become ready");
-        GAME_RESULT.write().unwrap().result = Some(AiArenaResult::InitializationError);
-        return store_game_result();
+        GAME_RESULT.write().unwrap().set_init_error(match_id);
+        return store_game_result(match_id);
     }
     tracing::info!("Done");
-    return store_game_result();
+    return store_game_result(match_id);
 }
 
 pub async fn connect(playerSeat: &PlayerSeat) -> Option<WebSocketStream<TcpStream>> {
@@ -262,11 +262,20 @@ pub async fn connect(playerSeat: &PlayerSeat) -> Option<WebSocketStream<TcpStrea
     None
 }
 
-fn store_game_result() {
+/// Store the game result on disk.
+/// The input match id ensures that thread that process previous matches don't overwrite the current match result.
+fn store_game_result(match_id: u32) {
     let game_result = GAME_RESULT.read().unwrap().clone();
-    let aiarena_game_result = AiArenaGameResult::from(&game_result);
 
-    info!("Game result: {:?}", &aiarena_game_result);
+    if game_result.match_id == match_id {
+        let aiarena_game_result = AiArenaGameResult::from(&game_result);
 
-    aiarena_game_result.to_json_file();
+        info!("Game result: {:?}", &aiarena_game_result);
+
+        aiarena_game_result.to_json_file();
+
+        info!("Game result stored successfully");
+    } else {
+        info!("Ignoring game result for match {} as current match is {}", match_id, game_result.match_id);
+    }
 }
