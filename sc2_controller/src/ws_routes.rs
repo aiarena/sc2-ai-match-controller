@@ -1,33 +1,50 @@
+use once_cell::sync::Lazy;
 use std::io::ErrorKind::ConnectionRefused;
 use std::net::SocketAddr;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
 use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
 use tokio_tungstenite::WebSocketStream;
 
 use crate::game::game_config::GameConfig;
+use crate::game::game_result::GAME_RESULT;
 use crate::game::player_result::PlayerResult;
 use crate::game::sc2_result::Sc2Result;
+use crate::player_seats::{PlayerSeat, PLAYER_SEATS};
 use axum::extract::ws::WebSocket;
 use axum::extract::{ConnectInfo, State, WebSocketUpgrade};
 use axum::response::IntoResponse;
+use common::api::state::AppState;
+use common::models::aiarena::aiarena_game_result::AiArenaGameResult;
+use common::models::aiarena::aiarena_match::{MatchRequest, PlayerInfo};
 use common::models::aiarena::aiarena_result::AiArenaResult;
 use common::PlayerNum;
-use parking_lot::RwLock;
 use tokio::net::TcpStream;
 use tokio::time::sleep;
-use tracing::{debug, error, Instrument};
+use tracing::{debug, error, info, Instrument};
 
-use crate::state::{ProxyState, SC2Url};
 use crate::websocket::errors::player_error::PlayerError;
 use crate::websocket::player::Player;
 use crate::websocket::port_config::PortConfig;
 
+struct GameReadyFlag {
+    pub ready: bool,
+}
+
+static GAME_READY_FLAG: Lazy<Arc<RwLock<GameReadyFlag>>> =
+    Lazy::new(|| Arc::new(RwLock::new(GameReadyFlag { ready: false })));
+
+static PORT_CONFIG: Lazy<Arc<RwLock<PortConfig>>> = Lazy::new(|| {
+    Arc::new(RwLock::new(
+        PortConfig::new().expect("Could not create port configuration"),
+    ))
+});
+
 pub async fn websocket_handler(
     ws: WebSocketUpgrade,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
-    State(state): State<Arc<RwLock<ProxyState>>>,
+    State(state): State<AppState>,
 ) -> impl IntoResponse {
     ws.max_message_size(128 << 20) // 128MiB
         .max_frame_size(32 << 20) // 32MiB
@@ -36,70 +53,67 @@ pub async fn websocket_handler(
 }
 
 #[tracing::instrument(skip(bot_ws, state), fields(bot_name))]
-async fn websocket(bot_ws: WebSocket, state: Arc<RwLock<ProxyState>>, addr: SocketAddr) {
+async fn websocket(bot_ws: WebSocket, state: AppState, addr: SocketAddr) {
     debug!("Connection from {:?}", addr);
-    state.write().add_client(addr);
-    let settings = state.read().settings.clone();
+    let settings = state.settings.clone();
 
-    let sc2_url = state.write().get_free_sc2_url();
-    debug!("Got free SC2 URL: {:?}", sc2_url);
-    if sc2_url.is_none() {
-        error!("No free SC2 ports available");
-        if !state.read().game_result.as_ref().unwrap().has_any_result() {
-            state.write().game_result.as_mut().unwrap().result = Some(AiArenaResult::Error);
+    let match_request = MatchRequest::read();
+    debug!("Match Request: {:?}", match_request);
+    let match_id = match_request.match_id;
+    GAME_RESULT.write().unwrap().set(match_id);
+
+    let player_seat = {
+        let mut player_seats = PLAYER_SEATS.write().unwrap();
+        player_seats.useSeat()
+    };
+    let player_seat = match player_seat {
+        Some(seat) => seat,
+        None => {
+            error!("No free player seats available");
+            GAME_RESULT.write().unwrap().result = Some(AiArenaResult::Error);
+            return store_game_result();
         }
+    };
 
-        return;
-    }
-
-    let sc2_url = sc2_url.unwrap();
-
-    let sc2_ws = connect(&sc2_url).await;
+    let sc2_ws = connect(&player_seat).await;
 
     if sc2_ws.is_none() {
         error!("Could not connect to SC2");
-        state.write().game_result.as_mut().unwrap().result = Some(AiArenaResult::Error);
-        return;
+        GAME_RESULT.write().unwrap().result = Some(AiArenaResult::Error);
+        return store_game_result();
     }
 
     let sc2_ws = sc2_ws.unwrap();
     let mut client_ws = Player::new(bot_ws, sc2_ws, addr);
 
     loop {
-        let p_details = { state.read().get_player_details(addr) };
-
-        if p_details.as_ref().and_then(|x| x.player_num()).is_none() {
+        if PlayerInfo::read(addr.port()).is_none() {
             sleep(Duration::from_secs(3)).await;
         } else {
             break;
         }
     }
 
-    let p_details = { state.read().get_player_details(addr) };
+    let p_details = PlayerInfo::read(addr.port()).unwrap();
     debug!("Player Details: {:?}", p_details);
 
-    let map = state.read().map.as_ref().map(|x| x.to_string()).unwrap();
+    let map = match_request.map_name.clone();
 
-    if let Some(bot_name) = p_details.as_ref().and_then(|x| x.bot_name()) {
-        tracing::Span::current().record("bot_name", bot_name);
-    }
-    let player_num = p_details.as_ref().and_then(|x| x.player_num()).unwrap();
+    let player_num = p_details.num;
 
     if let PlayerNum::One = player_num {
         match client_ws.create_game(&map, settings.realtime).await {
             Ok(_) => {
-                let mut s = state.write();
+                let mut s = GAME_READY_FLAG.write().unwrap();
                 debug!("Setting port_config and ready state");
-                s.port_config = Some(PortConfig::new().unwrap());
                 s.ready = true;
             }
             Err(e) => {
                 error!("{:?}", e);
                 //TODO: Initiate cleanup and early exit
                 //TODO: Test invalid creategame
-                state.write().game_result.as_mut().unwrap().result =
-                    Some(AiArenaResult::InitializationError);
-                return;
+                GAME_RESULT.write().unwrap().result = Some(AiArenaResult::InitializationError);
+                return store_game_result();
             }
         };
     }
@@ -109,20 +123,18 @@ async fn websocket(bot_ws: WebSocket, state: Arc<RwLock<ProxyState>>, addr: Sock
     loop {
         debug!("Waiting for state to become ready");
         counter += 1;
-        let ready = { state.read().ready };
+        let ready = { GAME_READY_FLAG.read().unwrap().ready };
         if ready || counter > max_counter {
             break;
         } else {
             sleep(Duration::from_millis(250)).await;
         }
     }
-    if state.read().ready {
-        let current_match = state.read().current_match.clone().unwrap();
 
-        let ac_config = state.read().settings.clone();
-        let game_config = GameConfig::new(&current_match, &ac_config);
-        state.write().game_config = Some(game_config.clone());
-        let port_config = state.read().port_config.clone().unwrap();
+    let game_config = GameConfig::from_file(&settings, &match_request);
+    let port_config = PORT_CONFIG.read().unwrap().clone();
+
+    if counter <= max_counter {
         debug!("Starting Client Run");
         let p_result = match client_ws
             .run(game_config, port_config, player_num)
@@ -137,7 +149,7 @@ async fn websocket(bot_ws: WebSocket, state: Arc<RwLock<ProxyState>>, addr: Sock
                     PlayerError::BotQuit => temp_result = Sc2Result::Defeat,
                     PlayerError::NoMessageAvailable => {
                         temp_result = Sc2Result::SC2Crash;
-                        state.write().game_result.as_mut().unwrap().set_error();
+                        GAME_RESULT.write().unwrap().set_error();
                     }
                     PlayerError::BotWebsocket(e) => {
                         error!("{:?}", e);
@@ -154,37 +166,38 @@ async fn websocket(bot_ws: WebSocket, state: Arc<RwLock<ProxyState>>, addr: Sock
                     PlayerError::Sc2UnexpectedMessage(e) => {
                         error!("{:?}", e);
                         temp_result = Sc2Result::SC2Crash;
-                        state.write().game_result.as_mut().unwrap().set_error();
+                        GAME_RESULT.write().unwrap().set_error();
                     }
                     PlayerError::UnexpectedRequest(e) => {
                         error!("{:?}", e);
-                        state.write().game_result.as_mut().unwrap().set_init_error();
+                        GAME_RESULT.write().unwrap().set_init_error();
                     }
                     PlayerError::ProtoParseError(e) => {
                         error!("{:?}", e);
                         temp_result = Sc2Result::SC2Crash;
-                        state.write().game_result.as_mut().unwrap().set_error();
+                        GAME_RESULT.write().unwrap().set_error();
                     }
                     PlayerError::CreateGame(e) => {
                         error!("{:?}", e);
-                        state.write().game_result.as_mut().unwrap().set_init_error();
+                        GAME_RESULT.write().unwrap().set_init_error();
                     }
                     PlayerError::JoinGameTimeout(e) => {
                         error!("{:?}", e);
-                        state.write().game_result.as_mut().unwrap().set_init_error();
+                        GAME_RESULT.write().unwrap().set_init_error();
                     }
                     PlayerError::Sc2Timeout(e) => {
                         error!("{:?}", e);
                         // If the game completion was forced (timeout or crash), the other bot might get a timeout
                         // from sc2. Check if there is a result before erroring the match
-                        if !state.read().game_result.as_ref().unwrap().has_any_result() {
-                            state.write().game_result.as_mut().unwrap().set_error();
+
+                        if !GAME_RESULT.read().unwrap().has_any_result() {
+                            GAME_RESULT.write().unwrap().set_error();
                         }
                     }
                     PlayerError::BotTimeout(e) => {
                         error!("{:?}", e);
                         temp_result = Sc2Result::Timeout;
-                        state.write().game_result.as_mut().unwrap().set_error();
+                        GAME_RESULT.write().unwrap().set_error();
                     }
                 }
                 PlayerResult {
@@ -197,24 +210,22 @@ async fn websocket(bot_ws: WebSocket, state: Arc<RwLock<ProxyState>>, addr: Sock
             }
         };
         debug!("{:?}", &p_result);
-        state
+        GAME_RESULT
             .write()
-            .game_result
-            .as_mut()
             .unwrap()
             .add_player_result(player_num, p_result);
     } else {
         error!("Timeout while waiting for game to become ready");
-        state.write().game_result.as_mut().unwrap().result =
-            Some(AiArenaResult::InitializationError);
-        return;
+        GAME_RESULT.write().unwrap().result = Some(AiArenaResult::InitializationError);
+        return store_game_result();
     }
     tracing::info!("Done");
+    return store_game_result();
 }
 
-pub async fn connect(sc2_url: &SC2Url) -> Option<WebSocketStream<TcpStream>> {
-    let url = format!("ws://{}:{}/sc2api", sc2_url.host, sc2_url.port);
-    let addr = format!("{}:{}", sc2_url.host, sc2_url.port);
+pub async fn connect(playerSeat: &PlayerSeat) -> Option<WebSocketStream<TcpStream>> {
+    let url = format!("ws://127.0.0.1:{}/sc2api", playerSeat.game_port());
+    let addr = format!("127.0.0.1:{}", playerSeat.game_port());
 
     debug!("Connecting to the SC2 process: {:?}, {:?}", url, addr);
 
@@ -249,4 +260,13 @@ pub async fn connect(sc2_url: &SC2Url) -> Option<WebSocketStream<TcpStream>> {
 
     error!("Websocket connection could not be formed");
     None
+}
+
+fn store_game_result() {
+    let game_result = GAME_RESULT.read().unwrap().clone();
+    let aiarena_game_result = AiArenaGameResult::from(&game_result);
+
+    info!("Game result: {:?}", &aiarena_game_result);
+
+    aiarena_game_result.to_json_file();
 }

@@ -31,6 +31,8 @@ services:
     environment:
       - "ACBOT_PORT=8081"
       - "ACBOT_PROXY_HOST=proxy_controller"
+      - "ACBOT_GAME_HOST=sc2_controller"
+      - "ACBOT_GAME_PORT=8083"
 
   bot_controller2:
     build:
@@ -47,6 +49,8 @@ services:
     environment:
       - "ACBOT_PORT=8082"
       - "ACBOT_PROXY_HOST=proxy_controller"
+      - "ACBOT_GAME_HOST=sc2_controller"
+      - "ACBOT_GAME_PORT=8083"
 
   proxy_controller:
     build:

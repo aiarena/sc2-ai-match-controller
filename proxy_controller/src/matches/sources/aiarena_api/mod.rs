@@ -1,6 +1,5 @@
 use crate::matches::sources::file_source::errors::SubmissionError;
 use crate::matches::sources::{LogsAndReplays, MatchSource};
-use crate::matches::Match;
 use async_trait::async_trait;
 use common::api::api_reference::aiarena::aiarena_api_client::AiArenaApiClient;
 use common::api::api_reference::aiarena::errors::AiArenaApiError;
@@ -8,7 +7,7 @@ use common::api::api_reference::aiarena::{create_part_from_bytes, AiArenaResultF
 use common::api::api_reference::ApiError;
 use common::configuration::ac_config::ACConfig;
 use common::models::aiarena::aiarena_game_result::AiArenaGameResult;
-use common::models::aiarena::aiarena_match::AiArenaMatch;
+use common::models::aiarena::aiarena_match::{AiArenaMatch, Match};
 use common::paths::base_dir;
 use serde::{Deserialize, Serialize};
 use std::fs::{File, OpenOptions};

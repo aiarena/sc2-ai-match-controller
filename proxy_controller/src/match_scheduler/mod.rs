@@ -1,7 +1,4 @@
-use crate::game::game_config::GameConfig;
-use crate::game::game_result::GameResult;
 use crate::matches::sources::{LogsAndReplays, MatchSource};
-use crate::matches::{Match, MatchPlayer};
 use crate::routes::{download_bot, download_bot_data, download_map};
 use crate::state::{ProxyState, SC2Url};
 use bytes::Bytes;
@@ -10,7 +7,7 @@ use common::api::api_reference::sc2_controller_client::SC2Controller;
 use common::api::api_reference::ControllerApi;
 use common::configuration::ac_config::{ACConfig, RunType};
 use common::models::aiarena::aiarena_game_result::AiArenaGameResult;
-use common::models::aiarena::aiarena_result::AiArenaResult;
+use common::models::aiarena::aiarena_match::{Match, MatchPlayer, MatchRequest, PlayerInfo};
 use common::models::bot_controller::StartBot;
 use common::utilities::directory::ensure_directory_structure;
 use common::utilities::portpicker::Port;
@@ -43,13 +40,6 @@ pub async fn match_scheduler<M: MatchSource>(
     let sc2_controller = SC2Controller::new(&settings.sc2_cont_host, settings.sc2_cont_port)
         .expect("Failed to create SC2 controller");
     proxy_state.write().sc2_controller = Some(sc2_controller.clone());
-
-    // TODO: Enable when auth is implemented
-    // let sock_addrs = vec![
-    //     bot_controllers[0].sock_addr(),
-    //     bot_controllers[1].sock_addr(),
-    // ];
-    // proxy_state.write().auth_whitelist.extend(sock_addrs);
 
     info!("Waiting for controllers to become ready");
     let mut ready = false;
@@ -84,7 +74,6 @@ pub async fn match_scheduler<M: MatchSource>(
         {
             let mut temp_state = proxy_state.write();
             temp_state.current_match = Some(new_match.clone());
-            temp_state.game_result = Some(GameResult::new(new_match.match_id));
         }
         info!("Starting Game - Round {}", match_counter);
         info!(
@@ -120,6 +109,16 @@ pub async fn match_scheduler<M: MatchSource>(
                 }
             }
         }
+
+        info!("Preparing the input to SC2");
+        // Delete any previous match_result.json file
+        AiArenaGameResult::delete_json_file().expect("Failed to delete previous match result file");
+        // Write the match request as match_request.toml
+        let mut match_request: MatchRequest = new_match.clone().into();
+        match_request.map_name = map_name.clone();
+        match_request
+            .write()
+            .expect("Failed to write match request file");
 
         info!("Sending start requests to SC2");
         let (process_key1, process_key2) = match sc2_controller.start().await {
@@ -240,19 +239,29 @@ pub async fn match_scheduler<M: MatchSource>(
                     }
                     if !bot_added1 {
                         tracing::trace!("Adding bot1");
-                        bot_added1 = proxy_state.write().update_player(
-                            resp1.port,
-                            &new_match.players[&PlayerNum::One].name,
-                            PlayerNum::One,
-                        );
+                        let player = new_match.players.get(&PlayerNum::One).unwrap();
+                        let player_info = PlayerInfo {
+                            num: PlayerNum::One,
+                            id: player.id.clone(),
+                            name: player.name.clone(),
+                            race: player.race as u8,
+                        };
+                        let _ = player_info.write(resp1.port);
+
+                        bot_added1 = true;
                     }
                     if !bot_added2 {
                         tracing::trace!("Adding bot2");
-                        bot_added2 = proxy_state.write().update_player(
-                            resp2.port,
-                            &new_match.players[&PlayerNum::Two].name,
-                            PlayerNum::Two,
-                        );
+                        let player = new_match.players.get(&PlayerNum::Two).unwrap();
+                        let player_info = PlayerInfo {
+                            num: PlayerNum::Two,
+                            id: player.id.clone(),
+                            name: player.name.clone(),
+                            race: player.race as u8,
+                        };
+                        let _ = player_info.write(resp2.port);
+
+                        bot_added2 = true;
                     }
 
                     counter += 1;
@@ -261,29 +270,20 @@ pub async fn match_scheduler<M: MatchSource>(
             }
             (Err(e), _) => {
                 error!("Failed to start bot 1: {}", e);
-                proxy_state.write().game_result.as_mut().unwrap().result =
-                    Some(AiArenaResult::InitializationError);
+                let _ =
+                    AiArenaGameResult::new_initialization_error(new_match.match_id).to_json_file();
             }
             (_, Err(e)) => {
                 error!("Failed to start bot 2: {}", e);
-                proxy_state.write().game_result.as_mut().unwrap().result =
-                    Some(AiArenaResult::InitializationError);
+                let _ =
+                    AiArenaGameResult::new_initialization_error(new_match.match_id).to_json_file();
             }
         }
         if bots_started {
             loop {
                 tracing::trace!("Waiting for results");
-                let (p1_result_ready, p2_result_ready) = {
-                    let game_result = { proxy_state.read().game_result.clone().unwrap() };
-                    let result_ready = game_result.result.is_some();
-                    (
-                        result_ready || game_result.player1_result.as_ref().is_some(),
-                        result_ready || game_result.player2_result.as_ref().is_some(),
-                        // game_result.result.as_ref().is_some(),
-                    )
-                };
 
-                if p1_result_ready && p2_result_ready {
+                if let Ok(_) = AiArenaGameResult::from_json_file() {
                     break;
                 }
 
@@ -291,21 +291,20 @@ pub async fn match_scheduler<M: MatchSource>(
             }
         }
 
-        let game_result = proxy_state.read().game_result.clone().unwrap();
+        let aiarena_game_result =
+            AiArenaGameResult::from_json_file().expect("Failed to read game result from file");
 
-        let aiarena_game_result = AiArenaGameResult::from(&game_result);
-        let mut logs_and_replays = None;
-        // let serialized_result = serde_json::to_value(aiarena_game_result).unwrap();
-        info!("{:?}", &aiarena_game_result);
+        info!("Match result: {:?}", &aiarena_game_result);
         info!("Match finished in {:?}", start_time.elapsed());
+
+        let mut logs_and_replays = None;
 
         if settings.run_type == RunType::AiArena {
             tracing::debug!("Submitting result to AI Arena");
 
-            let game_config = GameConfig::new(&new_match, &settings);
             logs_and_replays = match build_logs_and_replays_object(
+                &new_match,
                 &new_match.players,
-                PathBuf::from(game_config.replay_path()).join(&game_config.replay_name),
                 &settings,
             )
             .await
@@ -342,8 +341,8 @@ pub async fn match_scheduler<M: MatchSource>(
 }
 
 async fn build_logs_and_replays_object(
+    the_match: &Match,
     players: &HashMap<PlayerNum, MatchPlayer>,
-    replay_file: PathBuf,
     settings: &ACConfig,
 ) -> io::Result<LogsAndReplays> {
     let bot1_name = players[&PlayerNum::One].name.clone();
@@ -419,6 +418,13 @@ async fn build_logs_and_replays_object(
         }
     }
 
+    let replay_file = Path::new(&settings.game_directory).join(format!(
+        "{}_{}_vs_{}.SC2Replay",
+        the_match.match_id,
+        players[&PlayerNum::One].name,
+        players[&PlayerNum::Two].name
+    ));
+
     Ok(LogsAndReplays {
         upload_url: format!("{}/upload", &settings.caching_server_url),
         bot1_name,
@@ -439,13 +445,9 @@ fn init_bot_controllers(settings: &ACConfig) -> Result<[BotController; 2], url::
 
 fn clean_up_state(state: &mut ProxyState) {
     state.map = None;
-    state.game_result = None;
     state.current_match = None;
     state.sc2_urls.clear();
     state.ready = false;
-    state.port_config = None;
-    state.auth_whitelist.clear();
-    state.game_config = None;
     state.remove_all_clients();
 }
 

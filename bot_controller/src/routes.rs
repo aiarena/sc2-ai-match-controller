@@ -158,6 +158,7 @@ pub async fn start_bot(
 
     let temp_proxy_host = format!("{proxy_host}:{proxy_port}");
 
+    debug!("Connecting to game proxy at {:?}", &temp_proxy_host);
     let resolved_proxy_host = match lookup_host(temp_proxy_host).await {
         Ok(mut addrs) => addrs.next().map(|x| x.ip().to_string()),
         Err(_) => None,

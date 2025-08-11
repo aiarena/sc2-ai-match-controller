@@ -13,6 +13,7 @@ services:
       - "ACSC2_PROXY_HOST=proxy_controller"
     volumes:
       - "../testing-maps:/root/StarCraftII/maps"
+      - "logs:/logs"
 
   bot_controller1:
     restart: unless-stopped
@@ -27,6 +28,8 @@ services:
     environment:
       - "ACBOT_PORT=8081"
       - "ACBOT_PROXY_HOST=proxy_controller"
+      - "ACBOT_GAME_HOST=sc2_controller"
+      - "ACBOT_GAME_PORT=8083"
 
   bot_controller2:
     restart: unless-stopped
@@ -41,6 +44,8 @@ services:
     environment:
       - "ACBOT_PORT=8082"
       - "ACBOT_PROXY_HOST=proxy_controller"
+      - "ACBOT_GAME_HOST=sc2_controller"
+      - "ACBOT_GAME_PORT=8083"
 
   proxy_controller:
     restart: unless-stopped
@@ -58,4 +63,7 @@ services:
     volumes:
       - "./test-matches:/app/matches"
       - "./test-config.toml:/app/config.toml"
+      - "logs:/logs"
 
+volumes:
+     logs:
