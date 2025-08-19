@@ -1,3 +1,5 @@
+use crate::game::game_result::GAME_RESULT;
+use crate::player_seats::PLAYER_SEATS;
 use axum::extract::State;
 use axum::Json;
 use common::api::errors::app_error::AppError;
@@ -27,6 +29,10 @@ pub async fn start_sc2(
         }
     }
 
+    // Delete previous match result from memory
+    GAME_RESULT.write().unwrap().reset();
+    PLAYER_SEATS.write().unwrap().reset();
+
     // Start two new SC2 processes
     match (start_process(&state).await, start_process(&state).await) {
         (Ok(response1), Ok(response2)) => Ok(Json(vec![response1, response2])),
@@ -40,6 +46,7 @@ pub async fn start_sc2(
 async fn start_process(state: &AppState) -> Result<StartResponse, AppError> {
     let ws_port = pick_unused_port_in_range(9000..10000)
         .ok_or_else(|| ProcessError::Custom("Could not allocate port".to_string()))?;
+
     let tempdir = TempDir::new()
         .map_err(|e| ProcessError::Custom(format!("Could not create temp dir: {e:?}")))?;
 
@@ -77,8 +84,10 @@ async fn start_process(state: &AppState) -> Result<StartResponse, AppError> {
 
         match process_result {
             Ok(process) => {
-                tracing::info!("SC2 listens on port {:?}", &ws_port);
+                tracing::info!("Player seat created on SC2 port {:?}", &ws_port);
+                PLAYER_SEATS.write().unwrap().openSeat(ws_port);
                 state.process_map.write().insert(ws_port, process);
+
                 let start_response = StartResponse {
                     status: Status::Success,
                     status_reason: "".to_string(),

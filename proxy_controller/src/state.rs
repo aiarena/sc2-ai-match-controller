@@ -1,14 +1,10 @@
-use crate::game::game_config::GameConfig;
-use crate::game::game_result::GameResult;
-use crate::matches::Match;
-use crate::websocket::port_config::PortConfig;
 use common::api::api_reference::bot_controller_client::BotController;
 use common::api::api_reference::sc2_controller_client::SC2Controller;
 use common::configuration::ac_config::ACConfig;
+use common::models::aiarena::aiarena_match::Match;
 use common::models::StartResponse;
 use common::utilities::portpicker::Port;
 use common::PlayerNum;
-use indexmap::IndexSet;
 use std::net::SocketAddr;
 use tokio::sync::mpsc::Sender;
 
@@ -36,13 +32,9 @@ pub struct ProxyState {
     pub settings: ACConfig,
     pub players: Vec<Player>,
     pub current_match: Option<Match>,
-    pub game_config: Option<GameConfig>,
     pub sc2_urls: Vec<SC2Url>,
     pub map: Option<String>,
     pub ready: bool,
-    pub port_config: Option<PortConfig>,
-    pub game_result: Option<GameResult>,
-    pub auth_whitelist: IndexSet<SocketAddr>,
     pub shutdown_sender: Sender<()>,
     pub bot_controllers: Vec<BotController>,
     pub sc2_controller: Option<SC2Controller>,

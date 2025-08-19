@@ -18,6 +18,10 @@ spec:
               value: '8081'
             - name: ACBOT_PROXY_HOST
               value: 127.0.0.1
+            - name: ACBOT_GAME_HOST
+              value: 127.0.0.1
+            - name: ACBOT_GAME_PORT
+              value: '8083'
           image: aiarena/arenaclient-bot:latest
           name: bot-controller-1
           restartPolicy: Always
@@ -47,6 +51,10 @@ spec:
               value: '8082'
             - name: ACBOT_PROXY_HOST
               value: 127.0.0.1
+            - name: ACBOT_GAME_HOST
+              value: 127.0.0.1
+            - name: ACBOT_GAME_PORT
+              value: '8083'
           image: aiarena/arenaclient-bot:latest
           name: bot-controller-2
           restartPolicy: Always

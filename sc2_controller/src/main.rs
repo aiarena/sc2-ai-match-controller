@@ -1,10 +1,15 @@
 #[cfg(feature = "swagger")]
 mod docs;
+mod game;
+mod player_seats;
 mod routes;
+pub mod websocket;
+mod ws_routes;
 
 #[cfg(feature = "swagger")]
 use crate::docs::ApiDoc;
 use crate::routes::start_sc2;
+use crate::ws_routes::websocket_handler;
 use axum::http::Request;
 use axum::response::Response;
 use axum::routing::{get, post};
@@ -80,6 +85,7 @@ async fn main() {
 
     // Compose the routes
     let app = router
+        .route("/sc2api", get(websocket_handler))
         .route("/start", post(start_sc2))
         .route("/stats/:port", get(stats))
         .route("/stats/host", get(stats_host))

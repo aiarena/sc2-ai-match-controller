@@ -1,13 +1,10 @@
 #![allow(dead_code)]
-mod game;
 mod match_scheduler;
 pub mod matches;
 #[cfg(feature = "mockserver")]
 mod mocking;
 mod routes;
 mod state;
-pub mod websocket;
-mod ws_routes;
 
 use crate::match_scheduler::match_scheduler;
 use crate::matches::sources::aiarena_api::HttpApiSource;
@@ -17,7 +14,6 @@ use crate::matches::sources::{FileSource, MatchSource};
 use crate::mocking::setup_mock_server;
 use crate::routes::configuration;
 use crate::state::ProxyState;
-use crate::ws_routes::websocket_handler;
 use axum::error_handling::HandleErrorLayer;
 use axum::http::StatusCode;
 use axum::routing::get;
@@ -91,13 +87,9 @@ async fn main() {
         settings,
         players: Vec::default(),
         current_match: None,
-        game_config: None,
         sc2_urls: Vec::with_capacity(2),
         map: None,
         ready: false,
-        port_config: None,
-        game_result: None,
-        auth_whitelist: indexmap::IndexSet::default(),
         shutdown_sender: tx,
         bot_controllers: vec![],
         sc2_controller: None,
@@ -108,7 +100,6 @@ async fn main() {
     // Compose the routes
     let app = Router::<Arc<RwLock<ProxyState>>>::new()
         .route("/configuration", get(configuration))
-        .route("/sc2api", get(websocket_handler))
         .layer(
             TraceLayer::new_for_http()
                 .on_request(|request: &Request<_>, _span: &Span| {

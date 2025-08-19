@@ -6,9 +6,11 @@ use crate::websocket::errors::player_error::PlayerError;
 use crate::websocket::port_config::PortConfig;
 use crate::websocket::runtime_vars::RuntimeVars;
 use axum::extract::ws::{Message as AMessage, WebSocket};
+use common::models::aiarena::bot_race::BotRace;
 use common::PlayerNum;
 use futures_util::{SinkExt, StreamExt};
 use protobuf::{EnumOrUnknown, Message, MessageField};
+use sc2_proto::common::Race;
 use sc2_proto::sc2api::{
     Request, RequestJoinGame, RequestLeaveGame, RequestPing, RequestSaveReplay, Response,
     ResponseDebug, Status,
@@ -530,7 +532,7 @@ fn proto_join_game_participant(
     let mut player_data = PlayerData::from_join_request(request.join_game());
 
     if config.validate_race {
-        player_data.race = config.players[&player_num].race.to_race()
+        player_data.race = to_race(&config.players[&player_num].race);
     }
     r_join_game.set_player_name(config.players[&player_num].name.clone());
 
@@ -543,6 +545,15 @@ fn proto_join_game_participant(
     let mut request = request.clone();
     request.set_join_game(r_join_game);
     request
+}
+
+fn to_race(race: &BotRace) -> Race {
+    match race {
+        BotRace::Terran => Race::Terran,
+        BotRace::Zerg => Race::Zerg,
+        BotRace::Protoss => Race::Protoss,
+        BotRace::Random | BotRace::NoRace => Race::Random,
+    }
 }
 
 fn create_empty_debug_response(request: &Request) -> Response {

@@ -1,3 +1,4 @@
+use common::models::aiarena::aiarena_match::SerializationError;
 use std::fmt::{Display, Formatter};
 
 #[derive(Clone, Debug)]
@@ -23,6 +24,12 @@ impl Display for FileMatchExtractError {
             Self::PlayerType(vec) => ("Could not extract player 1 type", vec),
         };
         write!(f, "{e} in {vec:?}")
+    }
+}
+
+impl From<SerializationError> for FileMatchExtractError {
+    fn from(_error: SerializationError) -> Self {
+        Self::MissingFields(Vec::new())
     }
 }
 
