@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "^1.0.68"
-axum = { version = "0.6.2" }
+axum = { version = "0.8.1" }
 chrono = "0.4"
 common = { path="../common" }
 config = { git = "https://github.com/mehcode/config-rs.git", default-features=false, features=["toml"] }

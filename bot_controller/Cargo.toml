@@ -9,7 +9,7 @@ license-file = "./LICENCE"
 
 [dependencies]
 async-process = "2.0.0"
-axum = { version = "0.6.2" }
+axum = { version = "0.8.1" }
 common = { path = "../common" }
 clap = {version="4.3.0", features = ["cargo"]}
 md5 = "0.7.0"
