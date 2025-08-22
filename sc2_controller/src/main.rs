@@ -19,7 +19,9 @@ use common::api::health;
 use common::api::process::{stats, stats_host, status};
 use common::api::process::{stats_all, ProcessMap};
 use common::api::state::AppState;
-use common::configuration::{get_config_from_match_controller, get_host_url, get_match_controller_url_from_env};
+use common::configuration::{
+    get_config_from_match_controller, get_host_url, get_match_controller_url_from_env,
+};
 use common::logging::init_logging;
 use std::path::Path;
 use std::str::FromStr;

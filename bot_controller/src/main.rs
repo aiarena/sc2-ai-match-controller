@@ -13,7 +13,9 @@ use axum::{error_handling::HandleErrorLayer, http::StatusCode};
 use common::api::health;
 use common::api::process::{stats, stats_all, stats_host, status, ProcessMap};
 use common::api::state::AppState;
-use common::configuration::{get_config_from_match_controller, get_host_url, get_match_controller_url_from_env};
+use common::configuration::{
+    get_config_from_match_controller, get_host_url, get_match_controller_url_from_env,
+};
 use common::logging::init_logging;
 use tower::{BoxError, ServiceBuilder};
 use tower_http::trace::{DefaultMakeSpan, DefaultOnRequest, DefaultOnResponse, TraceLayer};

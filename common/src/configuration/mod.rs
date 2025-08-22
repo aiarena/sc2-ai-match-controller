@@ -70,8 +70,10 @@ pub fn get_host_url(prefix: &str, default_port: Port) -> String {
 /// Constructs the URL for the match component of the arena client.
 /// This is used to retrieve the configuration of the arena client.
 pub fn get_match_controller_url_from_env(prefix: &str) -> String {
-    let host = std::env::var(format!("{prefix}_MATCH_CONTROLLER_HOST")).unwrap_or_else(|_| "127.0.0.1".into());
-    let port = std::env::var(format!("{prefix}_MATCH_CONTROLLER_PORT")).unwrap_or_else(|_| "8080".into());
+    let host = std::env::var(format!("{prefix}_MATCH_CONTROLLER_HOST"))
+        .unwrap_or_else(|_| "127.0.0.1".into());
+    let port =
+        std::env::var(format!("{prefix}_MATCH_CONTROLLER_PORT")).unwrap_or_else(|_| "8080".into());
     format!("{host}:{port}")
 }
 
