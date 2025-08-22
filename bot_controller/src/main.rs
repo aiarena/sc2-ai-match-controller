@@ -13,7 +13,7 @@ use axum::{error_handling::HandleErrorLayer, http::StatusCode};
 use common::api::health;
 use common::api::process::{stats, stats_all, stats_host, status, ProcessMap};
 use common::api::state::AppState;
-use common::configuration::{get_config_from_proxy, get_host_url, get_proxy_url_from_env};
+use common::configuration::{get_config_from_match_controller, get_host_url, get_match_controller_url_from_env};
 use common::logging::init_logging;
 use tower::{BoxError, ServiceBuilder};
 use tower_http::trace::{DefaultMakeSpan, DefaultOnRequest, DefaultOnResponse, TraceLayer};
@@ -40,11 +40,11 @@ async fn main() {
 
     let host_url = get_host_url(PREFIX, port);
 
-    let proxy_url = get_proxy_url_from_env(PREFIX);
-    let config_url = format!("http://{proxy_url}/configuration");
-    let health_url = format!("http://{proxy_url}/health");
+    let match_controller_url = get_match_controller_url_from_env(PREFIX);
+    let config_url = format!("http://{match_controller_url}/configuration");
+    let health_url = format!("http://{match_controller_url}/health");
 
-    let settings = get_config_from_proxy(config_url, health_url, PREFIX)
+    let settings = get_config_from_match_controller(config_url, health_url, PREFIX)
         .await
         .unwrap(); //panic if we can't get the config
     let env_log = std::env::var("RUST_LOG").unwrap_or_else(|_| {

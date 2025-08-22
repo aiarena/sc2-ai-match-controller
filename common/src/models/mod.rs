@@ -6,7 +6,7 @@ use utoipa::ToSchema;
 
 pub mod aiarena;
 pub mod bot_controller;
-pub mod proxy_controller;
+pub mod match_controller;
 pub mod sc2_controller;
 pub mod stats;
 

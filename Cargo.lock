@@ -2437,7 +2437,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "proxy_controller"
+name = "match_controller"
 version = "0.6.10"
 dependencies = [
  "async-trait",

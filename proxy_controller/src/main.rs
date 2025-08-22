@@ -13,7 +13,7 @@ use crate::matches::sources::{FileSource, MatchSource};
 #[cfg(feature = "mockserver")]
 use crate::mocking::setup_mock_server;
 use crate::routes::configuration;
-use crate::state::ProxyState;
+use crate::state::ControllerState;
 use axum::error_handling::HandleErrorLayer;
 use axum::http::StatusCode;
 use axum::routing::get;
@@ -37,7 +37,7 @@ use tower_http::trace::TraceLayer;
 use tower_http::BoxError;
 use tracing::{debug, Span};
 
-static PREFIX: &str = "acproxy";
+static PREFIX: &str = "acmatch";
 
 #[tokio::main]
 async fn main() {
@@ -50,10 +50,10 @@ async fn main() {
     let host_url = get_host_url(PREFIX, port);
 
     #[cfg(feature = "mockserver")]
-    let mut settings = setup_proxy_config();
+    let mut settings = setup_controller_config();
 
     #[cfg(not(feature = "mockserver"))]
-    let settings = setup_proxy_config();
+    let settings = setup_controller_config();
 
     #[cfg(feature = "mockserver")]
     let mock_server = setup_mock_server(&settings);
@@ -65,9 +65,9 @@ async fn main() {
     }
     let log_level = &settings.logging_level;
     let env_log = std::env::var("RUST_LOG")
-        .unwrap_or_else(|_| format!("info,common={log_level},proxy_controller={log_level}"));
-    let log_path = format!("{}/proxy_controller", &settings.log_root);
-    let log_file = "proxy_controller.log";
+        .unwrap_or_else(|_| format!("info,common={log_level},match_controller={log_level}"));
+    let log_path = format!("{}/match_controller", &settings.log_root);
+    let log_file = "match_controller.log";
     let full_path = Path::new(&log_path).join(log_file);
     if full_path.exists() {
         tokio::fs::remove_file(full_path).await.unwrap();
@@ -83,7 +83,7 @@ async fn main() {
         RunType::Mock => Box::new(HttpApiSource::new(settings.clone()).unwrap()),
     };
     let (tx, mut rx) = tokio::sync::mpsc::channel::<()>(1);
-    let app_state = Arc::new(RwLock::new(ProxyState {
+    let app_state = Arc::new(RwLock::new(ControllerState {
         settings,
         players: Vec::default(),
         current_match: None,
@@ -98,7 +98,7 @@ async fn main() {
     tokio::spawn(match_scheduler(app_state.clone(), match_source));
 
     // Compose the routes
-    let app = Router::<Arc<RwLock<ProxyState>>>::new()
+    let app = Router::<Arc<RwLock<ControllerState>>>::new()
         .route("/configuration", get(configuration))
         .layer(
             TraceLayer::new_for_http()
@@ -144,7 +144,7 @@ async fn main() {
     }
 }
 
-fn setup_proxy_config() -> ACConfig {
+fn setup_controller_config() -> ACConfig {
     let default_config = include_str!("../../configs/default_config.toml");
     Config::builder()
         .add_source(config::File::from_str(default_config, FileFormat::Toml).required(true))

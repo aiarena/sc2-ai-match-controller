@@ -28,7 +28,7 @@ impl Player {
 }
 
 #[derive(Debug, Clone)]
-pub struct ProxyState {
+pub struct ControllerState {
     pub settings: ACConfig,
     pub players: Vec<Player>,
     pub current_match: Option<Match>,
@@ -40,7 +40,7 @@ pub struct ProxyState {
     pub sc2_controller: Option<SC2Controller>,
 }
 
-impl ProxyState {
+impl ControllerState {
     pub fn add_client(&mut self, addr: SocketAddr) {
         self.players.push(Player {
             addr,

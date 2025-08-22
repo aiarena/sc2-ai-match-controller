@@ -10,7 +10,7 @@ services:
         CARGO_FLAGS: "${TEST_CARGO_FLAGS}"
     environment:
       - "ACSC2_PORT=8083"
-      - "ACSC2_PROXY_HOST=proxy_controller"
+      - "ACSC2_MATCH_CONTROLLER_HOST=match_controller"
     volumes:
       - "../testing-maps:/root/StarCraftII/maps"
       - "logs:/logs"
@@ -27,7 +27,7 @@ services:
       - "../aiarena-test-bots:/bots/bot1"
     environment:
       - "ACBOT_PORT=8081"
-      - "ACBOT_PROXY_HOST=proxy_controller"
+      - "ACBOT_MATCH_CONTROLLER_HOST=match_controller"
       - "ACBOT_GAME_HOST=sc2_controller"
       - "ACBOT_GAME_PORT=8083"
 
@@ -43,23 +43,23 @@ services:
       - "../aiarena-test-bots:/bots/bot2"
     environment:
       - "ACBOT_PORT=8082"
-      - "ACBOT_PROXY_HOST=proxy_controller"
+      - "ACBOT_MATCH_CONTROLLER_HOST=match_controller"
       - "ACBOT_GAME_HOST=sc2_controller"
       - "ACBOT_GAME_PORT=8083"
 
-  proxy_controller:
+  match_controller:
     restart: unless-stopped
     build:
       context: ../../
       dockerfile: ./docker/Dockerfile
-      target: proxy_controller
+      target: match_controller
       args:
         CARGO_FLAGS: "${TEST_CARGO_FLAGS}"
     environment:
-      - "ACPROXY_PORT=8080"
-      - "ACPROXY_BOT_CONT_1_HOST=bot_controller1"
-      - "ACPROXY_BOT_CONT_2_HOST=bot_controller2"
-      - "ACPROXY_SC2_CONT_HOST=sc2_controller"
+      - "ACMATCH_PORT=8080"
+      - "ACMATCH_BOT_CONT_1_HOST=bot_controller1"
+      - "ACMATCH_BOT_CONT_2_HOST=bot_controller2"
+      - "ACMATCH_SC2_CONT_HOST=sc2_controller"
     volumes:
       - "./test-matches:/app/matches"
       - "./test-config.toml:/app/config.toml"
