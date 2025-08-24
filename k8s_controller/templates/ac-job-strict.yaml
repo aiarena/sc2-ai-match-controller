@@ -101,7 +101,7 @@ spec:
           volumeMounts:
             - mountPath: /logs/sc2_controller
               name: logs
-              subPath: sc2-controller
+              subPath: sc2_controller
             - mountPath: /root/StarCraftII/maps
               name: game
       containers:
