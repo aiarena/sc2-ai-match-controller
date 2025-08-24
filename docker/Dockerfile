@@ -87,7 +87,7 @@ LABEL service=sc2_controller
 
 ###########################################################
 
-FROM debian:bookworm-slim AS proxy_controller
+FROM debian:bookworm-slim AS match_controller
 ARG APP=/app
 
 USER root
@@ -112,10 +112,10 @@ RUN mkdir -m 777 ${APP} \
 
 WORKDIR ${APP}
 
-COPY --from=builder /app/target/*/proxy_controller ${APP}/proxy_controller
+COPY --from=builder /app/target/*/match_controller ${APP}/match_controller
 
-ENTRYPOINT ["./proxy_controller"]
-LABEL service=proxy_controller
+ENTRYPOINT ["./match_controller"]
+LABEL service=match_controller
 
 ###########################################################
 
@@ -147,7 +147,7 @@ RUN mkdir -m 777 ${APP} \
 
 WORKDIR ${APP}
 COPY --from=sc2_controller /root/StarCraftII/ /root/StarCraftII/
-COPY --from=builder /app/target/*/proxy_controller ${APP}/proxy_controller
+COPY --from=builder /app/target/*/match_controller ${APP}/match_controller
 COPY --from=builder /app/target/*/sc2_controller ${APP}/sc2_controller
 COPY --from=builder /app/target/*/bot_controller ${APP}/bot_controller
 

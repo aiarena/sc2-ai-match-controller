@@ -24,17 +24,17 @@ services:
       tags:
         - aiarena/arenaclient-bot:latest
 
-  proxy_controller:
+  match_controller:
     restart: unless-stopped
-    image: aiarena/arenaclient-proxy:${TAG:-latest}
+    image: aiarena/arenaclient-match:${TAG:-latest}
     build:
       context: ../
       dockerfile: ./docker/Dockerfile
-      target: proxy_controller
+      target: match_controller
       args:
         CARGO_FLAGS: "${CARGO_FLAGS}"
       tags:
-        - aiarena/arenaclient-proxy:latest
+        - aiarena/arenaclient-match:latest
 
   k8s_controller:
     restart: unless-stopped

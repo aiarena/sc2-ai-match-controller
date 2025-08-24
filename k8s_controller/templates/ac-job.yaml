@@ -16,7 +16,7 @@ spec:
         - env:
             - name: ACBOT_PORT
               value: '8081'
-            - name: ACBOT_PROXY_HOST
+            - name: ACBOT_MATCH_CONTROLLER_HOST
               value: 127.0.0.1
             - name: ACBOT_GAME_HOST
               value: 127.0.0.1
@@ -49,7 +49,7 @@ spec:
         - env:
             - name: ACBOT_PORT
               value: '8082'
-            - name: ACBOT_PROXY_HOST
+            - name: ACBOT_MATCH_CONTROLLER_HOST
               value: 127.0.0.1
             - name: ACBOT_GAME_HOST
               value: 127.0.0.1
@@ -82,7 +82,7 @@ spec:
         - env:
             - name: ACSC2_PORT
               value: '8083'
-            - name: ACSC2_PROXY_HOST
+            - name: ACSC2_MATCH_CONTROLLER_HOST
               value: 127.0.0.1
             - name: SC2PATH
               value: /root/StarCraftII
@@ -106,18 +106,18 @@ spec:
               name: game
       containers:
         - env:
-            - name: ACPROXY_PORT
+            - name: ACMATCH_PORT
               value: '8080'
-            - name: ACPROXY_ARENA_CLIENT_ID
+            - name: ACMATCH_ARENA_CLIENT_ID
               value: ''
-            - name: ACPROXY_API_TOKEN
+            - name: ACMATCH_API_TOKEN
               value: placeholder
-            - name: ACPROXY_SC2_CONT_PORT
+            - name: ACMATCH_SC2_CONT_PORT
               value: '8083'
-            - name: ACPROXY_LOGGING_LEVEL
+            - name: ACMATCH_LOGGING_LEVEL
               value: debug
-          image: aiarena/arenaclient-proxy:latest
-          name: proxy-controller
+          image: aiarena/arenaclient-match:latest
+          name: match-controller
           ports:
             - containerPort: 8080
               name: 8080tcp

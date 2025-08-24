@@ -10,6 +10,7 @@ services:
         CARGO_FLAGS: "${TEST_CARGO_FLAGS}"
     volumes:
       - "../testing-maps:/root/StarCraftII/maps"
-      - "../aiarena-test-bots:/bots"
+      - "../aiarena-test-bots:/bots/bot1"
+      - "../aiarena-test-bots:/bots/bot2"
       - "./test-matches:/app/matches"
       - "./test-config.toml:/app/config.toml"

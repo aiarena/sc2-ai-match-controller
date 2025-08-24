@@ -24,15 +24,15 @@ The controller reads the following parameters from `<log_folder>/sc2_controller/
 | validate_race | false | Enforce player races as given in `player_1_race` and `player_2_race`. |
 | visualize | false | Not used. |
 
-In the current version, the parameters are read from the combination of file `<log_folder>/sc2_controller/match_request.toml` and file `config.toml` of the proxy_controller.
+In the current version, the parameters are read from the combination of file `<log_folder>/sc2_controller/match_request.toml` and file `config.toml` of the match controller.
 This will be later be changed and the parameters will be read from the environment variables.
 
 ## Ports
 
 The controller opens port `8083` for the bots to connect to.
 
-In the current version, the controller expects a call to HTTP endpoint /start by the proxy_controller.
-This call will be removed later when the client controller (k8s_controller or docker compose) coordinates the match controller (proxy_controller) to prepare all inputs before the game controller (sc2_controller) is started.
+In the current version, the controller expects a call to HTTP endpoint /start by the match controller.
+This call will be removed later when the client controller (k8s_controller or docker compose) coordinates the match controller to prepare all inputs before the game controller (sc2_controller) is started.
 
 ## Output
 

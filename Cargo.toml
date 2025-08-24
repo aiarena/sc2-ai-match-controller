@@ -3,7 +3,7 @@ members = [
     "bot_controller",
     "common",
     "k8s_controller",
-    "proxy_controller",
+    "match_controller",
     "sc2_controller"]
 resolver = "2"
 

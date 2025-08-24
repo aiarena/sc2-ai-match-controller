@@ -1,5 +1,5 @@
 [package]
-name = "proxy_controller"
+name = "match_controller"
 version.workspace = true
 edition = "2021"
 

@@ -4,7 +4,7 @@ use axum::Json;
 use common::api::errors::app_error::AppError;
 use common::api::errors::process_error::ProcessError;
 use common::api::state::AppState;
-use common::configuration::{get_proxy_host, get_proxy_port};
+use common::configuration::{get_game_host, get_game_port};
 use common::models::bot_controller::{BotType, StartBot};
 use common::models::{StartResponse, Status};
 use common::procs::tcp_port::get_ipv4_port_for_pid;
@@ -154,26 +154,26 @@ pub async fn start_bot(
             // }
         }
     }
-    let (proxy_host, proxy_port) = (get_proxy_host(PREFIX), get_proxy_port(PREFIX));
+    let (game_host, game_port) = (get_game_host(PREFIX), get_game_port(PREFIX));
 
-    let temp_proxy_host = format!("{proxy_host}:{proxy_port}");
+    let temp_game_host = format!("{game_host}:{game_port}");
 
-    debug!("Connecting to game proxy at {:?}", &temp_proxy_host);
-    let resolved_proxy_host = match lookup_host(temp_proxy_host).await {
+    debug!("Connecting to game at {:?}", &temp_game_host);
+    let resolved_game_host = match lookup_host(temp_game_host).await {
         Ok(mut addrs) => addrs.next().map(|x| x.ip().to_string()),
         Err(_) => None,
     }
-    .unwrap_or(proxy_host);
+    .unwrap_or(game_host);
 
     command
         .stdout(stdout_file)
         .stderr(stderr_file)
         .arg("--GamePort")
-        .arg(&proxy_port)
+        .arg(&game_port)
         .arg("--LadderServer")
-        .arg(resolved_proxy_host)
+        .arg(resolved_game_host)
         .arg("--StartPort")
-        .arg(&proxy_port)
+        .arg(&game_port)
         .arg("--OpponentId")
         .arg(opponent_id)
         .current_dir(&bot_path);

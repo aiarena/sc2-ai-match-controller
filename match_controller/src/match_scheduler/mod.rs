@@ -1,6 +1,6 @@
 use crate::matches::sources::{LogsAndReplays, MatchSource};
 use crate::routes::{download_bot, download_bot_data, download_map};
-use crate::state::{ProxyState, SC2Url};
+use crate::state::{ControllerState, SC2Url};
 use bytes::Bytes;
 use common::api::api_reference::bot_controller_client::BotController;
 use common::api::api_reference::sc2_controller_client::SC2Controller;
@@ -26,20 +26,20 @@ use tokio::time::sleep;
 use tracing::{error, info};
 
 pub async fn match_scheduler<M: MatchSource>(
-    proxy_state: Arc<RwLock<ProxyState>>,
+    controller_state: Arc<RwLock<ControllerState>>,
     match_source: M,
 ) {
     info!("Arena Client started");
 
-    let settings = proxy_state.read().settings.clone();
+    let settings = controller_state.read().settings.clone();
 
     let mut bot_controllers =
         init_bot_controllers(&settings).expect("Failed to initialize the bot controllers");
-    proxy_state.write().bot_controllers = bot_controllers.to_vec();
+    controller_state.write().bot_controllers = bot_controllers.to_vec();
 
     let sc2_controller = SC2Controller::new(&settings.sc2_cont_host, settings.sc2_cont_port)
         .expect("Failed to create SC2 controller");
-    proxy_state.write().sc2_controller = Some(sc2_controller.clone());
+    controller_state.write().sc2_controller = Some(sc2_controller.clone());
 
     info!("Waiting for controllers to become ready");
     let mut ready = false;
@@ -72,7 +72,7 @@ pub async fn match_scheduler<M: MatchSource>(
         let start_time = std::time::Instant::now();
 
         {
-            let mut temp_state = proxy_state.write();
+            let mut temp_state = controller_state.write();
             temp_state.current_match = Some(new_match.clone());
         }
         info!("Starting Game - Round {}", match_counter);
@@ -83,14 +83,14 @@ pub async fn match_scheduler<M: MatchSource>(
         );
 
         let map_name = format!("{}.SC2Map", &new_match.map_name.replace(".SC2Map", ""));
-        proxy_state.write().map = Some(map_name.clone());
+        controller_state.write().map = Some(map_name.clone());
 
         if settings.run_type == RunType::AiArena {
             let map_path = PathBuf::from(&settings.game_directory).join(&map_name);
 
             tracing::debug!("Downloading map {:?} to {:?}", map_name, map_path);
 
-            match download_map(proxy_state.clone()).await {
+            match download_map(controller_state.clone()).await {
                 Ok(bytes) => match tokio::fs::File::create(map_path).await {
                     Ok(mut file) => {
                         if let Err(e) = file.write_all(&bytes).await {
@@ -131,12 +131,12 @@ pub async fn match_scheduler<M: MatchSource>(
                 ];
 
                 tracing::debug!("SC2 listens on {:?} and {:?}", &urls[0], &urls[1]);
-                proxy_state.write().sc2_urls.extend(urls);
+                controller_state.write().sc2_urls.extend(urls);
 
                 bot_controllers[0].set_process_key(sc1_resp.process_key);
-                proxy_state.write().bot_controllers[0].set_process_key(sc1_resp.process_key);
+                controller_state.write().bot_controllers[0].set_process_key(sc1_resp.process_key);
                 bot_controllers[1].set_process_key(sc2_resp.process_key);
-                proxy_state.write().bot_controllers[1].set_process_key(sc2_resp.process_key);
+                controller_state.write().bot_controllers[1].set_process_key(sc2_resp.process_key);
 
                 (sc1_resp.process_key, sc2_resp.process_key)
             }
@@ -153,7 +153,7 @@ pub async fn match_scheduler<M: MatchSource>(
         if settings.run_type == RunType::AiArena {
             tracing::debug!("Downloading bots and bot data");
 
-            match download_bot(proxy_state.clone(), PlayerNum::One).await {
+            match download_bot(controller_state.clone(), PlayerNum::One).await {
                 Ok(bytes) => {
                     let bot_name = &new_match.players[&PlayerNum::One].name;
                     let bot_path = PathBuf::from(&settings.bot_directory)
@@ -168,7 +168,7 @@ pub async fn match_scheduler<M: MatchSource>(
                 }
             }
 
-            match download_bot_data(proxy_state.clone(), PlayerNum::One).await {
+            match download_bot_data(controller_state.clone(), PlayerNum::One).await {
                 Ok(bytes) => {
                     let bot_name = &new_match.players[&PlayerNum::One].name;
                     let bot_path = PathBuf::from(&settings.bot_directory)
@@ -183,7 +183,7 @@ pub async fn match_scheduler<M: MatchSource>(
                 }
             }
 
-            match download_bot(proxy_state.clone(), PlayerNum::Two).await {
+            match download_bot(controller_state.clone(), PlayerNum::Two).await {
                 Ok(bytes) => {
                     let bot_name = &new_match.players[&PlayerNum::Two].name;
                     let bot_path = PathBuf::from(&settings.bot_directory)
@@ -198,7 +198,7 @@ pub async fn match_scheduler<M: MatchSource>(
                 }
             }
 
-            match download_bot_data(proxy_state.clone(), PlayerNum::Two).await {
+            match download_bot_data(controller_state.clone(), PlayerNum::Two).await {
                 Ok(bytes) => {
                     let bot_name = &new_match.players[&PlayerNum::Two].name;
                     let bot_path = PathBuf::from(&settings.bot_directory)
@@ -326,12 +326,12 @@ pub async fn match_scheduler<M: MatchSource>(
 
         match_counter += 1;
 
-        let mut state = proxy_state.write();
+        let mut state = controller_state.write();
         clean_up_state(&mut state);
     }
     info!("Finished games in {:?}", now.elapsed().as_millis());
 
-    let shutdown_sender = proxy_state.read().shutdown_sender.clone();
+    let shutdown_sender = controller_state.read().shutdown_sender.clone();
     if let Err(e) = shutdown_sender.send(()).await {
         error!("Failed graceful shutdown. Killing process: {:?}", e);
         std::process::exit(2);
@@ -443,7 +443,7 @@ fn init_bot_controllers(settings: &ACConfig) -> Result<[BotController; 2], url::
     ])
 }
 
-fn clean_up_state(state: &mut ProxyState) {
+fn clean_up_state(state: &mut ControllerState) {
     state.map = None;
     state.current_match = None;
     state.sc2_urls.clear();

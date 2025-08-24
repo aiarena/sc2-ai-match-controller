@@ -1,4 +1,4 @@
-use crate::state::ProxyState;
+use crate::state::ControllerState;
 use axum::extract::State;
 use axum::Json;
 use bytes::Bytes;
@@ -13,13 +13,13 @@ use tracing::{self, error};
 
 #[tracing::instrument]
 pub async fn configuration(
-    State(state): State<Arc<RwLock<ProxyState>>>,
+    State(state): State<Arc<RwLock<ControllerState>>>,
 ) -> Result<Json<ACConfig>, AppError> {
     Ok(Json(state.read().settings.clone()))
 }
 
 pub async fn download_bot(
-    state: Arc<RwLock<ProxyState>>,
+    state: Arc<RwLock<ControllerState>>,
     player_num: PlayerNum,
 ) -> Result<Bytes, AppError> {
     let settings = state.read().settings.clone();
@@ -73,7 +73,7 @@ pub async fn download_bot(
 }
 
 pub async fn download_bot_data(
-    state: Arc<RwLock<ProxyState>>,
+    state: Arc<RwLock<ControllerState>>,
     player_num: PlayerNum,
 ) -> Result<Bytes, AppError> {
     let settings = state.read().settings.clone();
@@ -132,7 +132,7 @@ pub async fn download_bot_data(
     }
 }
 
-pub async fn download_map(state: Arc<RwLock<ProxyState>>) -> Result<Bytes, AppError> {
+pub async fn download_map(state: Arc<RwLock<ControllerState>>) -> Result<Bytes, AppError> {
     let settings = state.read().settings.clone();
 
     let current_match = match state

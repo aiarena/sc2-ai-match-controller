@@ -122,7 +122,7 @@ async fn schedule_jobs(
                     set_image_tags(
                         &mut job_data,
                         &[
-                            "proxy-controller",
+                            "match-controller",
                             "bot-controller-1",
                             "bot-controller-2",
                             "sc2-controller",
@@ -259,7 +259,7 @@ fn set_api_token(job: &mut Job, api_token: &str) -> anyhow::Result<()> {
     let container = mut_inner_spec(job)?
         .containers
         .iter_mut()
-        .find(|x| x.name == "proxy-controller")
+        .find(|x| x.name == "match-controller")
         .context("container not found")?;
 
     for env in container
@@ -269,7 +269,7 @@ fn set_api_token(job: &mut Job, api_token: &str) -> anyhow::Result<()> {
         .iter_mut()
     {
         for env2 in env.iter_mut() {
-            if env2.name == "ACPROXY_API_TOKEN" {
+            if env2.name == "ACMATCH_API_TOKEN" {
                 env2.value = Some(api_token.to_string());
             }
         }
@@ -308,13 +308,13 @@ async fn get_allocated_api_tokens(jobs: &Api<Job>, prefix: &str) -> anyhow::Resu
                     .and_then(|f| {
                         f.containers
                             .iter()
-                            .find(|c| c.name == "proxy-controller")
+                            .find(|c| c.name == "match-controller")
                             .and_then(|x| x.env.clone())
                             .ok_or_else(|| anyhow::format_err!("Could not find container"))
                     })
                     .and_then(|x| {
                         x.iter()
-                            .find(|x| x.name == "ACPROXY_API_TOKEN")
+                            .find(|x| x.name == "ACMATCH_API_TOKEN")
                             .and_then(|x| x.value.clone())
                             .ok_or_else(|| anyhow::format_err!("Could not find api_token"))
                     })
@@ -454,7 +454,7 @@ mod tests {
     #[test]
     fn test_set_image_name() {
         let mut job = load_job_from_template();
-        let container_name = "proxy-controller".to_string();
+        let container_name = "match-controller".to_string();
         let image_name = "test-image".to_string();
         set_image_name(&mut job, &container_name, &image_name).expect("Could not set image name");
 
@@ -507,13 +507,13 @@ mod tests {
                 .and_then(|f| {
                     f.containers
                         .iter()
-                        .find(|c| c.name == "proxy-controller")
+                        .find(|c| c.name == "match-controller")
                         .and_then(|x| x.env.clone())
                         .ok_or_else(|| anyhow::format_err!("Could not find container"))
                 })
                 .and_then(|x| {
                     x.iter()
-                        .find(|x| x.name == "ACPROXY_API_TOKEN")
+                        .find(|x| x.name == "ACMATCH_API_TOKEN")
                         .and_then(|x| x.value.clone())
                         .ok_or_else(|| anyhow::format_err!("Could not find api_token"))
                 })
