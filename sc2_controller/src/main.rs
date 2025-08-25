@@ -9,7 +9,6 @@ mod ws_routes;
 #[cfg(feature = "swagger")]
 use crate::docs::ApiDoc;
 use crate::routes::start_sc2;
-use crate::ws_routes::websocket_handler;
 use axum::http::Request;
 use axum::response::Response;
 use axum::routing::{get, post};
@@ -76,6 +75,7 @@ async fn main() {
         settings,
         shutdown_sender: tx,
         extra_info: Default::default(),
+        ws_shutdown_senders: Default::default(),
     };
     #[allow(unused_mut)]
     let mut router = Router::<AppState>::new();
@@ -87,7 +87,6 @@ async fn main() {
 
     // Compose the routes
     let app = router
-        .route("/sc2api", get(websocket_handler))
         .route("/start", post(start_sc2))
         .route("/stats/:port", get(stats))
         .route("/stats/host", get(stats_host))

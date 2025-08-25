@@ -15,7 +15,6 @@ use sc2_proto::sc2api::{
     Request, RequestJoinGame, RequestLeaveGame, RequestPing, RequestSaveReplay, Response,
     ResponseDebug, Status,
 };
-use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::time::Duration;
 use tokio::fs::File;
@@ -29,7 +28,6 @@ use tracing::{debug, error, info, trace};
 pub struct Player {
     bot_ws: WebSocket,
     sc2_ws: WebSocketStream<TcpStream>,
-    addr: SocketAddr,
     bot_ws_timeout: Duration,
     sc2_ws_timeout: Duration,
 }
@@ -38,18 +36,13 @@ impl Player {
     pub const fn new(
         bot_ws: WebSocket,
         sc2_ws: WebSocketStream<TcpStream>,
-        addr: SocketAddr,
     ) -> Self {
         Self {
             bot_ws,
             sc2_ws,
-            addr,
             bot_ws_timeout: Duration::from_secs(30),
             sc2_ws_timeout: Duration::from_secs(60),
         }
-    }
-    pub const fn addr(&self) -> SocketAddr {
-        self.addr
     }
 
     /// Receive a message from the client

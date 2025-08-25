@@ -76,13 +76,3 @@ pub fn get_match_controller_url_from_env(prefix: &str) -> String {
         std::env::var(format!("{prefix}_MATCH_CONTROLLER_PORT")).unwrap_or_else(|_| "8080".into());
     format!("{host}:{port}")
 }
-
-/// Used by bot controller to get the host for the game.
-pub fn get_game_host(prefix: &str) -> String {
-    std::env::var(format!("{prefix}_GAME_HOST")).unwrap_or_else(|_| "127.0.0.1".into())
-}
-
-/// Used by bot controller to get the port for the game.
-pub fn get_game_port(prefix: &str) -> String {
-    std::env::var(format!("{prefix}_GAME_PORT")).unwrap_or_else(|_| "8083".into())
-}

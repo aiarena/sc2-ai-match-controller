@@ -1,18 +1,15 @@
-use crate::PREFIX;
 use axum::extract::State;
 use axum::Json;
 use common::api::errors::app_error::AppError;
 use common::api::errors::process_error::ProcessError;
 use common::api::state::AppState;
-use common::configuration::{get_game_host, get_game_port};
 use common::models::bot_controller::{BotType, StartBot};
 use common::models::{StartResponse, Status};
-use common::procs::tcp_port::get_ipv4_port_for_pid;
 use common::PlayerNum;
 
 use common::utilities::directory::ensure_directory_structure;
 use tokio::net::lookup_host;
-use tracing::debug;
+use tracing::{debug, info};
 
 use common::procs::create_stdout_and_stderr_files;
 use std::collections::hash_map::Entry;
@@ -46,7 +43,6 @@ pub async fn start_bot(
         opponent_id,
         player_num,
         match_id: _match_id,
-        process_key,
     } = &start_bot;
 
     let bot_num = match player_num {
@@ -154,12 +150,13 @@ pub async fn start_bot(
             // }
         }
     }
-    let (game_host, game_port) = (get_game_host(PREFIX), get_game_port(PREFIX));
 
-    let temp_game_host = format!("{game_host}:{game_port}");
+    let game_host = std::env::var(format!("ACBOT_GAME_HOST")).unwrap_or_else(|_| "127.0.0.1".into());
+    let game_port = std::env::var(format!("ACBOT_GAME_PORT")).expect("Missing ACBOT_GAME_PORT environment variable");
+    let game_address = format!("{game_host}:{game_port}");
 
-    debug!("Connecting to game at {:?}", &temp_game_host);
-    let resolved_game_host = match lookup_host(temp_game_host).await {
+    info!("Connecting to game at {:?}", &game_address);
+    let resolved_game_host = match lookup_host(game_address).await {
         Ok(mut addrs) => addrs.next().map(|x| x.ip().to_string()),
         Err(_) => None,
     }
@@ -178,15 +175,15 @@ pub async fn start_bot(
         .arg(opponent_id)
         .current_dir(&bot_path);
 
-    debug!("Starting bot with command {:?}", &command);
-    let mut process = match command.spawn() {
+    info!("Starting bot with command {:?}", &command);
+    match command.spawn() {
         Ok(mut process) => {
             tokio::time::sleep(Duration::from_secs(2)).await;
             match process.try_status() {
                 Ok(None) => {}
                 Ok(Some(exit_status)) => {
                     return Err(ProcessError::StartError(format!(
-                        "Bot {bot_name} has exited within 5 seconds with status {exit_status}"
+                        "Bot {bot_name} has exited within 2 seconds with status {exit_status}"
                     ))
                     .into());
                 }
@@ -197,40 +194,14 @@ pub async fn start_bot(
                     .into());
                 }
             }
-            process
         }
         Err(e) => {
             return Err(ProcessError::StartError(e.to_string()).into());
         }
     };
-    let pid = process.id();
 
-    let max_retries = 10;
-    let mut counter = 0;
-    let mut port = None;
-
-    while port.is_none() && counter < max_retries {
-        counter += 1;
-
-        port = get_ipv4_port_for_pid(pid);
-        if port.is_some() {
-            break;
-        }
-        tokio::time::sleep(Duration::from_secs(3)).await;
-    }
-
-    if let Some(port) = port {
-        state.process_map.write().insert(port, process);
-
-        let start_response = StartResponse {
-            status: Status::Success,
-            status_reason: "".to_string(),
-            port,
-            process_key: *process_key,
-        };
-        Ok(Json(start_response))
-    } else {
-        process.kill().expect("Could not kill process");
-        Err(ProcessError::StartError("Could not find port for started process".to_string()).into())
-    }
+    return Ok(Json(StartResponse {
+        status: Status::Success,
+        status_reason: "".to_string(),
+    }))
 }

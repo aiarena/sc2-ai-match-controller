@@ -11,14 +11,12 @@ use crate::game::game_config::GameConfig;
 use crate::game::game_result::GAME_RESULT;
 use crate::game::player_result::PlayerResult;
 use crate::game::sc2_result::Sc2Result;
-use crate::player_seats::{PlayerSeat, PLAYER_SEATS};
+use crate::player_seats::PlayerSeat;
 use axum::extract::ws::WebSocket;
 use axum::extract::{ConnectInfo, State, WebSocketUpgrade};
 use axum::response::IntoResponse;
-use common::api::state::AppState;
 use common::models::aiarena::aiarena_game_result::AiArenaGameResult;
-use common::models::aiarena::aiarena_match::{MatchRequest, PlayerInfo};
-use common::models::aiarena::aiarena_result::AiArenaResult;
+use common::models::aiarena::aiarena_match::MatchRequest;
 use common::PlayerNum;
 use tokio::net::TcpStream;
 use tokio::time::sleep;
@@ -44,7 +42,7 @@ static PORT_CONFIG: Lazy<Arc<RwLock<PortConfig>>> = Lazy::new(|| {
 pub async fn websocket_handler(
     ws: WebSocketUpgrade,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
-    State(state): State<AppState>,
+    State(state): State<PlayerSeat>,
 ) -> impl IntoResponse {
     ws.max_message_size(128 << 20) // 128MiB
         .max_frame_size(32 << 20) // 32MiB
@@ -52,30 +50,17 @@ pub async fn websocket_handler(
         .on_upgrade(move |socket| websocket(socket, state, addr))
 }
 
-#[tracing::instrument(skip(bot_ws, state), fields(bot_name))]
-async fn websocket(bot_ws: WebSocket, state: AppState, addr: SocketAddr) {
-    debug!("Connection from {:?}", addr);
-    let settings = state.settings.clone();
+#[tracing::instrument(skip(bot_ws, player_seat), fields(bot_name))]
+async fn websocket(bot_ws: WebSocket, player_seat: PlayerSeat, addr: SocketAddr) {
+    debug!("Player seat connects {:?} to {:?}", addr, player_seat.internal_port);
+    let settings = player_seat.settings.clone();
 
     let match_request = MatchRequest::read();
     debug!("Match Request: {:?}", match_request);
     let match_id = match_request.match_id;
     GAME_RESULT.write().unwrap().set(match_id);
 
-    let player_seat = {
-        let mut player_seats = PLAYER_SEATS.write().unwrap();
-        player_seats.useSeat()
-    };
-    let player_seat = match player_seat {
-        Some(seat) => seat,
-        None => {
-            error!("No free player seats available");
-            GAME_RESULT.write().unwrap().set_error(match_id);
-            return store_game_result(match_id);
-        }
-    };
-
-    let sc2_ws = connect(&player_seat).await;
+    let sc2_ws = connect(player_seat.internal_port).await;
 
     if sc2_ws.is_none() {
         error!("Could not connect to SC2");
@@ -84,22 +69,19 @@ async fn websocket(bot_ws: WebSocket, state: AppState, addr: SocketAddr) {
     }
 
     let sc2_ws = sc2_ws.unwrap();
-    let mut client_ws = Player::new(bot_ws, sc2_ws, addr);
-
-    loop {
-        if PlayerInfo::read(addr.port()).is_none() {
-            sleep(Duration::from_secs(3)).await;
-        } else {
-            break;
-        }
-    }
-
-    let p_details = PlayerInfo::read(addr.port()).unwrap();
-    debug!("Player Details: {:?}", p_details);
+    let mut client_ws = Player::new(bot_ws, sc2_ws);
 
     let map = match_request.map_name.clone();
 
-    let player_num = p_details.num;
+    let player_num = match player_seat.player_num {
+        1 => PlayerNum::One,
+        2 => PlayerNum::Two,
+        _ => {
+            error!("Invalid player number: {}", player_seat.player_num);
+            GAME_RESULT.write().unwrap().set_init_error(match_id);
+            return store_game_result(match_id);
+        }
+    };
 
     if let PlayerNum::One = player_num {
         match client_ws.create_game(&map, settings.realtime).await {
@@ -223,9 +205,9 @@ async fn websocket(bot_ws: WebSocket, state: AppState, addr: SocketAddr) {
     return store_game_result(match_id);
 }
 
-pub async fn connect(playerSeat: &PlayerSeat) -> Option<WebSocketStream<TcpStream>> {
-    let url = format!("ws://127.0.0.1:{}/sc2api", playerSeat.game_port());
-    let addr = format!("127.0.0.1:{}", playerSeat.game_port());
+pub async fn connect(port: u16) -> Option<WebSocketStream<TcpStream>> {
+    let url = format!("ws://127.0.0.1:{}/sc2api", port);
+    let addr = format!("127.0.0.1:{}", port);
 
     debug!("Connecting to the SC2 process: {:?}, {:?}", url, addr);
 

@@ -1,4 +1,3 @@
-use crate::utilities::portpicker::Port;
 use crate::PlayerNum;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
@@ -13,7 +12,6 @@ pub struct StartBot {
     pub opponent_id: String,
     pub player_num: PlayerNum,
     pub match_id: u32,
-    pub process_key: Port,
 }
 
 #[cfg_attr(feature = "swagger", derive(ToSchema))]

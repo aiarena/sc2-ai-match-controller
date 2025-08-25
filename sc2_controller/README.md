@@ -16,9 +16,11 @@ The controller reads the following parameters from `<log_folder>/sc2_controller/
 | player_1_id | - | Identifier of player 1 |
 | player_1_name | - | Display name of player 1 |
 | player_1_race | - | Race of player 1 |
+| player_1_seat | 10001 | The game port exposed to player 1 |
 | player_2_id | - | Identifier of player 2 |
 | player_2_name | - | Display name of player 2 |
 | player_2_race | - | Race of player 2 |
+| player_2_seat | 10002 | The game port exposed to player 2 |
 | realtime | false | Determines whether the game runs in real time or the bots control the steps. |
 | timeout_secs | 30 | Seconds waiting got a bot to respond during the match. After this limit the controller will raise a timeout for this bot. |
 | validate_race | false | Enforce player races as given in `player_1_race` and `player_2_race`. |
@@ -29,9 +31,9 @@ This will be later be changed and the parameters will be read from the environme
 
 ## Ports
 
-The controller opens port `8083` for the bots to connect to.
+The controller opens two ports - `player_1_seat` and `player_2_seat` - for the bots to connect to.
 
-In the current version, the controller expects a call to HTTP endpoint /start by the match controller.
+In the current version, the controller expects a call to HTTP endpoint /start at port `8083` by the match controller.
 This call will be removed later when the client controller (k8s_controller or docker compose) coordinates the match controller to prepare all inputs before the game controller (sc2_controller) is started.
 
 ## Output

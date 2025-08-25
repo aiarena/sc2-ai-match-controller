@@ -11,6 +11,8 @@ services:
     environment:
       - "ACSC2_PORT=8083"
       - "ACSC2_MATCH_CONTROLLER_HOST=match_controller"
+      - "ACSC2_PLAYER_1_SEAT=10001"
+      - "ACSC2_PLAYER_2_SEAT=10002"
     volumes:
       - "game:/root/StarCraftII/maps"
       - "logs:/logs"
@@ -29,7 +31,7 @@ services:
       - "ACBOT_PORT=8081"
       - "ACBOT_MATCH_CONTROLLER_HOST=match_controller"
       - "ACBOT_GAME_HOST=sc2_controller"
-      - "ACBOT_GAME_PORT=8083"
+      - "ACBOT_GAME_PORT=10001"
     volumes:
       - "bots:/bots"
 
@@ -47,7 +49,7 @@ services:
       - "ACBOT_PORT=8082"
       - "ACBOT_MATCH_CONTROLLER_HOST=match_controller"
       - "ACBOT_GAME_HOST=sc2_controller"
-      - "ACBOT_GAME_PORT=8083"
+      - "ACBOT_GAME_PORT=10002"
     volumes:
       - "bots:/bots"
 
