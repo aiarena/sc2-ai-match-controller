@@ -33,10 +33,7 @@ pub struct Player {
 }
 
 impl Player {
-    pub const fn new(
-        bot_ws: WebSocket,
-        sc2_ws: WebSocketStream<TcpStream>,
-    ) -> Self {
+    pub const fn new(bot_ws: WebSocket, sc2_ws: WebSocketStream<TcpStream>) -> Self {
         Self {
             bot_ws,
             sc2_ws,
@@ -325,7 +322,13 @@ impl Player {
                 let resp = self.sc2_query(&msg).await?;
                 self.bot_send_response(&resp).await?;
             } else if msg.has_join_game() {
-                let req_raw = proto_join_game_participant(&msg, &port_config, config, player_num, player_pass);
+                let req_raw = proto_join_game_participant(
+                    &msg,
+                    &port_config,
+                    config,
+                    player_num,
+                    player_pass,
+                );
 
                 if req_raw.is_none() {
                     return Err(PlayerError::NoMessageAvailable);

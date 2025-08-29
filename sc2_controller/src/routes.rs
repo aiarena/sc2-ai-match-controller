@@ -22,9 +22,7 @@ use tempfile::TempDir;
         (status = 200, description = "Request Completed", body = Status)
     )
 ))]
-pub async fn start_sc2(
-    State(state): State<AppState>,
-) -> Result<Json<Status>, AppError> {
+pub async fn start_sc2(State(state): State<AppState>) -> Result<Json<Status>, AppError> {
     // Shutdown all WebSocket servers
     for shutdown_tx in state.ws_shutdown_senders.write().drain(..) {
         let _ = shutdown_tx.send(());
@@ -42,7 +40,10 @@ pub async fn start_sc2(
     GAME_RESULT.write().unwrap().reset();
 
     // Start two new SC2 processes
-    match (open_player_seat(&state, 1).await, open_player_seat(&state, 2).await) {
+    match (
+        open_player_seat(&state, 1).await,
+        open_player_seat(&state, 2).await,
+    ) {
         (Ok(_), Ok(_)) => Ok(Json(Status::Success)),
         (Err(e), _) | (_, Err(e)) => {
             tracing::error!("Failed to start SC2: {:?}", e);
@@ -58,12 +59,10 @@ async fn open_player_seat(state: &AppState, player_num: u8) -> Result<Status, Ap
     let player_seat = PlayerSeat::new(state.settings.clone(), player_num, port);
 
     match start_sc2_process(state, &player_seat).await {
-        Ok(_) => {
-            match start_ws_server(state, &player_seat).await {
-                Ok(_) => Ok(Status::Success),
-                Err(e) => Err(e),
-            }
-        }
+        Ok(_) => match start_ws_server(state, &player_seat).await {
+            Ok(_) => Ok(Status::Success),
+            Err(e) => Err(e),
+        },
         Err(e) => Err(e),
     }
 }
@@ -106,8 +105,15 @@ async fn start_sc2_process(state: &AppState, player_seat: &PlayerSeat) -> Result
 
         match process_result {
             Ok(process) => {
-                tracing::info!("SC2 process for player seat {:?} started at port {:?}", &player_seat.external_port, &player_seat.internal_port);
-                state.process_map.write().insert(player_seat.internal_port, process);
+                tracing::info!(
+                    "SC2 process for player seat {:?} started at port {:?}",
+                    &player_seat.external_port,
+                    &player_seat.internal_port
+                );
+                state
+                    .process_map
+                    .write()
+                    .insert(player_seat.internal_port, process);
 
                 Ok(Status::Success)
             }
@@ -126,19 +132,36 @@ async fn start_ws_server(state: &AppState, player_seat: &PlayerSeat) -> Result<S
     let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel();
     let ws_server = axum::Server::bind(&addr)
         .serve(app.into_make_service_with_connect_info::<SocketAddr>())
-        .with_graceful_shutdown(async { shutdown_rx.await.ok(); });
+        .with_graceful_shutdown(async {
+            shutdown_rx.await.ok();
+        });
     let player_seat = player_seat.clone();
 
     state.ws_shutdown_senders.write().push(shutdown_tx);
     tokio::spawn(async move {
-        tracing::info!("WebSocket server for player seat {:?} starting on {}", &player_seat.external_port, addr);
+        tracing::info!(
+            "WebSocket server for player seat {:?} starting on {}",
+            &player_seat.external_port,
+            addr
+        );
         if let Err(e) = ws_server.await {
-            tracing::error!("WebSocket server for player seat {:?} failed: {:?}", &player_seat.external_port, e);
+            tracing::error!(
+                "WebSocket server for player seat {:?} failed: {:?}",
+                &player_seat.external_port,
+                e
+            );
         } else {
-            tracing::info!("WebSocket server for player seat {:?} shut down gracefully", &player_seat.external_port);
+            tracing::info!(
+                "WebSocket server for player seat {:?} shut down gracefully",
+                &player_seat.external_port
+            );
         }
     });
 
-    tracing::info!("WebSocket server for player seat {:?} opened on {}", &player_seat.external_port, addr);
+    tracing::info!(
+        "WebSocket server for player seat {:?} opened on {}",
+        &player_seat.external_port,
+        addr
+    );
     Ok(Status::Success)
 }

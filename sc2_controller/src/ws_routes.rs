@@ -52,7 +52,10 @@ pub async fn websocket_handler(
 
 #[tracing::instrument(skip(bot_ws, player_seat), fields(bot_name))]
 async fn websocket(bot_ws: WebSocket, player_seat: PlayerSeat, addr: SocketAddr) {
-    debug!("Player seat connects {:?} to {:?}", addr, player_seat.internal_port);
+    debug!(
+        "Player seat connects {:?} to {:?}",
+        addr, player_seat.internal_port
+    );
     let settings = player_seat.settings.clone();
 
     let match_request = MatchRequest::read();

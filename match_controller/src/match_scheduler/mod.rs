@@ -194,14 +194,8 @@ pub async fn match_scheduler<M: MatchSource>(
 
         tracing::debug!("Starting bots");
         let mut bots_started = false;
-        bot_controllers[0].set_start_bot(create_start_bot(
-            PlayerNum::One,
-            &new_match,
-        ));
-        bot_controllers[1].set_start_bot(create_start_bot(
-            PlayerNum::Two,
-            &new_match,
-        ));
+        bot_controllers[0].set_start_bot(create_start_bot(PlayerNum::One, &new_match));
+        bot_controllers[1].set_start_bot(create_start_bot(PlayerNum::Two, &new_match));
 
         match join!(bot_controllers[0].start(), bot_controllers[1].start()) {
             (Ok(_), Ok(_)) => {
