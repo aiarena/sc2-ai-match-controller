@@ -314,6 +314,7 @@ impl Player {
         port_config: PortConfig,
         config: &GameConfig,
         player_num: PlayerNum,
+        player_pass: u32,
     ) -> Result<Option<u32>, PlayerError> {
         loop {
             let msg = self.bot_recv_request().await?;
@@ -324,9 +325,13 @@ impl Player {
                 let resp = self.sc2_query(&msg).await?;
                 self.bot_send_response(&resp).await?;
             } else if msg.has_join_game() {
-                let req_raw = proto_join_game_participant(&msg, &port_config, config, player_num);
+                let req_raw = proto_join_game_participant(&msg, &port_config, config, player_num, player_pass);
 
-                let resp = self.sc2_query(&req_raw).await?;
+                if req_raw.is_none() {
+                    return Err(PlayerError::NoMessageAvailable);
+                }
+
+                let resp = self.sc2_query(&req_raw.unwrap()).await?;
                 self.bot_send_response(&resp).await?;
 
                 let ping_request = create_ping_request();
@@ -353,13 +358,14 @@ impl Player {
         config: GameConfig,
         port_config: PortConfig,
         player_num: PlayerNum,
+        player_pass: u32,
     ) -> Result<PlayerResult, PlayerError> {
         let mut r_vars = RuntimeVars::new(&config);
         self.bot_ws_timeout = r_vars.timeout_secs;
         let mut response: Response;
 
         r_vars.player_id = self
-            .wait_for_join_game(port_config, &config, player_num)
+            .wait_for_join_game(port_config, &config, player_num, player_pass)
             .await?;
 
         loop {
@@ -520,9 +526,14 @@ fn proto_join_game_participant(
     port_config: &PortConfig,
     config: &GameConfig,
     player_num: PlayerNum,
-) -> Request {
+    player_pass: u32,
+) -> Option<Request> {
     let mut r_join_game = RequestJoinGame::new();
     let mut player_data = PlayerData::from_join_request(request.join_game());
+
+    if !do_passes_match(player_data.pass_port, player_pass) {
+        return None;
+    }
 
     if config.validate_race {
         player_data.race = to_race(&config.players[&player_num].race);
@@ -537,7 +548,22 @@ fn proto_join_game_participant(
 
     let mut request = request.clone();
     request.set_join_game(r_join_game);
-    request
+    Some(request)
+}
+
+fn do_passes_match(a: u32, b: u32) -> bool {
+    // The player is allowed to provide the pass port with a small offset
+    // because it gets the pass port with the "--StartPort" parameter and is expected
+    // to construct a list of ports in the JoinGame request and provide it in that list.
+    // We ignore the last digit to account for the potential offset.
+    let a = a / 10;
+    let b = b / 10;
+
+    if (a != b) {
+        error!("Player provided wrong pass port {}, expected {}", a, b);
+        return false;
+    }
+    true
 }
 
 fn to_race(race: &BotRace) -> Race {

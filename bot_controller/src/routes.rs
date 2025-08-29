@@ -153,9 +153,10 @@ pub async fn start_bot(
 
     let game_host = std::env::var(format!("ACBOT_GAME_HOST")).unwrap_or_else(|_| "127.0.0.1".into());
     let game_port = std::env::var(format!("ACBOT_GAME_PORT")).expect("Missing ACBOT_GAME_PORT environment variable");
+    let game_pass = std::env::var(format!("ACBOT_GAME_PASS")).unwrap_or_else(|_| game_port.clone());
     let game_address = format!("{game_host}:{game_port}");
 
-    info!("Connecting to game at {:?}", &game_address);
+    info!("Connecting to game at {:?} with pass {:?}", &game_address, &game_pass);
     let resolved_game_host = match lookup_host(game_address).await {
         Ok(mut addrs) => addrs.next().map(|x| x.ip().to_string()),
         Err(_) => None,
@@ -170,7 +171,7 @@ pub async fn start_bot(
         .arg("--LadderServer")
         .arg(resolved_game_host)
         .arg("--StartPort")
-        .arg(&game_port)
+        .arg(&game_pass)
         .arg("--OpponentId")
         .arg(opponent_id)
         .current_dir(&bot_path);

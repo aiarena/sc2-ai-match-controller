@@ -119,7 +119,7 @@ async fn websocket(bot_ws: WebSocket, player_seat: PlayerSeat, addr: SocketAddr)
     if counter <= max_counter {
         debug!("Starting Client Run");
         let p_result = match client_ws
-            .run(game_config, port_config, player_num)
+            .run(game_config, port_config, player_num, player_seat.pass_port)
             .instrument(tracing::Span::current())
             .await
         {
@@ -173,7 +173,7 @@ async fn websocket(bot_ws: WebSocket, player_seat: PlayerSeat, addr: SocketAddr)
                         // from sc2. Check if there is a result before erroring the match
 
                         if !GAME_RESULT.read().unwrap().has_any_result() {
-                            GAME_RESULT.write().unwrap().set_error(match_id);
+                            GAME_RESULT.write().unwrap().set_init_error(match_id);
                         }
                     }
                     PlayerError::BotTimeout(e) => {
