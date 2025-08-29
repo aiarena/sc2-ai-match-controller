@@ -1,5 +1,4 @@
 use crate::api::process::ProcStatus;
-use crate::utilities::portpicker::Port;
 use serde::{Deserialize, Serialize};
 #[cfg(feature = "swagger")]
 use utoipa::ToSchema;
@@ -21,8 +20,6 @@ pub enum Status {
 pub struct StartResponse {
     pub status: Status,
     pub status_reason: String,
-    pub port: Port,
-    pub process_key: Port,
 }
 #[cfg_attr(feature = "swagger", derive(ToSchema))]
 #[derive(Serialize, Deserialize, Copy, Clone)]
