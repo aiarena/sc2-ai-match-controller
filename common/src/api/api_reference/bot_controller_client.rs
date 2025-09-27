@@ -10,7 +10,6 @@ use reqwest::{Client, Url};
 pub struct BotController {
     client: Client,
     url: Url,
-    process_key: Port,
     start_bot: Option<StartBot>,
 }
 
@@ -22,13 +21,8 @@ impl BotController {
         Ok(Self {
             url,
             client: Client::builder().build().unwrap(),
-            process_key: 0,
             start_bot: None,
         })
-    }
-
-    pub fn set_process_key(&mut self, process_key: Port) {
-        self.process_key = process_key
     }
 
     pub fn set_start_bot(&mut self, start_bot: StartBot) {

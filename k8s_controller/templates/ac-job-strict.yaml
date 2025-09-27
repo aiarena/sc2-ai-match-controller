@@ -21,7 +21,9 @@ spec:
             - name: ACBOT_GAME_HOST
               value: 127.0.0.1
             - name: ACBOT_GAME_PORT
-              value: '8083'
+              value: '10001'
+            - name: ACBOT_GAME_PASS
+              value: '12340'
           image: aiarena/arenaclient-bot:latest
           name: bot-controller-1
           restartPolicy: Always
@@ -54,7 +56,9 @@ spec:
             - name: ACBOT_GAME_HOST
               value: 127.0.0.1
             - name: ACBOT_GAME_PORT
-              value: '8083'
+              value: '10002'
+            - name: ACBOT_GAME_PASS
+              value: '43210'
           image: aiarena/arenaclient-bot:latest
           name: bot-controller-2
           restartPolicy: Always
@@ -84,6 +88,14 @@ spec:
               value: '8083'
             - name: ACSC2_MATCH_CONTROLLER_HOST
               value: 127.0.0.1
+            - name: ACSC2_PLAYER_1_SEAT
+              value: '10001'
+            - name: ACSC2_PLAYER_1_PASS
+              value: '12340'
+            - name: ACSC2_PLAYER_2_SEAT
+              value: '10002'
+            - name: ACSC2_PLAYER_2_PASS
+              value: '43210'
             - name: SC2PATH
               value: /root/StarCraftII
           image: aiarena/arenaclient-sc2:latest

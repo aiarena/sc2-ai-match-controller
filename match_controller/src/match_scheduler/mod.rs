@@ -1,16 +1,14 @@
 use crate::matches::sources::{LogsAndReplays, MatchSource};
 use crate::routes::{download_bot, download_bot_data, download_map};
-use crate::state::{ControllerState, SC2Url};
-use bytes::Bytes;
+use crate::state::ControllerState;
 use common::api::api_reference::bot_controller_client::BotController;
 use common::api::api_reference::sc2_controller_client::SC2Controller;
 use common::api::api_reference::ControllerApi;
 use common::configuration::ac_config::{ACConfig, RunType};
 use common::models::aiarena::aiarena_game_result::AiArenaGameResult;
-use common::models::aiarena::aiarena_match::{Match, MatchPlayer, MatchRequest, PlayerInfo};
+use common::models::aiarena::aiarena_match::{Match, MatchPlayer, MatchRequest};
 use common::models::bot_controller::StartBot;
 use common::utilities::directory::ensure_directory_structure;
-use common::utilities::portpicker::Port;
 use common::PlayerNum;
 use futures_util::future::join3;
 use parking_lot::RwLock;
@@ -19,7 +17,6 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 use tokio::join;
 use tokio::time::sleep;
@@ -121,31 +118,12 @@ pub async fn match_scheduler<M: MatchSource>(
             .expect("Failed to write match request file");
 
         info!("Sending start requests to SC2");
-        let (process_key1, process_key2) = match sc2_controller.start().await {
-            Ok(responses) if responses.len() == 2 => {
-                let sc1_resp = &responses[0];
-                let sc2_resp = &responses[1];
-                let urls = vec![
-                    SC2Url::new(&settings.sc2_cont_host, &sc1_resp),
-                    SC2Url::new(&settings.sc2_cont_host, &sc2_resp),
-                ];
-
-                tracing::debug!("SC2 listens on {:?} and {:?}", &urls[0], &urls[1]);
-                controller_state.write().sc2_urls.extend(urls);
-
-                bot_controllers[0].set_process_key(sc1_resp.process_key);
-                controller_state.write().bot_controllers[0].set_process_key(sc1_resp.process_key);
-                bot_controllers[1].set_process_key(sc2_resp.process_key);
-                controller_state.write().bot_controllers[1].set_process_key(sc2_resp.process_key);
-
-                (sc1_resp.process_key, sc2_resp.process_key)
+        match sc2_controller.start().await {
+            Ok(_) => {
+                tracing::info!("SC2 started");
             }
             Err(e) => {
                 error!("Failed to start SC2: {}", e);
-                break 'main_loop;
-            }
-            _ => {
-                error!("Unexpected response from SC2 start");
                 break 'main_loop;
             }
         };
@@ -216,56 +194,12 @@ pub async fn match_scheduler<M: MatchSource>(
 
         tracing::debug!("Starting bots");
         let mut bots_started = false;
-        bot_controllers[0].set_start_bot(create_start_bot(
-            PlayerNum::One,
-            &new_match,
-            process_key1,
-        ));
-        bot_controllers[1].set_start_bot(create_start_bot(
-            PlayerNum::Two,
-            &new_match,
-            process_key2,
-        ));
+        bot_controllers[0].set_start_bot(create_start_bot(PlayerNum::One, &new_match));
+        bot_controllers[1].set_start_bot(create_start_bot(PlayerNum::Two, &new_match));
 
         match join!(bot_controllers[0].start(), bot_controllers[1].start()) {
-            (Ok(resp1), Ok(resp2)) => {
+            (Ok(_), Ok(_)) => {
                 tracing::trace!("Bots started");
-                let mut counter = 0;
-                let max_retries = 60;
-                let (mut bot_added1, mut bot_added2) = (false, false);
-                while counter < max_retries && !(bot_added1 && bot_added2) {
-                    if counter > 0 {
-                        sleep(Duration::from_millis(500)).await;
-                    }
-                    if !bot_added1 {
-                        tracing::trace!("Adding bot1");
-                        let player = new_match.players.get(&PlayerNum::One).unwrap();
-                        let player_info = PlayerInfo {
-                            num: PlayerNum::One,
-                            id: player.id.clone(),
-                            name: player.name.clone(),
-                            race: player.race as u8,
-                        };
-                        let _ = player_info.write(resp1.port);
-
-                        bot_added1 = true;
-                    }
-                    if !bot_added2 {
-                        tracing::trace!("Adding bot2");
-                        let player = new_match.players.get(&PlayerNum::Two).unwrap();
-                        let player_info = PlayerInfo {
-                            num: PlayerNum::Two,
-                            id: player.id.clone(),
-                            name: player.name.clone(),
-                            race: player.race as u8,
-                        };
-                        let _ = player_info.write(resp2.port);
-
-                        bot_added2 = true;
-                    }
-
-                    counter += 1;
-                }
                 bots_started = true;
             }
             (Err(e), _) => {
@@ -446,23 +380,14 @@ fn init_bot_controllers(settings: &ACConfig) -> Result<[BotController; 2], url::
 fn clean_up_state(state: &mut ControllerState) {
     state.map = None;
     state.current_match = None;
-    state.sc2_urls.clear();
-    state.ready = false;
-    state.remove_all_clients();
 }
 
-async fn write_file(path: &Path, bytes: &Bytes) -> std::io::Result<()> {
-    let mut file = File::create(path).await?;
-    file.write_all(bytes.as_ref()).await
-}
-
-fn create_start_bot(player_num: PlayerNum, new_match: &Match, process_key: Port) -> StartBot {
+fn create_start_bot(player_num: PlayerNum, new_match: &Match) -> StartBot {
     StartBot {
         bot_name: new_match.players[&player_num].name.clone(),
         bot_type: new_match.players[&player_num].bot_type,
         opponent_id: new_match.players[&player_num.other_player()].id.to_string(),
         player_num,
         match_id: new_match.match_id,
-        process_key,
     }
 }
