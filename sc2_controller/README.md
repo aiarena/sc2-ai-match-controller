@@ -29,6 +29,9 @@ The controller reads the following parameters from `<log_folder>/sc2_controller/
 In the current version, the parameters are read from the combination of file `<log_folder>/sc2_controller/match_request.toml` and file `config.toml` of the match controller.
 This will be later be changed and the parameters will be read from the environment variables.
 
+In the current version, the map file (.SC2Map) for the requested map is expected to be present in `/root/StarCraftII/maps`. The map is downloaded by the match controller and mounted there.
+In a next version, the client controller will mount a game folder shared between the match and game controllers for exchanging game assets. This game controller will copy the map from there.
+
 ## Ports
 
 The controller opens two ports - `player_1_seat` and `player_2_seat` - for the bots to connect to.
@@ -47,3 +50,6 @@ The controller writes the following files to folder `<log_root>/sc2_controller/`
 | sc2_controller.log | The logs of the controller | |
 | stderr-\<port>.log | Error logs from SC2 game running on this port | |
 | stdout-\<port>.log | Output logs from SC2 game running on this port | |
+
+In the current version, the controller stores the replay of the game in `/root/StarCraftII/maps`.
+In a next version, the client controller will mount a game folder shared between the match and game controllers for exchanging game assets. This game controller will copy the replay file there.

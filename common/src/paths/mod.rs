@@ -143,13 +143,3 @@ pub fn cwd_dir() -> PathBuf {
         base
     }
 }
-
-/// Directory containing replays
-pub fn replay_dir() -> PathBuf {
-    base_dir().join(Path::new("Replays"))
-}
-
-/// Directory containing map directories
-pub fn map_dir() -> PathBuf {
-    base_dir().join(Path::new("Maps"))
-}
