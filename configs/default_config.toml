@@ -16,7 +16,6 @@ TEMP_ROOT = "/tmp/"
 TEMP_PATH = "aiarena"
 
 # Directories
-REPLAYS_DIRECTORY = "/replays"
 BOT_DIRECTORY = "/bots"
 GAME_DIRECTORY = "/game"
 

@@ -65,36 +65,12 @@ impl GameConfig {
             max_frame_time: ac_config.max_frame_time,
             timeout_secs: ac_config.timeout_secs,
             strikes: ac_config.strikes,
-            replay_path: ac_config.replays_directory.clone(),
+            replay_path: "/root/StarCraftII/maps".to_string(),
             replay_name: replay_name,
             disable_debug: ac_config.disable_debug,
             real_time: ac_config.realtime,
             visualize: ac_config.visualize,
             validate_race: ac_config.validate_race,
-        }
-    }
-
-    /// Obsolete default configuration
-    pub fn new(m: &Match, ac_config: &ACConfig) -> Self {
-        Self {
-            map: m.map_name.clone(),
-            max_game_time: ac_config.max_game_time,
-            max_frame_time: ac_config.max_frame_time,
-            timeout_secs: ac_config.timeout_secs,
-            strikes: ac_config.strikes,
-            replay_path: ac_config.replays_directory.clone(),
-            match_id: m.match_id,
-            replay_name: format!(
-                "{}_{}_vs_{}.SC2Replay",
-                m.match_id,
-                &m.players[&PlayerNum::One].name,
-                &m.players[&PlayerNum::Two].name
-            ),
-            disable_debug: ac_config.disable_debug,
-            real_time: ac_config.realtime,
-            visualize: ac_config.visualize,
-            validate_race: ac_config.validate_race,
-            players: m.players.clone(),
         }
     }
 

@@ -9,7 +9,6 @@ RUN_TYPE = "local"  # Run on AiArena, locally or test (options: "test", "local",
 LOGGING_LEVEL = "debug" #info,debug,error,trace
 
 # Directories
-REPLAYS_DIRECTORY = "/replays"
 BOT_DIRECTORY = "/bots"
 GAME_DIRECTORY = "/game"
 

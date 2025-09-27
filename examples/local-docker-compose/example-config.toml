@@ -10,7 +10,6 @@ LOGGING_LEVEL = "debug" #info,debug,error,trace
 LOG_ROOT = "/logs"
 
 # Directories
-REPLAYS_DIRECTORY = "{{ Add your replay directory here }}"
 BOT_DIRECTORY = "/bots"
 GAME_DIRECTORY = "/game"
 

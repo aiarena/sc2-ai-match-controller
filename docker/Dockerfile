@@ -107,7 +107,6 @@ ENV TZ=Etc/UTC
 RUN mkdir -m 777 ${APP} \
     && mkdir -m 777 /bots \
     && mkdir -m 777 /logs \
-    && mkdir -m 777 /replays \
     && chmod -R 777 /tmp
 
 WORKDIR ${APP}
@@ -141,7 +140,6 @@ ENV TZ=Etc/UTC
 RUN mkdir -m 777 ${APP} \
     && mkdir -m 777 /bots \
     && mkdir -m 777 /logs \
-    && mkdir -m 777 /replays \
     && chmod -R 777 /root \
     && chmod -R 777 /tmp
 

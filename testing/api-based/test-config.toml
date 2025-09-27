@@ -11,7 +11,6 @@ LOGGING_LEVEL = "debug" #info,debug,error,trace
 LOG_ROOT = "/logs"
 
 # Directories
-REPLAYS_DIRECTORY = "/replays"
 BOT_DIRECTORY = "/bots"
 GAME_DIRECTORY = "/game"
 
