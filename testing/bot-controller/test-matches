@@ -1,0 +1,4 @@
+1,basic_bot,T,python,2,js_bot,T,nodejs,AutomatonLE,Player1Win
+1,basic_bot,T,python,2,java_bot,T,java,AutomatonLE,Player1Win
+#1,basic_bot,T,python,2,dotnetcore_bot,T,dotnetcore,AutomatonLE,Player1Win
+1,basic_bot,T,python,2,loser_bot,T,python,AutomatonLE,Player1Win

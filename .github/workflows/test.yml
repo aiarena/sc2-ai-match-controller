@@ -90,8 +90,8 @@ jobs:
           command: fmt
           args: --all -- --check
 
-  file_based:
-    name: File-based integration test
+  bot_controller:
+    name: Bot controller integration test
     runs-on: ubuntu-latest
     steps:
 
@@ -106,14 +106,14 @@ jobs:
         with:
           submodules: 'true'
 
-      - name: Run file-based integration tests
+      - name: Run bot-controller integration tests
         run: |
           free -m
-          TEST_CARGO_FLAGS="--release --verbose" docker compose -f ./testing/file-based/docker-compose.yml up --exit-code-from=match_controller --timeout 20 --force-recreate --build
+          TEST_CARGO_FLAGS="--release --verbose" docker compose -f ./testing/bot-controller/docker-compose.yml up --exit-code-from=match_controller --timeout 20 --force-recreate --build
           free -m
 
-  api_based:
-    name: API-based integration test
+  match_controller:
+    name: Match controller integration test
     runs-on: ubuntu-latest
     steps:
 
@@ -126,5 +126,27 @@ jobs:
 
       - uses: actions/checkout@v4
 
-      - name: Run api-based integration tests
-        run: TEST_CARGO_FLAGS="--release --verbose" docker compose -f ./testing/api-based/docker-compose.yml up --exit-code-from=match_controller --timeout 20 --force-recreate --build
+      - name: Run match-controller integration tests
+        run: TEST_CARGO_FLAGS="--release --verbose" docker compose -f ./testing/match-controller/docker-compose.yml up --exit-code-from=match_controller --timeout 20 --force-recreate --build
+
+  sc2_controller:
+    name: SC2 controller integration test
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Free Disk Space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          large-packages: false
+          tool-cache: false
+          swap-storage: false
+
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'true'
+
+      - name: Run sc2-controller integration tests
+        run: |
+          free -m
+          TEST_CARGO_FLAGS="--release --verbose" docker compose -f ./testing/sc2-controller/docker-compose.yml up --exit-code-from=match_controller --timeout 20 --force-recreate --build
+          free -m

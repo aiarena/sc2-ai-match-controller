@@ -14,7 +14,7 @@ pub fn setup_mock_server(settings: &ACConfig) -> MockServer {
     let token = settings.api_token.clone().unwrap();
 
     let mut get_match_response: AiArenaMatch = serde_json::from_str(include_str!(
-        "../../../testing/api-based/responses/get_match_response.json"
+        "../../../testing/match-controller/responses/get_match_response.json"
     ))
     .unwrap();
 
@@ -61,13 +61,13 @@ pub fn setup_mock_server(settings: &ACConfig) -> MockServer {
             .path("/api/arenaclient/matches/1/1/zip/")
             .header("Authorization", format!("Token {token}",));
         then.status(200).body(include_bytes!(
-            "../../../testing/api-based/zip_files/basic_bot.zip"
+            "../../../testing/match-controller/zip_files/basic_bot.zip"
         ));
     });
     mockserver.mock(|when, then| {
         when.method(GET).path("/api/arenaclient/matches/1/1/zip/");
         then.status(200).body(include_bytes!(
-            "../../../testing/api-based/zip_files/basic_bot.zip"
+            "../../../testing/match-controller/zip_files/basic_bot.zip"
         ));
     });
 
@@ -76,13 +76,13 @@ pub fn setup_mock_server(settings: &ACConfig) -> MockServer {
             .path("/api/arenaclient/matches/1/2/zip/")
             .header("Authorization", format!("Token {token}",));
         then.status(200).body(include_bytes!(
-            "../../../testing/api-based/zip_files/loser_bot.zip"
+            "../../../testing/match-controller/zip_files/loser_bot.zip"
         ));
     });
     mockserver.mock(|when, then| {
         when.method(GET).path("/api/arenaclient/matches/1/2/zip/");
         then.status(200).body(include_bytes!(
-            "../../../testing/api-based/zip_files/loser_bot.zip"
+            "../../../testing/match-controller/zip_files/loser_bot.zip"
         ));
     });
     mockserver.mock(|when, then| {
@@ -90,13 +90,13 @@ pub fn setup_mock_server(settings: &ACConfig) -> MockServer {
             .path("/api/arenaclient/matches/1/1/data/")
             .header("Authorization", format!("Token {token}",));
         then.status(200).body(include_bytes!(
-            "../../../testing/api-based/zip_files/basic_bot_data.zip"
+            "../../../testing/match-controller/zip_files/basic_bot_data.zip"
         ));
     });
     mockserver.mock(|when, then| {
         when.method(GET).path("/api/arenaclient/matches/1/1/data/");
         then.status(200).body(include_bytes!(
-            "../../../testing/api-based/zip_files/basic_bot_data.zip"
+            "../../../testing/match-controller/zip_files/basic_bot_data.zip"
         ));
     });
     mockserver.mock(|when, then| {
@@ -104,13 +104,13 @@ pub fn setup_mock_server(settings: &ACConfig) -> MockServer {
             .path("/api/arenaclient/matches/1/2/data/")
             .header("Authorization", format!("Token {token}",));
         then.status(200).body(include_bytes!(
-            "../../../testing/api-based/zip_files/loser_bot_data.zip"
+            "../../../testing/match-controller/zip_files/loser_bot_data.zip"
         ));
     });
     mockserver.mock(|when, then| {
         when.method(GET).path("/api/arenaclient/matches/1/2/data/");
         then.status(200).body(include_bytes!(
-            "../../../testing/api-based/zip_files/loser_bot_data.zip"
+            "../../../testing/match-controller/zip_files/loser_bot_data.zip"
         ));
     });
 
@@ -134,7 +134,7 @@ pub fn setup_mock_server(settings: &ACConfig) -> MockServer {
             "md5hash": bot1_request.md5_hash
         }));
         then.status(200).body(include_bytes!(
-            "../../../testing/api-based/zip_files/basic_bot.zip"
+            "../../../testing/match-controller/zip_files/basic_bot.zip"
         ));
     });
     let bot2_request = CacheDownloadRequest {
@@ -149,7 +149,7 @@ pub fn setup_mock_server(settings: &ACConfig) -> MockServer {
             "md5hash": bot2_request.md5_hash
         }));
         then.status(200).body(include_bytes!(
-            "../../../testing/api-based/zip_files/loser_bot.zip"
+            "../../../testing/match-controller/zip_files/loser_bot.zip"
         ));
     });
     let map_request = CacheDownloadRequest {
