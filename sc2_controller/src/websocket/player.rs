@@ -373,7 +373,7 @@ impl Player {
 
         loop {
             match self.bot_recv_request().await {
-                Ok(request) => {
+                Ok(mut request) => {
                     r_vars.record_frame_time();
 
                     if config.disable_debug && request.has_debug() {
@@ -383,6 +383,14 @@ impl Player {
                     } else if request.has_leave_game() || request.has_quit() {
                         self.save_replay(r_vars.replay_path()).await;
                         r_vars.set_surrender_flag();
+                    }
+
+                    // Using disable_fog=true in observation requests in combination with
+                    // show_cloaked/show_burrowed_shadows in the join game request
+                    // results in visibility of opponent units in the fog of war.
+                    // Here, we make sure it doesn't happen by clearing disable_fog.
+                    if request.has_observation() {
+                        request.mut_observation().clear_disable_fog();
                     }
 
                     r_vars.add_tags(&request);
