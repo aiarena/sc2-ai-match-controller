@@ -25,6 +25,8 @@ pub enum BotType {
     DotnetCore,
     #[serde(rename = "java")]
     Java,
+    #[serde(rename = "linux")]
+    Linux,
     #[serde(rename = "nodejs")]
     NodeJs,
     #[serde(rename = "python")]
@@ -39,6 +41,7 @@ impl FromStr for BotType {
             "cpplinux" => Ok(Self::CppLinux),
             "dotnetcore" => Ok(Self::DotnetCore),
             "java" => Ok(Self::Java),
+            "linux" => Ok(Self::Linux),
             "nodejs" => Ok(Self::NodeJs),
             "python" => Ok(Self::Python),
             _ => Err(()),

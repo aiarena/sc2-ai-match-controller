@@ -59,6 +59,7 @@ pub async fn start_bot(
         BotType::CppLinux => (format!("./{bot_name}"), String::new()),
         BotType::DotnetCore => ("dotnet".to_string(), format!("{bot_name}.dll")),
         BotType::Java => ("java".to_string(), format!("{bot_name}.jar")),
+        BotType::Linux => (format!("./{bot_name}"), String::new()),
         BotType::NodeJs => ("node".to_string(), format!("{bot_name}.js")),
         BotType::Python => (state.settings.python.clone(), "run.py".to_string()),
     };
@@ -128,7 +129,7 @@ pub async fn start_bot(
     {
         use std::os::unix::fs::PermissionsExt;
         use tracing::debug;
-        if bot_type == &BotType::CppLinux {
+        if bot_type == &BotType::CppLinux || bot_type == &BotType::Linux {
             let bot_file_path = std::path::Path::new(&bot_path).join(&program);
             if let Ok(bot_file) = std::fs::metadata(&bot_file_path) {
                 debug!("Setting bot file permissions");

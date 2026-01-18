@@ -344,7 +344,7 @@ mod tests {
             when.method(POST)
                 .path(AiArenaApiClient::API_MATCHES_ENDPOINT);
             then.status(200)
-                .body_from_file("../testing/api-based/responses/get_match_response.json")
+                .body_from_file("../testing/match-controller/responses/get_match_response.json")
                 .header("Content-Type", "application/json");
         });
 

@@ -1,0 +1,9 @@
+### Valid bot code should result in wins
+1,basic_bot,T,python,2,js_bot,T,nodejs,AutomatonLE,Player1Win
+1,basic_bot,T,python,2,java_bot,T,java,AutomatonLE,Player1Win
+1,basic_bot,T,python,2,loser_bot,T,python,AutomatonLE,Player1Win
+1,rust_bot,T,cpplinux,2,loser_bot,T,python,AutomatonLE,Player1Win
+1,rust_bot,T,linux,2,loser_bot,T,python,AutomatonLE,Player1Win
+### Missing bot code should result in initialization error
+1,no_bot,T,linux,2,loser_bot,T,python,AutomatonLE,InitializationError
+1,no_bot,T,python,2,loser_bot,T,python,AutomatonLE,InitializationError
