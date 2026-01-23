@@ -1,0 +1,7 @@
+VERSION = "latest"
+
+LOGS_DIRECTORY = "./logs"
+
+GAMESETS_DIRECTORY = "./gamesets"
+
+BOTS_DIRECTORY = "./bots"

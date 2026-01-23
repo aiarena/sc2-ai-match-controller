@@ -1,0 +1,11 @@
+[workspace]
+
+[package]
+name = "client_controller"
+version = "1.0.0"
+edition = "2021"
+description = "AI Arena client controller"
+
+[dependencies]
+config = "0.14"
+serde = { version = "1.0", features = ["derive"] }

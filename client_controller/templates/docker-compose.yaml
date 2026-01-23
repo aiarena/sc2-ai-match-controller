@@ -1,0 +1,48 @@
+services:
+
+  sc2_controller:
+    image: aiarena/arenaclient-sc2:PLACEHOLDER_VERSION
+    environment:
+      - "ACSC2_PORT=8083"
+      - "ACSC2_MATCH_CONTROLLER_HOST=match_controller"
+      - "ACSC2_PLAYER_1_SEAT=10001"
+      - "ACSC2_PLAYER_2_SEAT=10002"
+    volumes:
+      - "PLACEHOLDER_GAMESETS_DIRECTORY:/root/StarCraftII/maps"
+      - "PLACEHOLDER_LOGS_DIRECTORY/sc2_controller:/logs/sc2_controller"
+
+  bot_controller1:
+    image: aiarena/arenaclient-bot:PLACEHOLDER_VERSION
+    environment:
+      - "ACBOT_PORT=8081"
+      - "ACBOT_MATCH_CONTROLLER_HOST=match_controller"
+      - "ACBOT_GAME_HOST=sc2_controller"
+      - "ACBOT_GAME_PORT=10001"
+    volumes:
+      - "PLACEHOLDER_BOTS_DIRECTORY:/bots/bot1"
+      - "PLACEHOLDER_LOGS_DIRECTORY/bot-controller-1:/logs/bot_controller"
+
+  bot_controller2:
+    image: aiarena/arenaclient-bot:PLACEHOLDER_VERSION
+    environment:
+      - "ACBOT_PORT=8082"
+      - "ACBOT_MATCH_CONTROLLER_HOST=match_controller"
+      - "ACBOT_GAME_HOST=sc2_controller"
+      - "ACBOT_GAME_PORT=10002"
+    volumes:
+      - "PLACEHOLDER_BOTS_DIRECTORY:/bots/bot2"
+      - "PLACEHOLDER_LOGS_DIRECTORY/bot-controller-2:/logs/bot_controller"
+
+  match_controller:
+    image: aiarena/arenaclient-match:PLACEHOLDER_VERSION
+    environment:
+      - "ACMATCH_PORT=8080"
+      - "ACMATCH_BOT_CONT_1_HOST=bot_controller1"
+      - "ACMATCH_BOT_CONT_2_HOST=bot_controller2"
+      - "ACMATCH_SC2_CONT_HOST=sc2_controller"
+      - "ACMATCH_RUN_TYPE=test"
+      - "ACMATCH_MATCHES_FILE=matches"
+      - "ACMATCH_RESULTS_FILE=results.json"
+    volumes:
+      - "PLACEHOLDER_LOGS_DIRECTORY:/logs"
+      - "./matches:/app/matches"

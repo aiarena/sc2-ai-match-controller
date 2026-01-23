@@ -15,83 +15,7 @@ env:
 
 jobs:
   build:
-    name: Build
-    runs-on: ubuntu-latest
-    steps:
-
-    - name: Free Disk Space
-      uses: jlumbroso/free-disk-space@main
-      with:
-        large-packages: false
-        tool-cache: false
-        swap-storage: false
-
-    - uses: actions/checkout@v4
-    
-    - name: Install lld & clang
-      run: sudo apt install -y lld clang
-    
-    - uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: stable
-        override: true
-        
-    - uses: actions-rs/cargo@v1
-      with:
-        command: check
-        args: --verbose
-    
-    - uses: actions-rs/cargo@v1
-      with:
-        command: build
-        args: --verbose
-    
-    - run: rustup component add clippy
-    - uses: actions-rs/cargo@v1
-      with:
-        command: clippy
-        args: --all-targets --all-features
-  
-  test:
-    name: Cargo test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-      
-      - name: Install lld, clang & p7zip-full
-        run: sudo apt install -y lld clang p7zip-full
-
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --verbose
-
-  cargo_fmt:
-    name: Cargo format check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-
-      - run: rustup component add rustfmt
-
-      - uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
-
-  bot_controller:
-    name: Bot controller integration test
+    name: Build & test
     runs-on: ubuntu-latest
     steps:
 
@@ -106,11 +30,59 @@ jobs:
         with:
           submodules: 'true'
 
-      - name: Run bot-controller integration tests
-        run: |
-          free -m
-          TEST_CARGO_FLAGS="--release --verbose" docker compose -f ./testing/bot-controller/docker-compose.yml up --exit-code-from=match_controller --timeout 20 --force-recreate --build
-          free -m
+      - name: Install lld & clang
+        run: sudo apt install -y lld clang
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - run: rustup component add rustfmt
+      - uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check
+
+      - run: rustup component add clippy
+      - uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: --all-targets --all-features
+
+      - uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --verbose
+
+      - name: Build client_controller
+        run: cargo build --release --manifest-path client_controller/Cargo.toml --verbose
+
+      - name: Build bot_controller Docker image
+        run: docker build -f docker/Dockerfile --target bot_controller -t aiarena/arenaclient-bot:latest .
+
+      - name: Build sc2_controller Docker image
+        run: docker build -f docker/Dockerfile --target sc2_controller -t aiarena/arenaclient-sc2:latest .
+
+      - name: Build match_controller Docker image
+        run: docker build -f docker/Dockerfile --target match_controller -t aiarena/arenaclient-match:latest .
+
+      - name: Bot controller integration test
+        timeout-minutes: 15  # Fail if not completed after 15 minutes
+        env:
+          BOTS_DIRECTORY: testing/aiarena-test-bots
+          GAMESETS_DIRECTORY: testing/testing-maps
+          VERSION: latest
+        run: ./target/release/client_controller < testing/bot-controller/test-matches
+
+      - name: SC2 controller integration test
+        timeout-minutes: 15  # Fail if not completed after 15 minutes
+        env:
+          BOTS_DIRECTORY: testing/aiarena-test-bots
+          GAMESETS_DIRECTORY: testing/testing-maps
+          VERSION: latest
+        run: ./target/release/client_controller < testing/sc2-controller/test-matches
 
   match_controller:
     name: Match controller integration test
@@ -128,25 +100,3 @@ jobs:
 
       - name: Run match-controller integration tests
         run: TEST_CARGO_FLAGS="--release --verbose" docker compose -f ./testing/match-controller/docker-compose.yml up --exit-code-from=match_controller --timeout 20 --force-recreate --build
-
-  sc2_controller:
-    name: SC2 controller integration test
-    runs-on: ubuntu-latest
-    steps:
-
-      - name: Free Disk Space
-        uses: jlumbroso/free-disk-space@main
-        with:
-          large-packages: false
-          tool-cache: false
-          swap-storage: false
-
-      - uses: actions/checkout@v4
-        with:
-          submodules: 'true'
-
-      - name: Run sc2-controller integration tests
-        run: |
-          free -m
-          TEST_CARGO_FLAGS="--release --verbose" docker compose -f ./testing/sc2-controller/docker-compose.yml up --exit-code-from=match_controller --timeout 20 --force-recreate --build
-          free -m
