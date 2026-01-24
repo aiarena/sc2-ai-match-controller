@@ -71,16 +71,16 @@ jobs:
       - name: Bot controller integration test
         timeout-minutes: 15  # Fail if not completed after 15 minutes
         env:
-          BOTS_DIRECTORY: testing/aiarena-test-bots
-          GAMESETS_DIRECTORY: testing/testing-maps
+          BOTS_DIRECTORY: ${{ github.workspace }}/testing/aiarena-test-bots
+          GAMESETS_DIRECTORY: ${{ github.workspace }}/testing/testing-maps
           VERSION: latest
         run: client_controller/target/release/client_controller < testing/bot-controller/test-matches
 
       - name: SC2 controller integration test
         timeout-minutes: 15  # Fail if not completed after 15 minutes
         env:
-          BOTS_DIRECTORY: testing/aiarena-test-bots
-          GAMESETS_DIRECTORY: testing/testing-maps
+          BOTS_DIRECTORY: ${{ github.workspace }}/testing/aiarena-test-bots
+          GAMESETS_DIRECTORY: ${{ github.workspace }}/testing/testing-maps
           VERSION: latest
         run: client_controller/target/release/client_controller < testing/sc2-controller/test-matches
 
