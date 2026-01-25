@@ -39,6 +39,5 @@ swagger = ["utoipa", "utoipa-swagger-ui"]
 bytes = "1.3.0"
 env_logger = "*"
 fs_extra = "1.2.0"
-httpmock = "0.7.0"
 tempfile = "3.3.0"
 test-log = { version = "0.2.11", features = ["log"], default-features = false }
