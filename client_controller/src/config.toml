@@ -1,5 +1,7 @@
 VERSION = "latest"
 
+API_URL = ""
+
 LOGS_DIRECTORY = "./logs"
 
 GAMESETS_DIRECTORY = "./gamesets"

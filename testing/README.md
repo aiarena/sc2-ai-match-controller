@@ -7,29 +7,45 @@ directory contains any bots. If you are missing the bots, run the following comm
 
 The integration tests are split into three groups: bot controller tests, match controller tests, and sc2 controller tests.
 
-## Bot controller tests
+## Bot/SC2 controller tests
 
-These tests check that the bot controller can run bots of the supported types.
-Run with:
+Bot controller tests check that the bot controller can run bots of the supported types.
+SC2 controller tests check that the sc2 game controller produces the correct result of the match.
+
+Create `config.toml` file under `client_controller` directory with contents:
+```
+VERSION = "latest"
+
+BOTS_DIRECTORY = "../../testing/aiarena-test-bots"
+GAMESETS_DIRECTORY = "../../testing/testing-maps"
+```
+
+Run under `client_controller` directory with:
 
 ```
-docker-compose -f .\testing\bot-controller\docker-compose.yml up --exit-code-from=match_controller --build --force-recreate
+cargo run
 ```
+
+The client controller will wait for matches to run.
+
+For bot controller tests pipe file `testing/bot-controller/test-matches` or paste them in the console.
+For SC2 controller tests pipe file `testing/sc2-controller/test-matches` or paste them in the console.
 
 ## Match controller tests
 
 These tests check that the match controller properly prepares the match environment by downloading the bot binaries and data, and that it completes the match by uploading the match result and artifacts.
-Run with:
+
+Create `config.toml` file under `client_controller` directory with contents:
+```
+VERSION = "latest"
+
+API_URL = "http://host.docker.internal:3000"
+```
+
+Run `teting/test-api-server` and then `client_controller` with:
 
 ```
-docker-compose -f .\testing\match-controller\docker-compose.yml up --exit-code-from=match_controller --build --force-recreate
+cargo run
 ```
 
-## SC2 controller tests
-
-These tests check that the sc2 game controller produces the correct result of the match.
-Run with:
-
-```
-docker-compose -f .\testing\sc2-controller\docker-compose.yml up --exit-code-from=match_controller --build --force-recreate
-```
+in their corresponding directory.

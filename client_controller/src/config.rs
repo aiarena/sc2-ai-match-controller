@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Config {
     pub version: String,
+    pub api_url: String,
     pub gamesets_directory: String,
     pub bots_directory: String,
     pub logs_directory: String,

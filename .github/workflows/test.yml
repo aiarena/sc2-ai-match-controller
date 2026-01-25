@@ -84,19 +84,12 @@ jobs:
           VERSION: latest
         run: client_controller/target/release/client_controller < testing/sc2-controller/test-matches
 
-  match_controller:
-    name: Match controller integration test
-    runs-on: ubuntu-latest
-    steps:
+      - name: Build test-api-server
+        run: cargo build --release --manifest-path testing/test-api-server/Cargo.toml --verbose
 
-      - name: Free Disk Space
-        uses: jlumbroso/free-disk-space@main
-        with:
-          large-packages: false
-          tool-cache: false
-          swap-storage: false
-
-      - uses: actions/checkout@v4
-
-      - name: Run match-controller integration tests
-        run: TEST_CARGO_FLAGS="--release --verbose" docker compose -f ./testing/match-controller/docker-compose.yml up --exit-code-from=match_controller --timeout 20 --force-recreate --build
+      - name: Match controller integration test
+        timeout-minutes: 15  # Fail if not completed after 15 minutes
+        env:
+          API_URL: http://host.docker.internal:3000
+          VERSION: latest
+        run: testing/test-api-server/target/release/test-api-server & client_controller/target/release/client_controller

@@ -19,7 +19,7 @@ services:
       - "ACBOT_GAME_HOST=sc2_controller"
       - "ACBOT_GAME_PORT=10001"
     volumes:
-      - "PLACEHOLDER_BOTS_DIRECTORY:/bots/bot1"
+      - "PLACEHOLDER_BOT1_DIRECTORY:/bots/bot1"
       - "PLACEHOLDER_LOGS_DIRECTORY/bot-controller-1:/logs/bot_controller"
 
   bot_controller2:
@@ -30,7 +30,7 @@ services:
       - "ACBOT_GAME_HOST=sc2_controller"
       - "ACBOT_GAME_PORT=10002"
     volumes:
-      - "PLACEHOLDER_BOTS_DIRECTORY:/bots/bot2"
+      - "PLACEHOLDER_BOT2_DIRECTORY:/bots/bot2"
       - "PLACEHOLDER_LOGS_DIRECTORY/bot-controller-2:/logs/bot_controller"
 
   match_controller:
@@ -40,9 +40,16 @@ services:
       - "ACMATCH_BOT_CONT_1_HOST=bot_controller1"
       - "ACMATCH_BOT_CONT_2_HOST=bot_controller2"
       - "ACMATCH_SC2_CONT_HOST=sc2_controller"
-      - "ACMATCH_RUN_TYPE=test"
+      - "ACMATCH_RUN_TYPE=PLACEHOLDER_RUN_TYPE"
+      - "ACMATCH_ROUNDS_PER_RUN=PLACEHOLDER_ROUNDS"
       - "ACMATCH_MATCHES_FILE=matches"
       - "ACMATCH_RESULTS_FILE=results.json"
+      - "ACMATCH_BASE_WEBSITE_URL=PLACEHOLDER_API_URL"
+      - "ACMATCH_CACHING_SERVER_URL=PLACEHOLDER_API_URL"
+      - "ACMATCH_ARENA_CLIENT_ID=client-controller"
+      - "ACMATCH_API_TOKEN=987"
     volumes:
+      - "PLACEHOLDER_BOTS_DIRECTORY:/bots"
+      - "PLACEHOLDER_GAMESETS_DIRECTORY:/game"
       - "PLACEHOLDER_LOGS_DIRECTORY:/logs"
       - "./matches:/app/matches"
