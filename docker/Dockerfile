@@ -43,7 +43,7 @@ LABEL service=k8s_controller
 
 ###########################################################
 
-FROM aiarena/arenaclient-bot-base:v0.7.0 AS bot_controller
+FROM aiarena/arenaclient-bot-base:v0.8.0 AS bot_controller
 ARG APP=/app
 
 RUN apt-get update \
