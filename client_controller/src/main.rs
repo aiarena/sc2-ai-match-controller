@@ -2,7 +2,7 @@ mod config;
 
 use crate::config::initialize_config;
 use std::fs::{self, File};
-use std::io::{self, Read, Write};
+use std::io::Write;
 use std::process::{Command, Stdio};
 
 fn main() {
@@ -19,6 +19,7 @@ fn main() {
     let mut rounds = "-1";
     let mut bot1_directory = config.bots_directory.clone();
     let mut bot2_directory = config.bots_directory.clone();
+    let mut matches_file = config.matches_file.clone();
 
     if !config.api_url.is_empty() {
         println!("Reading matches from API at: {}", config.api_url);
@@ -32,20 +33,14 @@ fn main() {
         // Adjustment for when bots are in separate directories
         bot1_directory = format!("{}/bot1", config.bots_directory);
         bot2_directory = format!("{}/bot2", config.bots_directory);
+
+        // Add valid reference for volume mapping. The file doesn't have to exist.
+        matches_file = "./no-matches".to_string();
+    } else if !matches_file.is_empty() {
+        println!("Reading matches from file: {}", matches_file);
     } else {
-        // Prepare matches file
-        println!("Reading matches from standard input");
-
-        let mut stdin_content = String::new();
-        io::stdin()
-            .read_to_string(&mut stdin_content)
-            .unwrap_or_else(|e| panic!("Could not read from stdin: {e:?}"));
-        let mut matches_file = File::create("target/matches")
-            .unwrap_or_else(|e| panic!("Could not create target/matches file: {e:?}"));
-        matches_file.write_all(stdin_content.as_bytes())
-            .unwrap_or_else(|e| panic!("Could not write to target/matches file: {e:?}"));
-
-        println!("\nMatches:\n{}", stdin_content);
+        eprintln!("Client controlle requires either API_URL or MATCHES_FILE to read matches!");
+        std::process::exit(1);
     }
 
     // Prepare the template to schedule a match
@@ -54,6 +49,7 @@ fn main() {
     let template = template.replace("PLACEHOLDER_RUN_TYPE", &run_type);
     let template = template.replace("PLACEHOLDER_ROUNDS", &rounds);
     let template = template.replace("PLACEHOLDER_API_URL", &config.api_url);
+    let template = template.replace("PLACEHOLDER_MATCHES_FILE", &matches_file);
     let template = template.replace("PLACEHOLDER_BOTS_DIRECTORY", &config.bots_directory);
     let template = template.replace("PLACEHOLDER_BOT1_DIRECTORY", &bot1_directory);
     let template = template.replace("PLACEHOLDER_BOT2_DIRECTORY", &bot2_directory);

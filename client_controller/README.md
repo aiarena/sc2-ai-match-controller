@@ -14,11 +14,13 @@ and it supports only Docker environment in Push mode of operation.
 
 #### Parameters
 
-The client controller can be configured with the following parameters provided as environment variables:
+The client controller can be configured with the following parameters provided as environment variables or in `config.toml` file:
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
+| API_URL | - | The URL of AI Arena API. Leave empty when setting MATCHES_FILE |
 | BOTS_DIRECTORY | ./bots | A folder with bot code and data. Each bot is in a subfolder with its name |
 | GAMESETS_DIRECTORY | ./gamesets | A folder with game sets. Currently these are SC2 maps |
 | LOGS_DIRECTORY | ./logs | A folder to write logs to |
+| MATCHES_FILE | - | A file with list of matches to run. Ignored if API_URL is set |
 | VERSION | latest | The version of AI Arena client to run matches with |

@@ -8,6 +8,7 @@ pub struct Config {
     pub gamesets_directory: String,
     pub bots_directory: String,
     pub logs_directory: String,
+    pub matches_file: String,
 }
 
 pub fn initialize_config() -> Config {

@@ -52,4 +52,4 @@ services:
       - "PLACEHOLDER_BOTS_DIRECTORY:/bots"
       - "PLACEHOLDER_GAMESETS_DIRECTORY:/game"
       - "PLACEHOLDER_LOGS_DIRECTORY:/logs"
-      - "./matches:/app/matches"
+      - "PLACEHOLDER_MATCHES_FILE:/app/matches"

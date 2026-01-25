@@ -2,6 +2,8 @@ VERSION = "latest"
 
 API_URL = ""
 
+MATCHES_FILE = ""
+
 LOGS_DIRECTORY = "./logs"
 
 GAMESETS_DIRECTORY = "./gamesets"
