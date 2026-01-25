@@ -126,7 +126,7 @@ async fn main() {
 }
 
 fn setup_controller_config() -> ACConfig {
-    let default_config = include_str!("../../configs/default_config.toml");
+    let default_config = include_str!("../config.toml");
     Config::builder()
         .add_source(config::File::from_str(default_config, FileFormat::Toml).required(true))
         .add_source(config::File::new("config.toml", FileFormat::Toml).required(false))
