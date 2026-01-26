@@ -48,7 +48,7 @@ impl AiArenaGameResult {
     // Writes the AiArenaGameResult instance to disk.
     pub fn to_json_file(&self) -> Result<(), Box<dyn Error>> {
         let path = Path::new("/logs/sc2_controller/match_result.json");
-        
+
         // If a valid match result is already stored, keep it
         if path.exists() {
             let record = Self::from_json_file()?;
@@ -56,7 +56,7 @@ impl AiArenaGameResult {
             println!("Ignoring new match result: {:?}", self);
             return Ok(());
         }
-        
+
         // Otherwise, store this match result
         let file = File::create(path)?;
         serde_json::to_writer_pretty(file, &self)?;
