@@ -5,17 +5,9 @@ on:
 
 jobs:
 
-  Test:
-    uses: ./.github/workflows/test.yml
-
   Release:
-    needs: Test
     runs-on: ubuntu-latest
     steps:
-      - name: Select release version
-        id: version
-        run: printf 'tag=%(%Y.%m.%d-%H.%M)T' >> $GITHUB_OUTPUT
-
       - name: Free Disk Space
         uses: jlumbroso/free-disk-space@main
         with:
@@ -33,20 +25,4 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: "Build the docker-compose stack with version && push"
-        run: CARGO_FLAGS="--release" TAG=${{ steps.version.outputs.tag }} docker compose -f docker/docker-compose.yml build --push
-
-      - name: Update Kubernetes descriptors
-        run: |
-          cp -vr kubernetes ${{ runner.temp }}
-          echo 'Setting version ${{ steps.version.outputs.tag }} in deployment descriptors'
-          sed -i -e 's|0.0.0|${{ steps.version.outputs.tag }}|g' ${{ runner.temp }}/kubernetes/configmap.yaml
-          sed -i -e 's|aiarena/k8s-controller|aiarena/k8s-controller:${{ steps.version.outputs.tag }}|g' ${{ runner.temp }}/kubernetes/deployment.yaml
-          git fetch
-          git switch kubernetes
-          rm -r ./*
-          cp -vr ${{ runner.temp }}/kubernetes/* .
-          git config --global user.name 'AI Arena'
-          git config --global user.email 'staff@aiarena.net'
-          git add --all
-          git commit -m 'Release ${{ steps.version.outputs.tag }}'
-          git push
+        run: CARGO_FLAGS="--release" TAG=v0.8.0 docker compose -f docker/docker-compose.yml build --push
