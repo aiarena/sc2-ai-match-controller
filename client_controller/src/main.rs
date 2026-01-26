@@ -1,101 +1,53 @@
 mod config;
+mod docker;
 
 use crate::config::initialize_config;
+use crate::docker::run_match;
 use std::fs::{self, File};
-use std::io::Write;
-use std::process::{Command, Stdio};
+use std::io::{BufRead, BufReader, Write};
 
 fn main() {
     println!("Starting client controller");
 
-    // Initialize the configuration for the client controller
     let config = initialize_config();
-
-    // Prepare target directory
-    fs::create_dir_all("target")
-        .unwrap_or_else(|e| panic!("Could not create target directory: {e:?}"));
-
-    let mut run_type = "test";
-    let mut rounds = "-1";
-    let mut bot1_directory = config.bots_directory.clone();
-    let mut bot2_directory = config.bots_directory.clone();
-    let mut matches_file = config.matches_file.clone();
 
     if !config.api_url.is_empty() {
         println!("Reading matches from API at: {}", config.api_url);
 
-        run_type = "aiarena";
+        run_match("aiarena", &config);
+    } else if !config.matches_file.is_empty() {
+        println!("Reading matches from file: {}", config.matches_file);
 
-        // Right now it supports only the test api server which responds with 1 match only
-        // Set rounds to 1 to avoid infinite loop over the same match
-        rounds = "1";
+        let file = File::open(&config.matches_file)
+            .unwrap_or_else(|e| panic!("Could not open matches file {}: {e:?}", config.matches_file));
+        let reader = BufReader::new(file);
 
-        // Adjustment for when bots are in separate directories
-        bot1_directory = format!("{}/bot1", config.bots_directory);
-        bot2_directory = format!("{}/bot2", config.bots_directory);
+        fs::create_dir_all("target")
+            .unwrap_or_else(|e| panic!("Could not create target directory: {e:?}"));
 
-        // Add valid reference for volume mapping. The file doesn't have to exist.
-        matches_file = "./no-matches".to_string();
-    } else if !matches_file.is_empty() {
-        println!("Reading matches from file: {}", matches_file);
-    } else {
-        eprintln!("Client controlle requires either API_URL or MATCHES_FILE to read matches!");
-        std::process::exit(1);
-    }
+        for line in reader.lines() {
+            let line = line.unwrap_or_else(|e| panic!("Could not read line from matches file: {e:?}"));
+            let line = line.trim();
 
-    // Prepare the template to schedule a match
-    let template = include_str!("../templates/docker-compose.yaml");
-    let template = template.replace("PLACEHOLDER_VERSION", &config.version);
-    let template = template.replace("PLACEHOLDER_RUN_TYPE", &run_type);
-    let template = template.replace("PLACEHOLDER_ROUNDS", &rounds);
-    let template = template.replace("PLACEHOLDER_API_URL", &config.api_url);
-    let template = template.replace("PLACEHOLDER_MATCHES_FILE", &matches_file);
-    let template = template.replace("PLACEHOLDER_BOTS_DIRECTORY", &config.bots_directory);
-    let template = template.replace("PLACEHOLDER_BOT1_DIRECTORY", &bot1_directory);
-    let template = template.replace("PLACEHOLDER_BOT2_DIRECTORY", &bot2_directory);
-    let template = template.replace("PLACEHOLDER_GAMESETS_DIRECTORY", &config.gamesets_directory);
-    let template = template.replace("PLACEHOLDER_LOGS_DIRECTORY", &config.logs_directory);
-
-    let mut compose_file = File::create("target/docker-compose.yaml")
-        .unwrap_or_else(|e| panic!("Could not create docker-compose.yaml file: {e:?}"));
-    compose_file.write_all(template.as_bytes())
-        .unwrap_or_else(|e| panic!("Could not write to docker-compose.yaml file: {e:?}"));
-
-    println!("\nDocker compose:\n{}", template);
-    
-    // Schedule the match
-    // docker compose -f ./testing/file-based/docker-compose.yml up --exit-code-from=match_controller --timeout 20 --force-recreate
-    let mut command = Command::new("docker")
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .arg("compose")
-        .arg("-f")
-        .arg("target/docker-compose.yaml")
-        .arg("up")
-        .arg("--exit-code-from=match_controller")
-        .arg("--timeout=20")
-        .arg("--force-recreate")
-        .spawn();
-
-    match command {
-        Ok(ref mut child) => {
-            match child.wait() {
-                Ok(exit_status) => {
-                    if !exit_status.success() {
-                        eprintln!("Docker compose exited with status: {}", exit_status);
-                        std::process::exit(exit_status.code().unwrap_or(1));
-                    }
-                }
-                Err(e) => {
-                    eprintln!("Failed to wait for docker compose: {}", e);
-                    std::process::exit(1);
-                }
+            // Skip empty lines and comments
+            if line.is_empty() || line.starts_with('#') {
+                continue;
             }
+
+            println!("Running match: {}", line);
+
+            // Store the current line in ./match file (overwrite)
+            let mut match_file = File::create("target/match.txt")
+                .unwrap_or_else(|e| panic!("Could not create match file: {e:?}"));
+            match_file.write_all(line.as_bytes())
+                .unwrap_or_else(|e| panic!("Could not write to match file: {e:?}"));
+
+            run_match("test", &config);
         }
-        Err(e) => {
-            eprintln!("Failed to spawn docker compose: {}", e);
-            std::process::exit(1);
-        }
+
+    } else {
+        eprintln!("Client controller requires either API_URL or MATCHES_FILE to read matches!");
+        std::process::exit(1);
     }
 
     println!("Client controller exits.");

@@ -1,6 +1,5 @@
 ARENA_CLIENT_ID = "aiarenaclient_local"  # ID of arenaclient. Used for AiArena
 API_TOKEN = ""  # API Token to retrieve matches and submit results. Used for AiArena
-ROUNDS_PER_RUN = -1  # Set to -1 to ignore this
 BASE_WEBSITE_URL = ""
 DEBUG_MODE = true  # Enables debug mode for more logging
 PYTHON = "python"  # Which python version to use
