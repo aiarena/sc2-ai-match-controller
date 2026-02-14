@@ -32,8 +32,24 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: "Build the docker-compose stack with version && push"
-        run: CARGO_FLAGS="--release" TAG=${{ steps.version.outputs.tag }} docker compose -f docker/docker-compose.yml build --push
+      - name: Build bot_controller Docker image
+        run: docker build -f docker/Dockerfile --target bot_controller -t aiarena/arenaclient-bot:${{ steps.version.outputs.tag }} .
+
+      - name: Build sc2_controller Docker image
+        run: docker build -f docker/Dockerfile --target sc2_controller -t aiarena/arenaclient-sc2:${{ steps.version.outputs.tag }} .
+
+      - name: Build match_controller Docker image
+        run: docker build -f docker/Dockerfile --target match_controller -t aiarena/arenaclient-match:${{ steps.version.outputs.tag }} .
+
+      - name: Build client_controller
+        run: docker build -f docker/Dockerfile --target k8s_controller -t aiarena/k8s-controller:${{ steps.version.outputs.tag }} .
+
+      - name: Push Docker images
+        run: |
+          docker push aiarena/k8s-controller:${{ steps.version.outputs.tag }}
+          docker push aiarena/arenaclient-match:${{ steps.version.outputs.tag }}
+          docker push aiarena/arenaclient-sc2:${{ steps.version.outputs.tag }}
+          docker push aiarena/arenaclient-bot:${{ steps.version.outputs.tag }}
 
       - name: Update Kubernetes descriptors
         run: |

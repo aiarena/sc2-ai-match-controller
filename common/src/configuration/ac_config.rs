@@ -29,7 +29,6 @@ pub struct ACConfig {
     pub python: String,
     pub realtime: bool,
     pub results_file: String,
-    pub rounds_per_run: i64,
     pub run_type: RunType,
     pub sc2_cont_host: String,
     pub sc2_cont_port: Port,
@@ -50,8 +49,6 @@ pub enum RunType {
     AiArena,
     #[serde(rename = "test")]
     Test,
-    #[serde(rename = "mock")]
-    Mock,
 }
 
 impl Default for RunType {
@@ -88,7 +85,6 @@ mod tests {
             python: "123".to_string(),
             realtime: false,
             results_file: "123".to_string(),
-            rounds_per_run: 0,
             run_type: RunType::Local,
             sc2_cont_host: "123".to_string(),
             sc2_cont_port: 0,

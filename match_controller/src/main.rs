@@ -1,8 +1,6 @@
 #![allow(dead_code)]
 mod match_scheduler;
 pub mod matches;
-#[cfg(feature = "mockserver")]
-mod mocking;
 mod routes;
 mod state;
 
@@ -10,8 +8,6 @@ use crate::match_scheduler::match_scheduler;
 use crate::matches::sources::aiarena_api::HttpApiSource;
 use crate::matches::sources::test_source::TestSource;
 use crate::matches::sources::{FileSource, MatchSource};
-#[cfg(feature = "mockserver")]
-use crate::mocking::setup_mock_server;
 use crate::routes::configuration;
 use crate::state::ControllerState;
 use axum::error_handling::HandleErrorLayer;
@@ -49,20 +45,8 @@ async fn main() {
 
     let host_url = get_host_url(PREFIX, port);
 
-    #[cfg(feature = "mockserver")]
-    let mut settings = setup_controller_config();
-
-    #[cfg(not(feature = "mockserver"))]
     let settings = setup_controller_config();
 
-    #[cfg(feature = "mockserver")]
-    let mock_server = setup_mock_server(&settings);
-
-    #[cfg(feature = "mockserver")]
-    {
-        settings.base_website_url = mock_server.base_url();
-        settings.caching_server_url = mock_server.base_url();
-    }
     let log_level = &settings.logging_level;
     let env_log = std::env::var("RUST_LOG")
         .unwrap_or_else(|_| format!("info,common={log_level},match_controller={log_level}"));
@@ -80,7 +64,6 @@ async fn main() {
         RunType::Local => Box::new(FileSource::new(settings.clone())),
         RunType::AiArena => Box::new(HttpApiSource::new(settings.clone()).unwrap()),
         RunType::Test => Box::new(TestSource::new(settings.clone())),
-        RunType::Mock => Box::new(HttpApiSource::new(settings.clone()).unwrap()),
     };
     let (tx, mut rx) = tokio::sync::mpsc::channel::<()>(1);
     let app_state = Arc::new(RwLock::new(ControllerState {
@@ -143,7 +126,7 @@ async fn main() {
 }
 
 fn setup_controller_config() -> ACConfig {
-    let default_config = include_str!("../../configs/default_config.toml");
+    let default_config = include_str!("../config.toml");
     Config::builder()
         .add_source(config::File::from_str(default_config, FileFormat::Toml).required(true))
         .add_source(config::File::new("config.toml", FileFormat::Toml).required(false))

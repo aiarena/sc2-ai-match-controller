@@ -15,68 +15,24 @@ env:
 
 jobs:
   build:
-    name: Build
+    name: Build & test
     runs-on: ubuntu-latest
     steps:
 
-    - name: Free Disk Space
-      uses: jlumbroso/free-disk-space@main
-      with:
-        large-packages: false
-        tool-cache: false
-        swap-storage: false
-
-    - uses: actions/checkout@v4
-    
-    - name: Install lld & clang
-      run: sudo apt install -y lld clang
-    
-    - uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: stable
-        override: true
-        
-    - uses: actions-rs/cargo@v1
-      with:
-        command: check
-        args: --verbose
-    
-    - uses: actions-rs/cargo@v1
-      with:
-        command: build
-        args: --verbose
-    
-    - run: rustup component add clippy
-    - uses: actions-rs/cargo@v1
-      with:
-        command: clippy
-        args: --all-targets --all-features
-  
-  test:
-    name: Cargo test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
+      - name: Free Disk Space
+        uses: jlumbroso/free-disk-space@main
         with:
-          profile: minimal
-          toolchain: stable
-          override: true
-      
-      - name: Install lld, clang & p7zip-full
-        run: sudo apt install -y lld clang p7zip-full
+          large-packages: false
+          tool-cache: false
+          swap-storage: false
 
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --verbose
-
-  cargo_fmt:
-    name: Cargo format check
-    runs-on: ubuntu-latest
-    steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: 'true'
+
+      - name: Install lld & clang
+        run: sudo apt install -y lld clang
+
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -84,69 +40,58 @@ jobs:
           override: true
 
       - run: rustup component add rustfmt
-
       - uses: actions-rs/cargo@v1
         with:
           command: fmt
           args: --all -- --check
 
-  bot_controller:
-    name: Bot controller integration test
-    runs-on: ubuntu-latest
-    steps:
-
-      - name: Free Disk Space
-        uses: jlumbroso/free-disk-space@main
+      - run: rustup component add clippy
+      - uses: actions-rs/cargo@v1
         with:
-          large-packages: false
-          tool-cache: false
-          swap-storage: false
+          command: clippy
+          args: --all-targets --all-features
 
-      - uses: actions/checkout@v4
+      - uses: actions-rs/cargo@v1
         with:
-          submodules: 'true'
+          command: test
+          args: --verbose
 
-      - name: Run bot-controller integration tests
-        run: |
-          free -m
-          TEST_CARGO_FLAGS="--release --verbose" docker compose -f ./testing/bot-controller/docker-compose.yml up --exit-code-from=match_controller --timeout 20 --force-recreate --build
-          free -m
+      - name: Build bot_controller Docker image
+        run: docker build -f docker/Dockerfile --target bot_controller -t aiarena/arenaclient-bot:latest .
 
-  match_controller:
-    name: Match controller integration test
-    runs-on: ubuntu-latest
-    steps:
+      - name: Build sc2_controller Docker image
+        run: docker build -f docker/Dockerfile --target sc2_controller -t aiarena/arenaclient-sc2:latest .
 
-      - name: Free Disk Space
-        uses: jlumbroso/free-disk-space@main
-        with:
-          large-packages: false
-          tool-cache: false
-          swap-storage: false
+      - name: Build match_controller Docker image
+        run: docker build -f docker/Dockerfile --target match_controller -t aiarena/arenaclient-match:latest .
 
-      - uses: actions/checkout@v4
+      - name: Build client_controller
+        run: cargo build --release --manifest-path client_controller/Cargo.toml --verbose
 
-      - name: Run match-controller integration tests
-        run: TEST_CARGO_FLAGS="--release --verbose" docker compose -f ./testing/match-controller/docker-compose.yml up --exit-code-from=match_controller --timeout 20 --force-recreate --build
+      - name: Bot controller integration test
+        timeout-minutes: 15  # Fail if not completed after 15 minutes
+        env:
+          MATCHES_FILE: ${{ github.workspace }}/testing/bot-controller/test-matches
+          BOTS_DIRECTORY: ${{ github.workspace }}/testing/aiarena-test-bots
+          GAMESETS_DIRECTORY: ${{ github.workspace }}/testing/testing-maps
+          VERSION: latest
+        run: client_controller/target/release/client_controller
 
-  sc2_controller:
-    name: SC2 controller integration test
-    runs-on: ubuntu-latest
-    steps:
+      - name: SC2 controller integration test
+        timeout-minutes: 15  # Fail if not completed after 15 minutes
+        env:
+          MATCHES_FILE: ${{ github.workspace }}/testing/sc2-controller/test-matches
+          BOTS_DIRECTORY: ${{ github.workspace }}/testing/aiarena-test-bots
+          GAMESETS_DIRECTORY: ${{ github.workspace }}/testing/testing-maps
+          VERSION: latest
+        run: client_controller/target/release/client_controller
 
-      - name: Free Disk Space
-        uses: jlumbroso/free-disk-space@main
-        with:
-          large-packages: false
-          tool-cache: false
-          swap-storage: false
+      - name: Build test-api-server
+        run: cargo build --release --manifest-path testing/test-api-server/Cargo.toml --verbose
 
-      - uses: actions/checkout@v4
-        with:
-          submodules: 'true'
-
-      - name: Run sc2-controller integration tests
-        run: |
-          free -m
-          TEST_CARGO_FLAGS="--release --verbose" docker compose -f ./testing/sc2-controller/docker-compose.yml up --exit-code-from=match_controller --timeout 20 --force-recreate --build
-          free -m
+      - name: Match controller integration test
+        timeout-minutes: 15  # Fail if not completed after 15 minutes
+        env:
+          API_URL: http://172.17.0.1:3000
+          VERSION: latest
+        run: testing/test-api-server/target/release/test-api-server & client_controller/target/release/client_controller
