@@ -56,7 +56,6 @@ async fn websocket(bot_ws: WebSocket, player_seat: PlayerSeat, addr: SocketAddr)
         "Player seat connects {:?} to {:?}",
         addr, player_seat.internal_port
     );
-    let settings = player_seat.settings.clone();
 
     let match_request = MatchRequest::read();
     debug!("Match Request: {:?}", match_request);
@@ -87,7 +86,7 @@ async fn websocket(bot_ws: WebSocket, player_seat: PlayerSeat, addr: SocketAddr)
     };
 
     if let PlayerNum::One = player_num {
-        match client_ws.create_game(&map, settings.realtime).await {
+        match client_ws.create_game(&map, false).await {
             Ok(_) => {
                 let mut s = GAME_READY_FLAG.write().unwrap();
                 debug!("Setting port_config and ready state");
@@ -116,7 +115,7 @@ async fn websocket(bot_ws: WebSocket, player_seat: PlayerSeat, addr: SocketAddr)
         }
     }
 
-    let game_config = GameConfig::from_file(&settings, &match_request);
+    let game_config = GameConfig::from_file(&match_request);
     let port_config = PORT_CONFIG.read().unwrap().clone();
 
     if counter <= max_counter {

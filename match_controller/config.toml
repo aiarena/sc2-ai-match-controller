@@ -10,10 +10,6 @@ HASH_CHECK = true
 LOG_ROOT = "/logs"
 LOGGING_LEVEL = "debug" #info,debug,error,trace
 
-# PATHS AND FILES
-TEMP_ROOT = "/tmp/"
-TEMP_PATH = "aiarena"
-
 # Directories
 BOT_DIRECTORY = "/bots"
 GAME_DIRECTORY = "/game"
@@ -22,7 +18,6 @@ GAME_DIRECTORY = "/game"
 MAX_GAME_TIME = 60486
 MAX_REAL_TIME = 7200  # 2 hours in seconds
 MAX_FRAME_TIME = 40 # milliseconds
-STRIKES = 10
 REALTIME = false
 VISUALIZE = false
 TIMEOUT_SECS = 30 # seconds

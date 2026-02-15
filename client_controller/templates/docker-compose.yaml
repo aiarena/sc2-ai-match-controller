@@ -1,48 +1,90 @@
 services:
 
-  sc2_controller:
-    image: aiarena/arenaclient-sc2:PLACEHOLDER_VERSION
+  match_is_loaded:
+    image: busybox:1.36
+    volumes:
+      - "PLACEHOLDER_MATCH_DIRECTORY:/match"
+
+    # Will raise service_healthy after the match request file is created
+    healthcheck:
+      test: ["CMD", "test", "-f", "/match/match-request.toml"]
+      interval: 1s
+      retries: 60
+
+    # Keep it running until match_controller exits
+    entrypoint: ["sh", "-c", "trap 'exit 0' TERM; sleep infinity & wait"]
+
+  game_controller:
+    # Start only after the match is loaded
+    depends_on:
+      match_is_loaded:
+        condition: service_healthy
+
+    image: PLACEHOLDER_GAME_CONTROLLER
     environment:
-      - "ACSC2_PORT=8083"
-      - "ACSC2_MATCH_CONTROLLER_HOST=match_controller"
-      - "ACSC2_PLAYER_1_SEAT=10001"
-      - "ACSC2_PLAYER_2_SEAT=10002"
+      - "PLAYER_1_SEAT=10001"
+      - "PLAYER_2_SEAT=10002"
     volumes:
       - "PLACEHOLDER_GAMESETS_DIRECTORY:/root/StarCraftII/maps"
-      - "PLACEHOLDER_LOGS_DIRECTORY/sc2_controller:/logs/sc2_controller"
+      - "PLACEHOLDER_LOGS_DIRECTORY/game_controller:/logs"
+      - "PLACEHOLDER_MATCH_DIRECTORY:/match"
+
+  game_is_ready:
+    image: busybox:1.36
+    depends_on:
+      - game_controller
+
+    # Will raise service_healthy after the game controller has opened the player seats
+    healthcheck:
+      test: ["CMD", "nc", "-z", "game_controller", "10002"]
+      interval: 1s
+      retries: 60
+
+    # Keep it running until match_controller exits
+    entrypoint: ["sh", "-c", "trap 'exit 0' TERM; sleep infinity & wait"]
 
   bot_controller1:
-    image: aiarena/arenaclient-bot:PLACEHOLDER_VERSION
+    # Start only after the game is ready
+    depends_on:
+      game_is_ready:
+        condition: service_healthy
+    network_mode: "service:game_controller"
+
+    image: PLACEHOLDER_BOT1_CONTROLLER
+    command: PLACEHOLDER_BOT1_COMMAND
     environment:
-      - "ACBOT_PORT=8081"
-      - "ACBOT_MATCH_CONTROLLER_HOST=match_controller"
-      - "ACBOT_GAME_HOST=sc2_controller"
-      - "ACBOT_GAME_PORT=10001"
+      - "BOT_NAME=PLACEHOLDER_BOT1_NAME"
+      - "GAME_HOST=127.0.0.1"
+      - "GAME_PORT=10001"
+      - "OPPONENT_ID=PLACEHOLDER_BOT2_ID"
     volumes:
-      - "PLACEHOLDER_BOT1_DIRECTORY:/bots/bot1"
-      - "PLACEHOLDER_LOGS_DIRECTORY/bot-controller-1:/logs/bot_controller"
+      - "PLACEHOLDER_BOT1_DIRECTORY:/bot"
+      - "PLACEHOLDER_LOGS_DIRECTORY/bot-controller-1:/logs"
 
   bot_controller2:
-    image: aiarena/arenaclient-bot:PLACEHOLDER_VERSION
+    # Start only after the game is ready
+    depends_on:
+      game_is_ready:
+        condition: service_healthy
+    network_mode: "service:game_controller"
+
+    image: PLACEHOLDER_BOT2_CONTROLLER
+    command: PLACEHOLDER_BOT2_COMMAND
     environment:
-      - "ACBOT_PORT=8082"
-      - "ACBOT_MATCH_CONTROLLER_HOST=match_controller"
-      - "ACBOT_GAME_HOST=sc2_controller"
-      - "ACBOT_GAME_PORT=10002"
+      - "BOT_NAME=PLACEHOLDER_BOT2_NAME"
+      - "GAME_HOST=127.0.0.1"
+      - "GAME_PORT=10002"
+      - "OPPONENT_ID=PLACEHOLDER_BOT1_ID"
     volumes:
-      - "PLACEHOLDER_BOT2_DIRECTORY:/bots/bot2"
-      - "PLACEHOLDER_LOGS_DIRECTORY/bot-controller-2:/logs/bot_controller"
+      - "PLACEHOLDER_BOT2_DIRECTORY:/bot"
+      - "PLACEHOLDER_LOGS_DIRECTORY/bot-controller-2:/logs"
 
   match_controller:
     image: aiarena/arenaclient-match:PLACEHOLDER_VERSION
     environment:
-      - "ACMATCH_PORT=8080"
-      - "ACMATCH_BOT_CONT_1_HOST=bot_controller1"
-      - "ACMATCH_BOT_CONT_2_HOST=bot_controller2"
-      - "ACMATCH_SC2_CONT_HOST=sc2_controller"
       - "ACMATCH_RUN_TYPE=PLACEHOLDER_RUN_TYPE"
-      - "ACMATCH_MATCHES_FILE=match.txt"
-      - "ACMATCH_RESULTS_FILE=results.json"
+      - "ACMATCH_MATCHES_FILE=/match/match-request.csv"
+      - "ACMATCH_RESULTS_FILE=/match/results.json"
       - "ACMATCH_BASE_WEBSITE_URL=PLACEHOLDER_API_URL"
       - "ACMATCH_CACHING_SERVER_URL=PLACEHOLDER_API_URL"
       - "ACMATCH_ARENA_CLIENT_ID=client-controller"
@@ -51,4 +93,4 @@ services:
       - "PLACEHOLDER_BOTS_DIRECTORY:/bots"
       - "PLACEHOLDER_GAMESETS_DIRECTORY:/game"
       - "PLACEHOLDER_LOGS_DIRECTORY:/logs"
-      - "./match.txt:/app/match.txt"
+      - "PLACEHOLDER_MATCH_DIRECTORY:/match"

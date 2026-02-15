@@ -1,10 +1,7 @@
-use common::api::api_reference::bot_controller_client::BotController;
-use common::api::api_reference::sc2_controller_client::SC2Controller;
 use common::configuration::ac_config::ACConfig;
 use common::models::aiarena::aiarena_match::Match;
 use common::PlayerNum;
 use std::net::SocketAddr;
-use tokio::sync::mpsc::Sender;
 
 #[derive(Debug, Clone)]
 pub struct Player {
@@ -31,7 +28,4 @@ pub struct ControllerState {
     pub players: Vec<Player>,
     pub current_match: Option<Match>,
     pub map: Option<String>,
-    pub shutdown_sender: Sender<()>,
-    pub bot_controllers: Vec<BotController>,
-    pub sc2_controller: Option<SC2Controller>,
 }

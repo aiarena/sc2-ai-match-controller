@@ -8,43 +8,18 @@ use crate::match_scheduler::match_scheduler;
 use crate::matches::sources::aiarena_api::HttpApiSource;
 use crate::matches::sources::test_source::TestSource;
 use crate::matches::sources::{FileSource, MatchSource};
-use crate::routes::configuration;
 use crate::state::ControllerState;
-use axum::error_handling::HandleErrorLayer;
-use axum::http::StatusCode;
-use axum::routing::get;
-use axum::Router;
-use axum::{http::Request, response::Response};
-use clap::{arg, command, value_parser};
-use common::api::health;
 use common::configuration::ac_config::{ACConfig, RunType};
-use common::configuration::get_host_url;
 use common::logging::init_logging;
 use config::{Config, FileFormat};
 use parking_lot::RwLock;
-use std::net::SocketAddr;
 use std::path::Path;
-use std::str::FromStr;
 use std::sync::Arc;
-use std::time::Duration;
-use std::vec;
-use tower::ServiceBuilder;
-use tower_http::trace::TraceLayer;
-use tower_http::BoxError;
-use tracing::{debug, Span};
 
 static PREFIX: &str = "acmatch";
 
 #[tokio::main]
 async fn main() {
-    let matches = command!()
-        .arg(arg!(--port <VALUE>).value_parser(value_parser!(u16)))
-        .get_matches();
-
-    let port = *matches.get_one::<u16>("port").unwrap_or(&8080);
-
-    let host_url = get_host_url(PREFIX, port);
-
     let settings = setup_controller_config();
 
     let log_level = &settings.logging_level;
@@ -65,64 +40,17 @@ async fn main() {
         RunType::AiArena => Box::new(HttpApiSource::new(settings.clone()).unwrap()),
         RunType::Test => Box::new(TestSource::new(settings.clone())),
     };
-    let (tx, mut rx) = tokio::sync::mpsc::channel::<()>(1);
+
     let app_state = Arc::new(RwLock::new(ControllerState {
         settings,
         players: Vec::default(),
         current_match: None,
         map: None,
-        shutdown_sender: tx,
-        bot_controllers: vec![],
-        sc2_controller: None,
     }));
 
-    tokio::spawn(match_scheduler(app_state.clone(), match_source));
+    match_scheduler(app_state.clone(), match_source).await;
 
-    // Compose the routes
-    let app = Router::<Arc<RwLock<ControllerState>>>::new()
-        .route("/configuration", get(configuration))
-        .layer(
-            TraceLayer::new_for_http()
-                .on_request(|request: &Request<_>, _span: &Span| {
-                    tracing::trace!("started {} {}", request.method(), request.uri().path());
-                })
-                .on_response(|_response: &Response, latency: Duration, _span: &Span| {
-                    tracing::trace!("response generated in {:?}", latency);
-                }),
-        )
-        .route("/health", get(health))
-        // Add middleware to all routes
-        .layer(
-            ServiceBuilder::new()
-                .layer(HandleErrorLayer::new(|error: BoxError| async move {
-                    if error.is::<tower::timeout::error::Elapsed>() {
-                        Ok(StatusCode::REQUEST_TIMEOUT)
-                    } else {
-                        Err((
-                            StatusCode::INTERNAL_SERVER_ERROR,
-                            format!("Unhandled internal error: {error}"),
-                        ))
-                    }
-                }))
-                .timeout(Duration::from_secs(300))
-                .into_inner(),
-        )
-        .with_state(app_state);
-    let addr = SocketAddr::from_str(&host_url).unwrap();
-
-    debug!("listening on {}", addr);
-    let graceful_server = axum::Server::bind(&addr)
-        .serve(app.into_make_service_with_connect_info::<SocketAddr>())
-        .with_graceful_shutdown(async {
-            tokio::select! {
-                _ = rx.recv() => {},
-                _ = shutdown_signal() => {},
-            }
-        });
-
-    if let Err(e) = graceful_server.await {
-        tracing::error!("server error: {}", e);
-    }
+    println!("Match controller exits");
 }
 
 fn setup_controller_config() -> ACConfig {
@@ -136,32 +64,4 @@ fn setup_controller_config() -> ACConfig {
         .expect("Could not load config")
         .try_deserialize::<ACConfig>()
         .expect("Could not deserialize config")
-}
-
-/// Tokio signal handler that will wait for a user to press CTRL+C.
-/// We use this in our hyper `Server` method `with_graceful_shutdown`.
-async fn shutdown_signal() {
-    let ctrl_c = async {
-        tokio::signal::ctrl_c()
-            .await
-            .expect("failed to install Ctrl+C handler");
-    };
-
-    #[cfg(unix)]
-    let terminate = async {
-        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
-            .expect("failed to install signal handler")
-            .recv()
-            .await;
-    };
-
-    #[cfg(not(unix))]
-    let terminate = std::future::pending::<()>();
-
-    tokio::select! {
-        _ = ctrl_c => {},
-        _ = terminate => {},
-    }
-
-    debug!("signal received, starting graceful shutdown");
 }

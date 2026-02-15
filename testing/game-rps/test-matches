@@ -1,0 +1,8 @@
+# Paper beats Rock
+101,Paper,R,linux@rps-bot-paper:latest,201,Rock,R,linux@rps-bot-rock:latest,-,Player1Win
+
+# Rock beaten by Paper
+201,Rock,R,linux@rps-bot-rock:latest,101,Paper,R,linux@rps-bot-paper:latest,-,Player2Win
+
+# Rock tie Rock
+201,Rock,R,linux@rps-bot-rock:latest,202,Rock,R,linux@rps-bot-rock:latest,-,Tie

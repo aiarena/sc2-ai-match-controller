@@ -1,168 +1,144 @@
-#[cfg(feature = "swagger")]
-mod docs;
-mod routes;
-
-#[cfg(feature = "swagger")]
-use crate::docs::ApiDoc;
-use crate::routes::start_bot;
-use axum::http::Request;
-use axum::response::Response;
-use axum::routing::{get, post};
-use axum::Router;
-use axum::{error_handling::HandleErrorLayer, http::StatusCode};
-use common::api::health;
-use common::api::process::{stats, stats_all, stats_host, status, ProcessMap};
-use common::api::state::AppState;
-use common::configuration::{
-    get_config_from_match_controller, get_host_url, get_match_controller_url_from_env,
-};
-use common::logging::init_logging;
-use tower::{BoxError, ServiceBuilder};
-use tower_http::trace::{DefaultMakeSpan, DefaultOnRequest, DefaultOnResponse, TraceLayer};
-use tracing::{debug, Span};
-#[cfg(feature = "swagger")]
-use utoipa::OpenApi;
-#[cfg(feature = "swagger")]
-use utoipa_swagger_ui::SwaggerUi;
-
-use clap::{arg, command, value_parser};
+use std::fs::{self, File, OpenOptions};
+use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
-use std::str::FromStr;
-use std::{net::SocketAddr, time::Duration};
-
-static PREFIX: &str = "ACBOT";
+use std::process::Command;
+use tokio::net::lookup_host;
+use tracing::info;
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
 
 #[tokio::main]
 async fn main() {
-    let matches = command!()
-        .arg(arg!(--port <VALUE>).value_parser(value_parser!(u16)))
-        .get_matches();
+    let game_host = std::env::var("GAME_HOST").unwrap_or_else(|_| "127.0.0.1".into());
+    let game_port = std::env::var("GAME_PORT").expect("Missing GAME_PORT environment variable");
+    let game_pass = std::env::var("GAME_PASS").unwrap_or_else(|_| game_port.clone());
 
-    let port = *matches.get_one::<u16>("port").unwrap_or(&8081);
+    let bot_name = std::env::var("BOT_NAME").expect("Missing BOT_NAME environment variable");
+    let opponent_id =
+        std::env::var("OPPONENT_ID").expect("Missing OPPONENT_ID environment variable");
 
-    let host_url = get_host_url(PREFIX, port);
-
-    let match_controller_url = get_match_controller_url_from_env(PREFIX);
-    let config_url = format!("http://{match_controller_url}/configuration");
-    let health_url = format!("http://{match_controller_url}/health");
-
-    let settings = get_config_from_match_controller(config_url, health_url, PREFIX)
-        .await
-        .unwrap(); //panic if we can't get the config
-    let env_log = std::env::var("RUST_LOG").unwrap_or_else(|_| {
-        format!(
-            "info,common={},bot_controller={}",
-            &settings.logging_level, &settings.logging_level
-        )
-    });
-    let log_path = format!("{}/bot_controller", &settings.log_root);
-    let log_file = "bot_controller.log";
-    let full_path = Path::new(&log_path).join(log_file);
-    if full_path.exists() && full_path.is_file() {
-        let _ = tokio::fs::remove_file(full_path).await;
+    let game_address = format!("{game_host}:{game_port}");
+    let server_address = match lookup_host(game_address).await {
+        Ok(mut addrs) => addrs.next().map(|x| x.ip().to_string()),
+        Err(_) => None,
     }
+    .unwrap_or(game_host);
 
-    let (non_blocking_stdout, _guard) = tracing_appender::non_blocking(std::io::stdout());
-    let non_blocking_file = tracing_appender::rolling::never(&log_path, log_file);
-    init_logging(&env_log, non_blocking_stdout, non_blocking_file);
+    let _guards = init_controller_logs();
+    fs::create_dir_all("/bot/logs")
+        .unwrap_or_else(|e| panic!("Could not create bot logs directory: {e:?}"));
 
-    let process_map = ProcessMap::default();
-    let (tx, mut rx) = tokio::sync::mpsc::channel::<()>(1);
-    let state = AppState {
-        process_map,
-        settings,
-        shutdown_sender: tx,
-        extra_info: Default::default(),
-        ws_shutdown_senders: Default::default(),
+    let mut command = construct_bot_command("/bot", &bot_name);
+    let command = command
+        .stdout(create_log_file("/bot/logs/stdout.log"))
+        .stderr(create_log_file("/bot/logs/stderr.log"))
+        .arg("--GamePort")
+        .arg(&game_port)
+        .arg("--LadderServer")
+        .arg(server_address)
+        .arg("--StartPort")
+        .arg(&game_pass)
+        .arg("--OpponentId")
+        .arg(opponent_id)
+        .current_dir("/bot");
+
+    info!("Starting bot with command {:?}", &command);
+    match command.status() {
+        Ok(exit_status) => {
+            info!("Bot process exited with status: {}", exit_status);
+        }
+        Err(e) => {
+            info!("Bot process failed with error: {}", e);
+        }
     };
+}
 
-    #[allow(unused_mut)]
-    let mut router = Router::<AppState>::new();
-    #[cfg(feature = "swagger")]
-    {
-        router = router
-            .merge(SwaggerUi::new("/swagger-ui/").url("/api-doc/openapi.json", ApiDoc::openapi()));
-    }
-    // Compose the routes
-    let app = router
-        .route("/start", post(start_bot))
-        .route("/stats/:port", get(stats))
-        .route("/status/:port", get(status))
-        .route("/stats/host", get(stats_host))
-        .route("/stats_all", get(stats_all))
-        // Add middleware to all routes
-        .layer(
-            TraceLayer::new_for_http()
-                .on_request(|request: &Request<_>, _span: &Span| {
-                    tracing::debug!("started {} {}", request.method(), request.uri().path());
-                })
-                .on_response(|_response: &Response, latency: Duration, _span: &Span| {
-                    tracing::debug!("response generated in {:?}", latency);
-                }),
-        )
-        .route("/health", get(health))
-        .layer(
-            ServiceBuilder::new()
-                .layer(HandleErrorLayer::new(|error: BoxError| async move {
-                    if error.is::<tower::timeout::error::Elapsed>() {
-                        Ok(StatusCode::REQUEST_TIMEOUT)
-                    } else {
-                        Err((
-                            StatusCode::INTERNAL_SERVER_ERROR,
-                            format!("Unhandled internal error: {error}"),
-                        ))
-                    }
-                }))
-                .timeout(Duration::from_secs(300))
-                .layer(
-                    TraceLayer::new_for_http()
-                        .make_span_with(DefaultMakeSpan::new())
-                        .on_request(DefaultOnRequest::new())
-                        .on_response(DefaultOnResponse::new()),
-                )
-                .into_inner(),
-        )
-        .with_state(state.clone());
+fn init_controller_logs() -> (
+    tracing_appender::non_blocking::WorkerGuard,
+    tracing_appender::non_blocking::WorkerGuard,
+) {
+    let controller_logs = create_log_file("/logs/controller.log");
 
-    let addr = SocketAddr::from_str(&host_url).unwrap();
-    tracing::debug!("listening on {}", addr);
-    let graceful_server = axum::Server::bind(&addr)
-        .serve(app.into_make_service_with_connect_info::<SocketAddr>())
-        .with_graceful_shutdown(async {
-            tokio::select! {
-                _ = rx.recv() => {},
-                _ = shutdown_signal() => {},
+    let (non_blocking_stdout, stdout_guard) = tracing_appender::non_blocking(std::io::stdout());
+    let (non_blocking_controller_logs, controller_logs_guard) =
+        tracing_appender::non_blocking(controller_logs);
+
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::fmt::layer()
+                .with_writer(non_blocking_controller_logs)
+                .with_file(true)
+                .with_ansi(false)
+                .with_line_number(true)
+                .with_target(false),
+        )
+        .with(
+            tracing_subscriber::fmt::layer()
+                .with_writer(non_blocking_stdout)
+                .with_file(true)
+                .with_line_number(true)
+                .with_target(false),
+        )
+        .init();
+
+    info!("Controller logs initialized.");
+    (stdout_guard, controller_logs_guard)
+}
+
+fn create_log_file(file_name: &str) -> File {
+    OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open(file_name)
+        .expect(&format!("Could not create file {}", file_name))
+}
+
+fn construct_bot_command(bot_folder: &str, bot_name: &str) -> Command {
+    info!("Constructing bot command...");
+
+    let bot_path = Path::new(&bot_folder);
+
+    if exists(&bot_folder, "run.py") {
+        command("python", &["run.py"])
+    } else if exists(&bot_folder, &format!("{bot_name}.dll")) {
+        command("dotnet", &[&format!("{bot_name}.dll")])
+    } else if exists(&bot_folder, &format!("{bot_name}.jar")) {
+        command("java", &["-jar", &format!("{bot_name}.jar")])
+    } else if exists(&bot_folder, &format!("{bot_name}.js")) {
+        command("node", &[&format!("{bot_name}.js")])
+    } else if exists(&bot_folder, &format!("{bot_name}.exe")) {
+        command("wine", &[&format!("{bot_name}.exe")])
+    } else if exists(&bot_folder, &format!("./{bot_name}")) {
+        let bot_binary = Path::new(&bot_folder).join(&format!("./{bot_name}"));
+
+        if let Ok(file) = std::fs::metadata(&bot_binary) {
+            info!("Setting bot file permissions");
+            let mut permissions = file.permissions();
+            permissions.set_mode(0o777);
+            let _ = std::fs::set_permissions(&bot_binary, permissions);
+        }
+
+        Command::new(format!("./{bot_name}"))
+    } else {
+        // The executable was not found, list the contents of the bot folder for debugging
+        info!("Listing contents of bot folder: {}", bot_folder);
+        if let Ok(entries) = std::fs::read_dir(&bot_path) {
+            for entry in entries.flatten() {
+                info!("{:?}", entry.path());
             }
-        });
+        }
 
-    if let Err(e) = graceful_server.await {
-        tracing::error!("server error: {}", e);
+        panic!("Bot executable not found in folder: {}", bot_folder);
     }
 }
-/// Tokio signal handler that will wait for a user to press CTRL+C.
-/// We use this in our hyper `Server` method `with_graceful_shutdown`.
-async fn shutdown_signal() {
-    let ctrl_c = async {
-        tokio::signal::ctrl_c()
-            .await
-            .expect("failed to install Ctrl+C handler");
-    };
 
-    #[cfg(unix)]
-    let terminate = async {
-        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
-            .expect("failed to install signal handler")
-            .recv()
-            .await;
-    };
+fn command(program: &str, args: &[&str]) -> Command {
+    let mut cmd = Command::new(program);
+    cmd.args(args);
+    cmd
+}
 
-    #[cfg(not(unix))]
-    let terminate = std::future::pending::<()>();
-
-    tokio::select! {
-        _ = ctrl_c => {},
-        _ = terminate => {},
-    }
-
-    debug!("signal received, starting graceful shutdown");
+fn exists(folder: &str, executable: &str) -> bool {
+    Path::new(folder).join(executable).exists()
 }

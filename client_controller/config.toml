@@ -1,8 +1,11 @@
 
 # File-based test:
-# BOTS_DIRECTORY = "../../testing/aiarena-test-bots"
+# BOTS_DIRECTORY = "../testing/aiarena-test-bots"
 # GAMESETS_DIRECTORY = "../../testing/testing-maps"
 # MATCHES_FILE = "../testing/bot-controller/test-matches"
 
 # API-based test:
 # API_URL = "http://host.docker.internal:3000"
+
+# Custom game controller:
+# GAME_CONTROLLER = "rps-game:latest"
