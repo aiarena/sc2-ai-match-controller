@@ -1,8 +1,20 @@
 services:
 
   match_is_loaded:
-    image: busybox:1.36
+    image: aiarena/arenaclient-match:PLACEHOLDER_VERSION
+    environment:
+      - "ACMATCH_RUN_TYPE=prepare"
+      - "ACMATCH_MATCHES_FILE=/match/match-request.csv"
+      - "ACMATCH_RESULTS_FILE=/match/results.json"
+      - "ACMATCH_BASE_WEBSITE_URL=PLACEHOLDER_API_URL"
+      - "ACMATCH_CACHING_SERVER_URL=PLACEHOLDER_API_URL"
+      - "ACMATCH_ARENA_CLIENT_ID=client-controller"
+      - "ACMATCH_API_TOKEN=987"
+      - "ACMATCH_KEEP_ALIVE=true"
     volumes:
+      - "PLACEHOLDER_BOTS_DIRECTORY:/bots"
+      - "PLACEHOLDER_GAMESETS_DIRECTORY:/game"
+      - "PLACEHOLDER_LOGS_DIRECTORY:/logs"
       - "PLACEHOLDER_MATCH_DIRECTORY:/match"
 
     # Will raise service_healthy after the match request file is created
@@ -10,9 +22,6 @@ services:
       test: ["CMD", "test", "-f", "/match/match-request.toml"]
       interval: 1s
       retries: 60
-
-    # Keep it running until match_controller exits
-    entrypoint: ["sh", "-c", "trap 'exit 0' TERM; sleep infinity & wait"]
 
   game_controller:
     # Start only after the match is loaded
@@ -80,9 +89,14 @@ services:
       - "PLACEHOLDER_LOGS_DIRECTORY/bot-controller-2:/logs"
 
   match_controller:
+    # Start only after the game is ready
+    depends_on:
+      game_is_ready:
+        condition: service_healthy
+
     image: aiarena/arenaclient-match:PLACEHOLDER_VERSION
     environment:
-      - "ACMATCH_RUN_TYPE=PLACEHOLDER_RUN_TYPE"
+      - "ACMATCH_RUN_TYPE=submit"
       - "ACMATCH_MATCHES_FILE=/match/match-request.csv"
       - "ACMATCH_RESULTS_FILE=/match/results.json"
       - "ACMATCH_BASE_WEBSITE_URL=PLACEHOLDER_API_URL"

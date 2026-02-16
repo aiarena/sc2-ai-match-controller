@@ -1,4 +1,5 @@
 use std::fs::{self, File, OpenOptions};
+#[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::process::Command;
@@ -9,6 +10,30 @@ use tracing_subscriber::util::SubscriberInitExt;
 
 #[tokio::main]
 async fn main() {
+    // Set up panic hook to write signal.exit on any panic
+    let default_panic = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |panic_info| {
+        let _ = std::fs::write("/logs/signal.exit", "2");
+        default_panic(panic_info);
+    }));
+
+    let _guards = init_controller_logs();
+
+    // Run the bot
+    run_bot().await;
+
+    // Notice: The controller will keep running even after the bot process exits.
+    // When it's in Kubenetes environment, this allows the Kubernetes Job to complete without restarts.
+    // The `signal.exit` file signals to the match_controller that the bot process exited,
+    // so that it can create the match result accordingly.
+    // The responsibility for this signal will be removed from the bot controller in the next iteration,
+    // so that base bot Docker images have simpler interface and responsibilities.
+    wait_for_sigterm().await;
+
+    info!("Bot controller exits");
+}
+
+async fn run_bot() {
     let game_host = std::env::var("GAME_HOST").unwrap_or_else(|_| "127.0.0.1".into());
     let game_port = std::env::var("GAME_PORT").expect("Missing GAME_PORT environment variable");
     let game_pass = std::env::var("GAME_PASS").unwrap_or_else(|_| game_port.clone());
@@ -24,9 +49,7 @@ async fn main() {
     }
     .unwrap_or(game_host);
 
-    let _guards = init_controller_logs();
-    fs::create_dir_all("/bot/logs")
-        .unwrap_or_else(|e| panic!("Could not create bot logs directory: {e:?}"));
+    fs::create_dir_all("/bot/logs").expect("Could not create bot logs directory");
 
     let mut command = construct_bot_command("/bot", &bot_name);
     let command = command
@@ -46,9 +69,11 @@ async fn main() {
     match command.status() {
         Ok(exit_status) => {
             info!("Bot process exited with status: {}", exit_status);
+            let exit_code = exit_status.code().unwrap_or(2).to_string();
+            let _ = std::fs::write("/logs/signal.exit", exit_code);
         }
         Err(e) => {
-            info!("Bot process failed with error: {}", e);
+            panic!("Bot process failed with error: {}", e);
         }
     };
 }
@@ -110,13 +135,15 @@ fn construct_bot_command(bot_folder: &str, bot_name: &str) -> Command {
     } else if exists(&bot_folder, &format!("{bot_name}.exe")) {
         command("wine", &[&format!("{bot_name}.exe")])
     } else if exists(&bot_folder, &format!("./{bot_name}")) {
-        let bot_binary = Path::new(&bot_folder).join(&format!("./{bot_name}"));
-
-        if let Ok(file) = std::fs::metadata(&bot_binary) {
-            info!("Setting bot file permissions");
-            let mut permissions = file.permissions();
-            permissions.set_mode(0o777);
-            let _ = std::fs::set_permissions(&bot_binary, permissions);
+        #[cfg(unix)]
+        {
+            let bot_binary = Path::new(&bot_folder).join(&format!("./{bot_name}"));
+            if let Ok(file) = std::fs::metadata(&bot_binary) {
+                info!("Setting bot file permissions");
+                let mut permissions = file.permissions();
+                permissions.set_mode(0o777);
+                let _ = std::fs::set_permissions(&bot_binary, permissions);
+            }
         }
 
         Command::new(format!("./{bot_name}"))
@@ -141,4 +168,15 @@ fn command(program: &str, args: &[&str]) -> Command {
 
 fn exists(folder: &str, executable: &str) -> bool {
     Path::new(folder).join(executable).exists()
+}
+
+async fn wait_for_sigterm() {
+    #[cfg(unix)]
+    {
+        use tokio::signal::unix::{signal, SignalKind};
+        if let Ok(mut sigterm) = signal(SignalKind::terminate()) {
+            let _ = sigterm.recv().await;
+            info!("Received SIGTERM, shutting down gracefully");
+        }
+    }
 }

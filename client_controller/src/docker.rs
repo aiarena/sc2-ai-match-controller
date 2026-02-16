@@ -7,8 +7,8 @@ use std::process::Command;
 
 pub fn run_match(run_type: &str, config: &ControllerConfig, request: &MatchRequest) {
     let match_directory = format!("{}/match", config.logs_directory);
-    let (bot1_controller, bot1_command, bot1_directory) = select_bot_controller(run_type, config, &request.bot1, &request.bot2, "10001");
-    let (bot2_controller, bot2_command, bot2_directory) = select_bot_controller(run_type, config, &request.bot2, &request.bot1, "10002");
+    let (bot1_controller, bot1_command, bot1_directory) = select_bot_controller(run_type, config, &request.bot1, &request.bot2, "bot1", "10001");
+    let (bot2_controller, bot2_command, bot2_directory) = select_bot_controller(run_type, config, &request.bot2, &request.bot1, "bot2", "10002");
 
     // Prepare the template to schedule a match
     let template = include_str!("../templates/docker-compose.yaml");
@@ -138,7 +138,7 @@ pub fn run_match(run_type: &str, config: &ControllerConfig, request: &MatchReque
     }
 }
 
-fn select_bot_controller(run_type: &str, config: &ControllerConfig, bot: &Bot, opponent: &Bot, game_port: &str) -> (String, String, String) {
+fn select_bot_controller(run_type: &str, config: &ControllerConfig, bot: &Bot, opponent: &Bot, bot_directory: &str, game_port: &str) -> (String, String, String) {
     let (controller, command, directory);
     let path = format!("{}/{}", config.bots_directory, bot.name);
 
@@ -147,7 +147,7 @@ fn select_bot_controller(run_type: &str, config: &ControllerConfig, bot: &Bot, o
         controller = config.bot_controller.clone();
         command = "null".to_string();
         directory = if run_type == "aiarena" {
-            format!("{}/bot1/{}", config.bots_directory, bot.name)
+            format!("{}/{}/{}", config.bots_directory, bot_directory, bot.name)
         } else {
             format!("{}/{}", config.bots_directory, bot.name)
         }

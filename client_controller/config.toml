@@ -6,6 +6,7 @@
 
 # API-based test:
 # API_URL = "http://host.docker.internal:3000"
+# BOTS_DIRECTORY = "./target/bots"
 
 # Custom game controller:
 # GAME_CONTROLLER = "rps-game:latest"

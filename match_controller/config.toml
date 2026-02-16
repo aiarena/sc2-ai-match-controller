@@ -3,8 +3,9 @@ API_TOKEN = ""  # API Token to retrieve matches and submit results. Used for AiA
 BASE_WEBSITE_URL = ""
 DEBUG_MODE = true  # Enables debug mode for more logging
 PYTHON = "python"  # Which python version to use
-RUN_TYPE = "local"  # Run on AiArena, locally or test (options: "test", "local", "aiarena")
+RUN_TYPE = "prepare"  # "prepare" to download match assets and "submit" to submit match result
 HASH_CHECK = true
+KEEP_ALIVE = false  # Used in Kubernetes or Docker compose to keep the container alive when necessary
 
 # LOGGING
 LOG_ROOT = "/logs"

@@ -1,5 +1,3 @@
-use common::configuration::ac_config::ACConfig;
-use common::models::aiarena::aiarena_match::Match;
 use common::PlayerNum;
 use std::net::SocketAddr;
 
@@ -20,12 +18,4 @@ impl Player {
     pub const fn bot_name(&self) -> Option<&String> {
         self.bot_name.as_ref()
     }
-}
-
-#[derive(Debug, Clone)]
-pub struct ControllerState {
-    pub settings: ACConfig,
-    pub players: Vec<Player>,
-    pub current_match: Option<Match>,
-    pub map: Option<String>,
 }
