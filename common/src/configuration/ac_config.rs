@@ -79,6 +79,7 @@ mod tests {
             visualize: false,
             aws: false,
             caching_server_url: "".to_string(),
+            keep_alive: false,
         }
     }
 
