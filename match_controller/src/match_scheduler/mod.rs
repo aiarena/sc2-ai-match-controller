@@ -64,6 +64,8 @@ async fn submit_result<M: MatchSource>(settings: &ACConfig, match_source: M, new
     let start_time = std::time::Instant::now();
 
     if check_bots_started(settings).await {
+        info!("Match is running...");
+
         // Wait for the game result as signal for completion of the match
         loop {
             if let Ok(result) = AiArenaGameResult::from_json_file() {
@@ -280,6 +282,9 @@ async fn build_logs_and_replays_object(
 
     let _ = tokio::fs::remove_dir_all(&zips_folder).await;
 
+    // Zip the log files of all controllers
+    zip_directory_for_submit("AC", ac_zip_path.to_path_buf(), logs_folder.to_path_buf());
+
     // Zip the logs and data of bot 1
     zip_directory_for_submit(
         "bot1 logs",
@@ -315,9 +320,6 @@ async fn build_logs_and_replays_object(
             .join(bot2_name.clone())
             .join("data"),
     );
-
-    // Zip the log files of all controllers. This comes last so that it captures more match controller logs
-    zip_directory_for_submit("AC", ac_zip_path.to_path_buf(), logs_folder.to_path_buf());
 
     let replay_file = Path::new(&settings.game_directory).join(format!(
         "{}_{}_vs_{}.SC2Replay",

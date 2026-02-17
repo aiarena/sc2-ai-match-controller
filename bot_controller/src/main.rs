@@ -10,17 +10,16 @@ use tracing_subscriber::util::SubscriberInitExt;
 
 #[tokio::main]
 async fn main() {
-    // Set up panic hook to write signal.exit on any panic
-    let default_panic = std::panic::take_hook();
-    std::panic::set_hook(Box::new(move |panic_info| {
-        let _ = std::fs::write("/logs/signal.exit", "2");
-        default_panic(panic_info);
-    }));
-
     let _guards = init_controller_logs();
 
-    // Run the bot
-    run_bot().await;
+    // Run the bot in a spawned task to prevent panics from terminating the program
+    let bot_task = tokio::spawn(async {
+        run_bot().await;
+    });
+
+    // Wait for the bot task to complete (whether it panics or returns normally)
+    let exit_code = if bot_task.await.is_err() { "2" } else { "0" };
+    let _ = std::fs::write("/logs/signal.exit", exit_code);
 
     // Notice: The controller will keep running even after the bot process exits.
     // When it's in Kubenetes environment, this allows the Kubernetes Job to complete without restarts.
@@ -137,9 +136,9 @@ fn construct_bot_command(bot_folder: &str, bot_name: &str) -> Command {
     } else if exists(&bot_folder, &format!("./{bot_name}")) {
         #[cfg(unix)]
         {
-            let bot_binary = Path::new(&bot_folder).join(&format!("./{bot_name}"));
+            let bot_binary = Path::new(&bot_folder).join(&bot_name);
             if let Ok(file) = std::fs::metadata(&bot_binary) {
-                info!("Setting bot file permissions");
+                info!("Setting bot file permissions for: {}", bot_binary.display());
                 let mut permissions = file.permissions();
                 permissions.set_mode(0o777);
                 let _ = std::fs::set_permissions(&bot_binary, permissions);

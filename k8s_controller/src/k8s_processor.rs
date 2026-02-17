@@ -1,5 +1,6 @@
 use std::{io::BufReader, time::Instant};
 
+use crate::templating::{render_job_template, JobTemplateValues};
 use crate::{arenaclient::Arenaclient, k8s_config::K8sConfig, profile::Profile};
 use anyhow::Context;
 use common::api::api_reference::aiarena::aiarena_api_client::AiArenaApiClient;
@@ -88,13 +89,13 @@ async fn schedule_jobs(
         .take(settings.max_arenaclients)
         .filter(|&x| !x.allocated)
     {
-        let api_client = AiArenaApiClient::new(&settings.website_url, &ac.token)?; //todo: change url address
+        let api_client = AiArenaApiClient::new(&settings.website_url, &ac.token)?;
         debug!("Getting new match for AC {:?}", ac.name);
         match api_client.get_match().await {
             Ok(new_match) => {
-                let mut job_data: Job = Profile::get(&new_match).job_descriptor;
+                let template = Profile::get(&new_match).template;
 
-                let new_name = if settings.job_prefix.is_empty() {
+                let job_name = if settings.job_prefix.is_empty() {
                     format!("{}-{}", ac.name.replace('_', "-"), new_match.id)
                 } else {
                     format!(
@@ -104,39 +105,41 @@ async fn schedule_jobs(
                         new_match.id
                     )
                 };
-                debug!("Setting job name:{:?}", &new_name);
-                set_job_name(&mut job_data, &new_name);
-                debug!("Setting API token");
-                set_api_token(&mut job_data, &ac.token)?;
-                debug!("Setting job labels");
-                set_job_labels(&mut job_data, &ac.name, new_match.id)?;
-                debug!("Setting configmap name");
-                let new_configmap_name = if settings.job_prefix.is_empty() {
+
+                let configmap_name = if settings.job_prefix.is_empty() {
                     "arenaclient-config".to_string()
                 } else {
-                    format!("{}-{}", settings.job_prefix, "arenaclient-config")
+                    format!("{}-arenaclient-config", settings.job_prefix)
                 };
-                set_config_configmap_name(&mut job_data, &new_configmap_name)?;
-                if let Some(version) = &settings.version {
-                    debug!("Setting image tags");
-                    set_image_tags(
-                        &mut job_data,
-                        &[
-                            "match-controller",
-                            "bot-controller-1",
-                            "bot-controller-2",
-                            "sc2-controller",
-                        ],
-                        version,
-                    )?;
-                }
+
+                let values = JobTemplateValues {
+                    job_name: job_name.clone(),
+                    configmap_name,
+                    match_id: new_match.id.to_string(),
+                    api_client: ac.name.clone(),
+                    api_token: ac.token.clone(),
+                    match_controller_image: format!(
+                        "aiarena/arenaclient-match:{}",
+                        settings.version
+                    ),
+                    game_controller_image: format!("aiarena/arenaclient-sc2:{}", settings.version),
+                    bot1_controller_image: format!("aiarena/arenaclient-bot:{}", settings.version),
+                    bot1_name: new_match.bot1.name.clone(),
+                    bot1_id: new_match.bot1.game_display_id.clone(),
+                    bot2_controller_image: format!("aiarena/arenaclient-bot:{}", settings.version),
+                    bot2_name: new_match.bot2.name.clone(),
+                    bot2_id: new_match.bot2.game_display_id.clone(),
+                };
+
+                debug!("Rendering job template for {:?}", &job_name);
+                let job_data = render_job_template(template, &values)?;
 
                 info!(
                     "Creating new job for match {:?} for AC {:?}",
                     new_match.id, &ac.name
                 );
                 debug!("Creating job");
-                jobs.create(&PostParams::default(), &mut job_data).await?;
+                jobs.create(&PostParams::default(), &job_data).await?;
                 debug!("Job created");
             }
             Err(e) => {
@@ -188,101 +191,13 @@ async fn delete_old_jobs(
     }
     Ok(())
 }
+
 fn load_arenaclient_details(path: &str) -> anyhow::Result<Vec<Arenaclient>> {
     let file = std::fs::File::open(path)?;
     let reader = BufReader::new(file);
     Ok(serde_json::from_reader(reader)?)
 }
-fn set_job_labels(job: &mut Job, ac_name: &str, match_id: u32) -> anyhow::Result<()> {
-    if job.metadata.labels.is_none() {
-        job.metadata.labels = Some(std::collections::BTreeMap::new());
-    }
 
-    job.metadata
-        .labels
-        .as_mut()
-        .context("Labels are empty")?
-        .insert("ac-name".to_string(), ac_name.to_string());
-    job.metadata
-        .labels
-        .as_mut()
-        .context("Labels are empty")?
-        .insert("match-id".to_string(), match_id.to_string());
-    Ok(())
-}
-#[allow(dead_code)]
-fn set_image_name(job: &mut Job, container_name: &str, image_name: &str) -> anyhow::Result<()> {
-    let container = mut_inner_spec(job)?
-        .containers
-        .iter_mut()
-        .find(|x| x.name == container_name)
-        .context("container not found")?;
-    container.image = Some(image_name.to_string());
-    Ok(())
-}
-
-fn set_image_tags(job: &mut Job, container_names: &[&str], image_tag: &str) -> anyhow::Result<()> {
-    for container in mut_inner_spec(job)?.containers.iter_mut() {
-        if container_names.contains(&container.name.as_str()) {
-            if let Some(image_name) = container
-                .image
-                .as_ref()
-                .and_then(|x| x.clone().split(':').map(|x| x.to_string()).next())
-            {
-                let new_name = format!("{image_name}:{image_tag}");
-                container.image = Some(new_name);
-            }
-        }
-    }
-    if let Some(init_containers) = mut_inner_spec(job)?.init_containers.as_mut() {
-        for container in init_containers.iter_mut() {
-            if container_names.contains(&container.name.as_str()) {
-                if let Some(image_name) = container
-                    .image
-                    .as_ref()
-                    .and_then(|x| x.clone().split(':').map(|x| x.to_string()).next())
-                {
-                    let new_name = format!("{image_name}:{image_tag}");
-                    container.image = Some(new_name);
-                }
-            }
-        }
-    }
-    Ok(())
-}
-
-fn set_job_name(job: &mut Job, name: &str) {
-    job.metadata.name = Some(name.to_string());
-}
-
-fn set_api_token(job: &mut Job, api_token: &str) -> anyhow::Result<()> {
-    let container = mut_inner_spec(job)?
-        .containers
-        .iter_mut()
-        .find(|x| x.name == "match-controller")
-        .context("container not found")?;
-
-    for env in container
-        .env
-        .as_mut()
-        .context("env for container not found")
-        .iter_mut()
-    {
-        for env2 in env.iter_mut() {
-            if env2.name == "ACMATCH_API_TOKEN" {
-                env2.value = Some(api_token.to_string());
-            }
-        }
-    }
-    Ok(())
-}
-
-#[allow(dead_code)]
-fn set_node(job: &mut Job, node: &str) -> anyhow::Result<()> {
-    mut_inner_spec(job)?.node_name = Some(node.to_string());
-
-    Ok(())
-}
 #[allow(dead_code)]
 async fn get_available_nodes(client: Client) -> anyhow::Result<ObjectList<Node>> {
     let nodes: Api<Node> = Api::all(client);
@@ -335,190 +250,4 @@ fn get_inner_spec(job: &Job) -> anyhow::Result<&PodSpec> {
         .spec
         .as_ref()
         .context("Spec2 is null")
-}
-
-fn mut_inner_spec(job: &mut Job) -> anyhow::Result<&mut PodSpec> {
-    job.spec
-        .as_mut()
-        .context("Spec1 is null")?
-        .template
-        .spec
-        .as_mut()
-        .context("Spec2 is null")
-}
-
-fn set_config_configmap_name(job: &mut Job, configmap_name: &str) -> anyhow::Result<()> {
-    for volume in mut_inner_spec(job)?
-        .volumes
-        .as_mut()
-        .context("volumes not found")?
-        .iter_mut()
-    {
-        for x in volume.config_map.iter_mut() {
-            if x.name == "placeholder" {
-                x.name = configmap_name.to_string()
-            }
-        }
-    }
-    Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::k8s_processor::{
-        get_inner_spec, set_api_token, set_config_configmap_name, set_image_name, set_image_tags,
-        set_job_labels, set_job_name, set_node,
-    };
-    use k8s_openapi::api::batch::v1::{Job, JobSpec};
-    use k8s_openapi::api::core::v1::{Container, PodSpec, PodTemplateSpec};
-
-    fn create_job_with_image_name(img_name: &str) -> Job {
-        Job {
-            metadata: Default::default(),
-            spec: Some(JobSpec {
-                template: PodTemplateSpec {
-                    metadata: None,
-                    spec: Some(PodSpec {
-                        containers: vec![Container {
-                            name: "arenaclient".to_string(),
-                            image: Some(img_name.to_string()),
-                            ..Default::default()
-                        }],
-                        ..Default::default()
-                    }),
-                },
-                ..Default::default()
-            }),
-            ..Default::default()
-        }
-    }
-    #[test]
-    fn test_set_image_tags_latest_tag() {
-        let mut job = create_job_with_image_name("aiarena/arenaclient:latest");
-        assert!(set_image_tags(&mut job, &["arenaclient"], "test-tag").is_ok());
-        assert_eq!(
-            get_inner_spec(&job).unwrap().containers[0]
-                .image
-                .as_ref()
-                .unwrap(),
-            "aiarena/arenaclient:test-tag"
-        );
-    }
-
-    #[test]
-    fn test_set_image_tags_no_tag() {
-        let mut job = create_job_with_image_name("aiarena/arenaclient");
-        assert!(set_image_tags(&mut job, &["arenaclient"], "test-tag").is_ok());
-        assert_eq!(
-            get_inner_spec(&job).unwrap().containers[0]
-                .image
-                .as_ref()
-                .unwrap(),
-            "aiarena/arenaclient:test-tag"
-        );
-    }
-
-    #[test]
-    fn test_set_node_name() {
-        let mut job = create_job_with_image_name("blank");
-        let node_name = "node1";
-        assert!(set_node(&mut job, node_name).is_ok());
-        assert_eq!(
-            get_inner_spec(&job).unwrap().node_name.as_ref().unwrap(),
-            node_name
-        );
-    }
-    fn load_job_from_template() -> Job {
-        let job_yaml = include_str!("../templates/ac-job.yaml");
-        serde_yaml::from_str(job_yaml).expect("Could not deserialize template")
-    }
-
-    #[test]
-    fn test_set_job_label_is_some() {
-        let mut job = load_job_from_template();
-        let ac_name = "test-ac".to_string();
-        let match_id = 0;
-        set_job_labels(&mut job, &ac_name, 0).expect("Could not set job labels");
-
-        assert!(job.metadata.labels.is_some());
-        assert_eq!(
-            job.metadata.labels.as_ref().unwrap().get("ac-name"),
-            Some(&ac_name)
-        );
-        assert_eq!(
-            job.metadata.labels.as_ref().unwrap().get("match-id"),
-            Some(&match_id.to_string())
-        );
-    }
-
-    #[test]
-    fn test_set_image_name() {
-        let mut job = load_job_from_template();
-        let container_name = "match-controller".to_string();
-        let image_name = "test-image".to_string();
-        set_image_name(&mut job, &container_name, &image_name).expect("Could not set image name");
-
-        assert_eq!(
-            get_inner_spec(&job)
-                .expect("Inner spec does not exist")
-                .containers
-                .iter()
-                .find(|x| x.name == container_name)
-                .expect("Could not find container")
-                .image,
-            Some(image_name)
-        );
-    }
-
-    #[test]
-    fn test_set_job_name() {
-        let mut job = Job::default();
-        let job_name = "test-name".to_string();
-        set_job_name(&mut job, &job_name);
-
-        assert_eq!(job.metadata.name, Some(job_name));
-    }
-
-    #[test]
-    fn test_set_config_configmap_name() {
-        let mut job = load_job_from_template();
-        let configmap_name = "test-configmap".to_string();
-
-        set_config_configmap_name(&mut job, &configmap_name).expect("Could not set configmap name");
-        println!("{job:?}");
-        assert!(get_inner_spec(&job)
-            .expect("Inner spec is null")
-            .volumes
-            .as_ref()
-            .expect("Volumes is None")
-            .iter()
-            .map(|x| x.config_map.as_ref())
-            .any(|x| x.and_then(|c| Some(c.name.clone())) == Some(configmap_name.clone())))
-    }
-
-    #[test]
-    fn test_set_api_token() {
-        let mut job = load_job_from_template();
-        let api_token = "123".to_string();
-        set_api_token(&mut job, &api_token).expect("Could not set api token");
-
-        assert_eq!(
-            get_inner_spec(&job)
-                .and_then(|f| {
-                    f.containers
-                        .iter()
-                        .find(|c| c.name == "match-controller")
-                        .and_then(|x| x.env.clone())
-                        .ok_or_else(|| anyhow::format_err!("Could not find container"))
-                })
-                .and_then(|x| {
-                    x.iter()
-                        .find(|x| x.name == "ACMATCH_API_TOKEN")
-                        .and_then(|x| x.value.clone())
-                        .ok_or_else(|| anyhow::format_err!("Could not find api_token"))
-                })
-                .expect("Could not find api_token"),
-            api_token
-        );
-    }
 }
