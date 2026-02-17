@@ -1,10 +1,7 @@
 use crate::utilities::portpicker::Port;
 use serde::{Deserialize, Serialize};
-#[cfg(feature = "swagger")]
-use utoipa::ToSchema;
 
-#[cfg_attr(feature = "swagger", derive(ToSchema))]
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ACConfig {
     #[serde(skip_serializing)] // Don't expose via config endpoint
     pub api_token: Option<String>,
@@ -32,29 +29,19 @@ pub struct ACConfig {
     pub run_type: RunType,
     pub sc2_cont_host: String,
     pub sc2_cont_port: Port,
-    pub strikes: i32,
-    pub temp_path: String,
-    pub temp_root: String,
     pub validate_race: bool,
     pub visualize: bool,
     pub aws: bool,
     pub caching_server_url: String,
+    pub keep_alive: bool,
 }
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub enum RunType {
-    #[serde(rename = "local")]
-    Local,
-    #[serde(rename = "aiarena")]
-    AiArena,
-    #[serde(rename = "test")]
-    Test,
-}
-
-impl Default for RunType {
-    fn default() -> Self {
-        Self::Local
-    }
+    #[serde(rename = "prepare")]
+    Prepare,
+    #[serde(rename = "submit")]
+    Submit,
 }
 
 #[cfg(test)]
@@ -85,16 +72,14 @@ mod tests {
             python: "123".to_string(),
             realtime: false,
             results_file: "123".to_string(),
-            run_type: RunType::Local,
+            run_type: RunType::Prepare,
             sc2_cont_host: "123".to_string(),
             sc2_cont_port: 0,
-            strikes: 0,
-            temp_path: "123".to_string(),
-            temp_root: "123".to_string(),
             validate_race: false,
             visualize: false,
             aws: false,
             caching_server_url: "".to_string(),
+            keep_alive: false,
         }
     }
 

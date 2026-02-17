@@ -570,7 +570,7 @@ fn do_passes_match(a: u32, b: u32) -> bool {
     let a = a / 10;
     let b = b / 10;
 
-    if (a != b) {
+    if a != b {
         error!("Player provided wrong pass port {}, expected {}", a, b);
         return false;
     }
