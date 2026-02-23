@@ -20,7 +20,6 @@ use tracing::error;
 pub struct TestSource {
     settings: ACConfig,
     expected_result: RwLock<Option<AiArenaResult>>,
-    temp_matches_file: String,
 }
 
 impl TestSource {
@@ -28,7 +27,6 @@ impl TestSource {
         Self {
             settings,
             expected_result: RwLock::new(None),
-            temp_matches_file: "test-matches".to_string(),
         }
     }
     fn update_matches_file(&self) -> Result<(), SubmissionError> {
@@ -41,7 +39,7 @@ impl TestSource {
                 }
             }
             let file =
-                File::create(&self.temp_matches_file).map_err(SubmissionError::FileCreate)?;
+                File::create(&self.settings.matches_file).map_err(SubmissionError::FileCreate)?;
             let mut writer = BufWriter::new(file);
             for line in line_vec {
                 writeln!(writer, "{line}").map_err(SubmissionError::FileWrite)?
@@ -98,15 +96,7 @@ impl TestSource {
         0u32
     }
     fn read_matches_file(&self) -> std::io::Result<Lines<BufReader<File>>> {
-        let matches_path = std::path::Path::new(&self.settings.matches_file);
-        let new_matches_file = matches_path
-            .parent()
-            .unwrap_or_else(|| std::path::Path::new("/"))
-            .join(&self.temp_matches_file);
-        if !new_matches_file.exists() {
-            std::fs::copy(matches_path, &new_matches_file)?;
-        }
-        let file = File::open(&new_matches_file)?;
+        let file = File::open(&self.settings.matches_file)?;
         let reader = BufReader::new(file);
         Ok(reader.lines())
     }
@@ -153,7 +143,9 @@ impl MatchSource for TestSource {
         game_result: &AiArenaGameResult,
         _logs_and_replays: Option<LogsAndReplays>,
     ) -> Result<(), SubmissionError> {
-        //TODO: logs
+        Self::update_results_file(&game_result, &self.settings.results_file)?;
+        self.update_matches_file()?;
+
         let expected_result = self.expected_result.read().unwrap();
         if expected_result != game_result.result {
             error!(
@@ -162,8 +154,6 @@ impl MatchSource for TestSource {
             );
             std::process::exit(2);
         }
-        Self::update_results_file(game_result, &self.settings.results_file)?;
-        self.update_matches_file()?;
 
         Ok(())
     }

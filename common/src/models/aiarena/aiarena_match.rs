@@ -1,11 +1,9 @@
 use crate::models::aiarena::aiarena_bot::AiArenaBot;
 use crate::models::aiarena::aiarena_map::AiArenaMap;
 use crate::models::aiarena::bot_race::BotRace;
-use crate::models::bot_controller::BotType;
 use crate::PlayerNum;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::str::FromStr;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct AiArenaMatch {
@@ -13,6 +11,8 @@ pub struct AiArenaMatch {
     pub bot1: AiArenaBot,
     pub bot2: AiArenaBot,
     pub map: AiArenaMap,
+    #[serde(default)]
+    pub game_base: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -20,7 +20,8 @@ pub struct MatchPlayer {
     pub id: String,
     pub name: String,
     pub race: BotRace,
-    pub bot_type: BotType,
+    pub bot_type: String,
+    pub bot_base: String,
 }
 
 impl MatchPlayer {
@@ -30,18 +31,33 @@ impl MatchPlayer {
                 id: ai_match.bot1.game_display_id.clone(),
                 name: ai_match.bot1.name.clone(),
                 race: BotRace::from_str(&ai_match.bot1.plays_race),
-                bot_type: BotType::from_str(&ai_match.bot1._type).unwrap(),
+                bot_type: ai_match.bot1._type.clone(),
+                bot_base: ai_match.bot1.bot_base.clone().unwrap_or_default(),
             },
             PlayerNum::Two => Self {
                 id: ai_match.bot2.game_display_id.clone(),
                 name: ai_match.bot2.name.clone(),
                 race: BotRace::from_str(&ai_match.bot2.plays_race),
-                bot_type: BotType::from_str(&ai_match.bot2._type).unwrap(),
+                bot_type: ai_match.bot2._type.clone(),
+                bot_base: ai_match.bot2.bot_base.clone().unwrap_or_default(),
             },
         }
     }
 
     pub fn from_file_source(bot_line: &[String]) -> Result<Self, SerializationError> {
+        let raw_bot_type = bot_line
+            .get(3)
+            .ok_or_else(|| SerializationError::ParsingError)?;
+
+        let (bot_type, bot_base) = if raw_bot_type.contains('@') {
+            let mut parts = raw_bot_type.split('@');
+            let bot_type = parts.next().unwrap_or("").to_string();
+            let bot_base = parts.next().unwrap_or("").to_string();
+            (bot_type, bot_base)
+        } else {
+            (raw_bot_type.to_string(), String::new())
+        };
+
         Ok(Self {
             id: bot_line
                 .get(0)
@@ -56,12 +72,8 @@ impl MatchPlayer {
                     .get(2)
                     .ok_or_else(|| SerializationError::ParsingError)?,
             ),
-            bot_type: BotType::from_str(
-                bot_line
-                    .get(3)
-                    .ok_or_else(|| SerializationError::ParsingError)?,
-            )
-            .map_err(|_| SerializationError::ParsingError)?,
+            bot_type,
+            bot_base,
         })
     }
 }
@@ -146,11 +158,8 @@ impl MatchRequest {
     pub fn read() -> Self {
         config::Config::builder()
             .add_source(
-                config::File::new(
-                    "/logs/sc2_controller/match-request.toml",
-                    config::FileFormat::Toml,
-                )
-                .required(false),
+                config::File::new("/match/match-request.toml", config::FileFormat::Toml)
+                    .required(false),
             )
             .add_source(config::Environment::default())
             .build()
@@ -160,7 +169,6 @@ impl MatchRequest {
     }
 
     pub fn write(&self) -> Result<(), std::io::Error> {
-        let dir_path = "/logs/sc2_controller";
         let toml_str = toml::to_string(self).map_err(|_| {
             std::io::Error::new(
                 std::io::ErrorKind::Other,
@@ -169,8 +177,8 @@ impl MatchRequest {
         })?;
         tracing::debug!("Writing match request to file: {}", toml_str);
 
-        std::fs::create_dir_all(dir_path)?;
-        std::fs::write("/logs/sc2_controller/match-request.toml", toml_str)
+        std::fs::create_dir_all("/match")?;
+        std::fs::write("/match/match-request.toml", toml_str)
     }
 }
 
@@ -187,7 +195,7 @@ pub struct PlayerInfo {
 impl PlayerInfo {
     /// Reads player information for the player with the given client port.
     pub fn read(port: u16) -> Option<Self> {
-        let file_path = format!("/logs/sc2_controller/player-{}.toml", port);
+        let file_path = format!("/match/player-{}.toml", port);
 
         // If file does not exist, return None
         if !std::path::Path::new(&file_path).exists() {
@@ -207,7 +215,7 @@ impl PlayerInfo {
 
     /// Writes player information for the player with the given port.
     pub fn write(&self, port: u16) -> Result<(), std::io::Error> {
-        let dir_path = "/logs/sc2_controller";
+        let dir_path = "/match";
         let toml_str = toml::to_string(self).map_err(|_| {
             std::io::Error::new(
                 std::io::ErrorKind::Other,

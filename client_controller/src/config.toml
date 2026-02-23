@@ -2,6 +2,10 @@ VERSION = "latest"
 
 API_URL = ""
 
+GAME_CONTROLLER = "aiarena/arenaclient-sc2:latest"
+
+BOT_CONTROLLER = "aiarena/arenaclient-bot:latest"
+
 MATCHES_FILE = ""
 
 LOGS_DIRECTORY = "./logs"

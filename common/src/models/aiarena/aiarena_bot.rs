@@ -12,4 +12,6 @@ pub struct AiArenaBot {
     pub plays_race: String,
     #[serde(rename = "type")]
     pub _type: String,
+    #[serde(default)]
+    pub bot_base: Option<String>,
 }

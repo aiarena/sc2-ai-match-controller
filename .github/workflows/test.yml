@@ -95,3 +95,19 @@ jobs:
           API_URL: http://172.17.0.1:3000
           VERSION: latest
         run: testing/test-api-server/target/release/test-api-server & client_controller/target/release/client_controller
+
+      - name: Build Rock-Paper-Scissors game
+        run: |
+          docker build -f testing/game-rps/Dockerfile --build-arg MODE=game -t rps-game testing/game-rps
+          docker build -f testing/game-rps/Dockerfile --build-arg MODE=bot --build-arg MOVE=R -t rps-bot-rock testing/game-rps
+          docker build -f testing/game-rps/Dockerfile --build-arg MODE=bot --build-arg MOVE=P -t rps-bot-paper testing/game-rps
+
+      - name: Test with Rock-Paper-Scissors game
+        timeout-minutes: 15  # Fail if not completed after 15 minutes
+        env:
+          GAME_CONTROLLER: rps-game:latest
+          MATCHES_FILE: ${{ github.workspace }}/testing/game-rps/test-matches
+          BOTS_DIRECTORY: ${{ github.workspace }}/testing/aiarena-test-bots
+          GAMESETS_DIRECTORY: ${{ github.workspace }}/testing/testing-maps
+          VERSION: latest
+        run: client_controller/target/release/client_controller

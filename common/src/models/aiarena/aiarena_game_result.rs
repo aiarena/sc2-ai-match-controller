@@ -39,7 +39,7 @@ impl AiArenaGameResult {
 
     // Reads AiArenaGameResult from disk.
     pub fn from_json_file() -> Result<Self, Box<dyn Error>> {
-        let file = File::open("/logs/sc2_controller/match_result.json")?;
+        let file = File::open("/match/match_result.json")?;
         let reader = BufReader::new(file);
         let result = serde_json::from_reader(reader)?;
         Ok(result)
@@ -47,7 +47,7 @@ impl AiArenaGameResult {
 
     // Writes the AiArenaGameResult instance to disk.
     pub fn to_json_file(&self) -> Result<(), Box<dyn Error>> {
-        let path = Path::new("/logs/sc2_controller/match_result.json");
+        let path = Path::new("/match/match_result.json");
 
         // If a valid match result is already stored, keep it
         if path.exists() {
@@ -65,7 +65,7 @@ impl AiArenaGameResult {
 
     // Deletes the match result file from disk.
     pub fn delete_json_file() -> Result<(), Box<dyn Error>> {
-        let path = Path::new("/logs/sc2_controller/match_result.json");
+        let path = Path::new("/match/match_result.json");
         if path.exists() {
             std::fs::remove_file(path)?;
         }

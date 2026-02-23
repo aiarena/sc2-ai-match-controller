@@ -1,86 +1,93 @@
 use crate::matches::sources::{LogsAndReplays, MatchSource};
 use crate::routes::{download_bot, download_bot_data, download_map};
-use crate::state::ControllerState;
-use common::api::api_reference::bot_controller_client::BotController;
-use common::api::api_reference::sc2_controller_client::SC2Controller;
-use common::api::api_reference::ControllerApi;
 use common::configuration::ac_config::{ACConfig, RunType};
 use common::models::aiarena::aiarena_game_result::AiArenaGameResult;
 use common::models::aiarena::aiarena_match::{Match, MatchPlayer, MatchRequest};
-use common::models::bot_controller::StartBot;
-use common::utilities::directory::ensure_directory_structure;
+use common::utilities::zip_utils::zip_directory_to_path;
 use common::PlayerNum;
-use futures_util::future::join3;
-use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::io;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 use std::time::Duration;
 use tokio::io::AsyncWriteExt;
-use tokio::join;
 use tokio::time::sleep;
 use tracing::{error, info};
 
-pub async fn match_scheduler<M: MatchSource>(
-    controller_state: Arc<RwLock<ControllerState>>,
-    match_source: M,
-) {
-    info!("Arena Client started");
-
-    // Delete any previous match_result.json file
-    AiArenaGameResult::delete_json_file().expect("Failed to delete previous match result");
-
-    let settings = controller_state.read().settings.clone();
-
-    let mut bot_controllers =
-        init_bot_controllers(&settings).expect("Failed to initialize the bot controllers");
-    controller_state.write().bot_controllers = bot_controllers.to_vec();
-
-    let sc2_controller = SC2Controller::new(&settings.sc2_cont_host, settings.sc2_cont_port)
-        .expect("Failed to create SC2 controller");
-    controller_state.write().sc2_controller = Some(sc2_controller.clone());
-
-    start_controllers(&bot_controllers, &sc2_controller).await;
-
+pub async fn match_scheduler<M: MatchSource>(settings: &ACConfig, match_source: M) {
     let new_match = match_source.next_match().await.unwrap();
-    let start_time = std::time::Instant::now();
 
-    {
-        let mut temp_state = controller_state.write();
-        temp_state.current_match = Some(new_match.clone());
+    // The game set is the SC2 map. This SC2-specific logic will be moved to sc2 controller in the next iteration
+    let map_name = format!("{}.SC2Map", &new_match.map_name.replace(".SC2Map", ""));
+
+    match settings.run_type {
+        RunType::Prepare => prepare_match(&settings, new_match, map_name.clone()).await,
+        RunType::Submit => submit_result(&settings, match_source, new_match).await,
+    }
+}
+
+async fn prepare_match(settings: &ACConfig, new_match: Match, map_name: String) {
+    info!(
+        "Preparing match - {} vs {}",
+        &new_match.players[&PlayerNum::One].name,
+        &new_match.players[&PlayerNum::Two].name
+    );
+
+    let mut match_request: MatchRequest = new_match.clone().into();
+    match_request.map_name = map_name.clone();
+
+    delete_all_signals(&settings).await;
+
+    if !settings.base_website_url.is_empty() {
+        if let Err(e) = download_assets(&settings, &new_match, map_name.clone()).await {
+            info!("Match could not be prepared: {:?}", e);
+            let _ = AiArenaGameResult::new_initialization_error(new_match.match_id).to_json_file();
+            return;
+        }
     }
 
+    if let Err(e) = match_request.write() {
+        info!("Match request could not be written: {:?}", e);
+        let _ = AiArenaGameResult::new_initialization_error(new_match.match_id).to_json_file();
+    } else {
+        info!("Match prepared successfully");
+    }
+}
+
+async fn submit_result<M: MatchSource>(settings: &ACConfig, match_source: M, new_match: Match) {
     info!(
         "Starting match - {} vs {}",
         &new_match.players[&PlayerNum::One].name,
         &new_match.players[&PlayerNum::Two].name
     );
 
-    if let Err(e) = run_match(
-        &settings,
-        controller_state.clone(),
-        sc2_controller.clone(),
-        &mut bot_controllers,
-        &new_match,
-    )
-    .await
-    {
-        info!("Match failed: {:?}", e);
-        let _ = AiArenaGameResult::new_initialization_error(new_match.match_id).to_json_file();
-    }
+    let aiarena_game_result;
+    let start_time = std::time::Instant::now();
 
-    // Read the resulting match_result.json file
-    let aiarena_game_result =
-        AiArenaGameResult::from_json_file().expect("Failed to read match result");
+    if check_bots_started(settings).await {
+        info!("Match is running...");
+
+        // Wait for the game result as signal for completion of the match
+        loop {
+            if let Ok(result) = AiArenaGameResult::from_json_file() {
+                aiarena_game_result = result;
+                break;
+            }
+
+            sleep(Duration::from_secs(3)).await;
+        }
+    } else {
+        aiarena_game_result = AiArenaGameResult::new_initialization_error(new_match.match_id);
+    }
 
     info!("Match result: {:?}", &aiarena_game_result);
     info!("Match finished in {:?}", start_time.elapsed());
 
     let mut logs_and_replays = None;
 
-    if settings.run_type == RunType::AiArena {
-        tracing::debug!("Submitting result to AI Arena");
+    if !settings.base_website_url.is_empty() {
+        tracing::debug!("Submitting result via AI Arena API");
+
+        check_bots_terminated(&settings).await;
 
         logs_and_replays =
             match build_logs_and_replays_object(&new_match, &new_match.players, &settings).await {
@@ -99,111 +106,56 @@ pub async fn match_scheduler<M: MatchSource>(
         error!("{:?}", e);
     }
 
-    let shutdown_sender = controller_state.read().shutdown_sender.clone();
-    if let Err(e) = shutdown_sender.send(()).await {
-        error!("Failed graceful shutdown. Killing process: {:?}", e);
-        std::process::exit(2);
-    }
-    // todo: Implement clean-up
-    // todo: Clean up folders, zip files
+    info!("Match result submitted");
 }
 
-async fn start_controllers(bot_controllers: &[BotController; 2], sc2_controller: &SC2Controller) {
-    info!("Waiting for controllers to become ready");
-    let mut ready = false;
+async fn delete_all_signals(settings: &ACConfig) {
+    // Delete any previous match_result.json file
+    AiArenaGameResult::delete_json_file().expect("Failed to delete previous match result");
 
-    while !ready {
-        sleep(Duration::from_millis(500)).await;
-        let res = join3(
-            bot_controllers[0].health(),
-            bot_controllers[1].health(),
-            sc2_controller.health(),
-        )
-        .await;
-        ready = res.0 && res.1 && res.2;
+    // Delete bot 1 signal.exit file if it exists
+    let bot1_signal_exit_path = PathBuf::from(&settings.log_root)
+        .join("bot-controller-1")
+        .join("signal.exit");
+    match tokio::fs::remove_file(&bot1_signal_exit_path).await {
+        Ok(_) => {}
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+        Err(e) => panic!("Failed to clear signal {:?}: {}", bot1_signal_exit_path, e),
+    }
+
+    // Delete bot 2 signal.exit file if it exists
+    let bot2_signal_exit_path = PathBuf::from(&settings.log_root)
+        .join("bot-controller-2")
+        .join("signal.exit");
+    match tokio::fs::remove_file(&bot2_signal_exit_path).await {
+        Ok(_) => {}
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+        Err(e) => panic!("Failed to clear signal {:?}: {}", bot2_signal_exit_path, e),
     }
 }
 
-async fn run_match(
+async fn download_assets(
     settings: &ACConfig,
-    controller_state: Arc<RwLock<ControllerState>>,
-    sc2_controller: SC2Controller,
-    bot_controllers: &mut [BotController],
     new_match: &Match,
+    map_name: String,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    if settings.run_type == RunType::AiArena {
-        download_gameset(&settings, controller_state.clone(), &new_match).await?;
-    }
-
-    prepare_game(controller_state.clone(), &new_match).await?;
-
-    start_game(sc2_controller.clone()).await?;
-
-    if settings.run_type == RunType::AiArena {
-        download_bots(&settings, controller_state.clone(), &new_match).await?;
-    }
-
-    start_bots(bot_controllers, &new_match).await?;
-
-    Ok(())
-}
-
-async fn download_gameset(
-    settings: &ACConfig,
-    controller_state: Arc<RwLock<ControllerState>>,
-    new_match: &Match,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let map_name = format!("{}.SC2Map", &new_match.map_name.replace(".SC2Map", ""));
+    let arena_match = new_match.aiarena_match.as_ref().unwrap();
     let map_path = PathBuf::from(&settings.game_directory).join(&map_name);
 
     tracing::debug!("Downloading map {:?} to {:?}", map_name, map_path);
 
-    let bytes = download_map(controller_state.clone())
+    let bytes = download_map(&settings, &arena_match)
         .await
         .map_err(|e| format!("{:?}", e))?;
     let mut file = tokio::fs::File::create(map_path).await?;
     file.write_all(&bytes).await?;
 
-    Ok(())
-}
-
-async fn prepare_game(
-    controller_state: Arc<RwLock<ControllerState>>,
-    new_match: &Match,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let map_name = format!("{}.SC2Map", &new_match.map_name.replace(".SC2Map", ""));
-    controller_state.write().map = Some(map_name.clone());
-
-    info!("Preparing the input to SC2");
-
-    // Write the match request as match_request.toml
-    let mut match_request: MatchRequest = new_match.clone().into();
-    match_request.map_name = map_name.clone();
-    match_request.write()?;
-
-    Ok(())
-}
-
-async fn start_game(sc2_controller: SC2Controller) -> Result<(), Box<dyn std::error::Error>> {
-    info!("Sending start requests to SC2");
-    sc2_controller.start().await?;
-    tracing::info!("SC2 started");
-
-    Ok(())
-}
-
-async fn download_bots(
-    settings: &ACConfig,
-    controller_state: Arc<RwLock<ControllerState>>,
-    new_match: &Match,
-) -> Result<(), Box<dyn std::error::Error>> {
     tracing::debug!("Downloading bots and bot data");
 
-    let arena_match = new_match.aiarena_match.as_ref().unwrap();
     let bot1_data = arena_match.bot1.bot_data.as_ref();
     let bot2_data = arena_match.bot2.bot_data.as_ref();
 
-    let bytes = download_bot(controller_state.clone(), PlayerNum::One)
+    let bytes = download_bot(&settings, &arena_match, PlayerNum::One)
         .await
         .map_err(|e| format!("{:?}", e))?;
     let bot_name = &new_match.players[&PlayerNum::One].name;
@@ -211,10 +163,10 @@ async fn download_bots(
         .join("bot1")
         .join(bot_name);
     let bot_folder = bot_path.as_path();
-    common::utilities::zip_utils::zip_extract_from_bytes(&bytes, bot_folder);
+    common::utilities::zip_utils::zip_extract_from_bytes(&bytes, bot_folder)?;
 
     if bot1_data.map_or(false, |s| !s.is_empty()) {
-        let bytes = download_bot_data(controller_state.clone(), PlayerNum::One)
+        let bytes = download_bot_data(&settings, &arena_match, PlayerNum::One)
             .await
             .map_err(|e| format!("{:?}", e))?;
         let bot_name = &new_match.players[&PlayerNum::One].name;
@@ -223,10 +175,10 @@ async fn download_bots(
             .join(bot_name)
             .join("data");
         let bot_folder = bot_path.as_path();
-        common::utilities::zip_utils::zip_extract_from_bytes(&bytes, bot_folder);
+        common::utilities::zip_utils::zip_extract_from_bytes(&bytes, bot_folder)?;
     }
 
-    let bytes = download_bot(controller_state.clone(), PlayerNum::Two)
+    let bytes = download_bot(&settings, &arena_match, PlayerNum::Two)
         .await
         .map_err(|e| format!("{:?}", e))?;
     let bot_name = &new_match.players[&PlayerNum::Two].name;
@@ -234,10 +186,10 @@ async fn download_bots(
         .join("bot2")
         .join(bot_name);
     let bot_folder = bot_path.as_path();
-    common::utilities::zip_utils::zip_extract_from_bytes(&bytes, bot_folder);
+    common::utilities::zip_utils::zip_extract_from_bytes(&bytes, bot_folder)?;
 
     if bot2_data.map_or(false, |s| !s.is_empty()) {
-        let bytes = download_bot_data(controller_state.clone(), PlayerNum::Two)
+        let bytes = download_bot_data(&settings, &arena_match, PlayerNum::Two)
             .await
             .map_err(|e| format!("{:?}", e))?;
         let bot_name = &new_match.players[&PlayerNum::Two].name;
@@ -246,46 +198,70 @@ async fn download_bots(
             .join(bot_name)
             .join("data");
         let bot_folder = bot_path.as_path();
-        common::utilities::zip_utils::zip_extract_from_bytes(&bytes, bot_folder);
+        common::utilities::zip_utils::zip_extract_from_bytes(&bytes, bot_folder)?;
     }
 
     Ok(())
 }
 
-async fn start_bots(
-    bot_controllers: &mut [BotController],
-    new_match: &Match,
-) -> Result<(), Box<dyn std::error::Error>> {
-    tracing::debug!("Starting bots");
+async fn check_bots_started(settings: &ACConfig) -> bool {
+    // Check if both bots managed to start
+    // Notice: The 2 seconds sleep is not introduced now. It was previously in bot controller.
+    // In the next iteration, this will be improved by:
+    // - waiting for a signal from game controller that both players joined
+    // - removing the 2 seconds sleep, since the signal from game controller will cover for it
+    // - result in initialization error only when both bots didn't start to prevent cheating
+    sleep(Duration::from_secs(2)).await;
 
-    bot_controllers[0].set_start_bot(create_start_bot(PlayerNum::One, &new_match));
-    bot_controllers[1].set_start_bot(create_start_bot(PlayerNum::Two, &new_match));
-
-    match join!(bot_controllers[0].start(), bot_controllers[1].start()) {
-        (Ok(_), Ok(_)) => {
-            tracing::trace!("Bots started");
-        }
-        (Err(e), _) => {
-            let _ = AiArenaGameResult::new_initialization_error(new_match.match_id).to_json_file();
-            return Err(e.into());
-        }
-        (_, Err(e)) => {
-            let _ = AiArenaGameResult::new_initialization_error(new_match.match_id).to_json_file();
-            return Err(e.into());
-        }
+    // Check if bot 1 exited early
+    let bot1_signal_exit_path = PathBuf::from(&settings.log_root)
+        .join("bot-controller-1")
+        .join("signal.exit");
+    if bot1_signal_exit_path.exists() {
+        return false;
     }
 
+    // Check if bot 2 exited early
+    let bot2_signal_exit_path = PathBuf::from(&settings.log_root)
+        .join("bot-controller-2")
+        .join("signal.exit");
+    if bot2_signal_exit_path.exists() {
+        return false;
+    }
+
+    // No bot exited in 2 seconds. We assume they can join the match.
+    true
+}
+
+async fn check_bots_terminated(settings: &ACConfig) {
+    let bot1_signal_exit_path = PathBuf::from(&settings.log_root)
+        .join("bot-controller-1")
+        .join("signal.exit");
+    let bot2_signal_exit_path = PathBuf::from(&settings.log_root)
+        .join("bot-controller-2")
+        .join("signal.exit");
+
+    let start_time = std::time::Instant::now();
     loop {
-        tracing::trace!("Waiting for results");
+        let bot1_exited = bot1_signal_exit_path.exists();
+        let bot2_exited = bot2_signal_exit_path.exists();
 
-        if let Ok(_) = AiArenaGameResult::from_json_file() {
-            break;
+        if bot1_exited && bot2_exited {
+            return;
         }
 
-        sleep(Duration::from_secs(3)).await;
-    }
+        if start_time.elapsed() >= Duration::from_secs(60) {
+            if !bot1_exited {
+                info!("Bot 1 did not terminate within 60 seconds");
+            }
+            if !bot2_exited {
+                info!("Bot 2 did not terminate within 60 seconds");
+            }
+            return;
+        }
 
-    Ok(())
+        sleep(Duration::from_secs(1)).await;
+    }
 }
 
 async fn build_logs_and_replays_object(
@@ -295,76 +271,55 @@ async fn build_logs_and_replays_object(
 ) -> io::Result<LogsAndReplays> {
     let bot1_name = players[&PlayerNum::One].name.clone();
     let bot2_name = players[&PlayerNum::Two].name.clone();
-    let temp_folder = Path::new(&settings.temp_root).join(&settings.temp_path);
-    let _ = tokio::fs::remove_dir_all(&temp_folder).await;
 
-    ensure_directory_structure(&settings.temp_root, &settings.temp_path).await?;
+    let bots_folder = Path::new(&settings.bot_directory);
+    let logs_folder = Path::new(&settings.log_root);
+    let zips_folder = logs_folder.join("zips");
 
-    // Zip logs and data of bot 1
-    let bot1_dir = temp_folder.join("bot1");
-    let bot1_path = Path::new(&settings.bot_directory)
-        .join("bot1")
-        .join(bot1_name.clone());
-    let bot1_logs = bot1_path.join("logs");
-    let bot1_logs_zip_path = bot1_dir.join("logs.zip");
-    let bot1_logs_zip_result =
-        common::utilities::zip_utils::zip_directory_to_path(&bot1_logs_zip_path, &bot1_logs);
-    match bot1_logs_zip_result {
-        Ok(_) => {}
-        Err(e) => {
-            error!("Failed to zip bot 1 logs: {:?}", e)
-        }
-    }
-    let bot1_data = bot1_path.join("data");
-    let bot1_data_zip_path = bot1_dir.join("data.zip");
-    let bot1_data_zip_result =
-        common::utilities::zip_utils::zip_directory_to_path(&bot1_data_zip_path, &bot1_data);
-    match bot1_data_zip_result {
-        Ok(_) => {}
-        Err(e) => {
-            error!("Failed to zip bot 1 data: {:?}", e)
-        }
-    }
+    let ac_zip_path = zips_folder.join("ac_log.zip");
+    let bot1_zip_dir = zips_folder.join("bot1");
+    let bot2_zip_dir = zips_folder.join("bot2");
 
-    // Zip logs and data of bot 2
-    let bot2_dir = temp_folder.join("bot2");
-    let bot2_path = Path::new(&settings.bot_directory)
-        .join("bot2")
-        .join(bot2_name.clone());
-    let bot2_logs = bot2_path.join("logs");
-    let bot2_logs_zip_path = bot2_dir.join("logs.zip");
-    let bot2_logs_zip_result =
-        common::utilities::zip_utils::zip_directory_to_path(&bot2_logs_zip_path, &bot2_logs);
-    match bot2_logs_zip_result {
-        Ok(_) => {}
-        Err(e) => {
-            error!("Failed to zip bot 2 logs: {:?}", e)
-        }
-    }
-    let bot2_data = bot2_path.join("data");
-    let bot2_data_zip_path = bot2_dir.join("data.zip");
-    let bot2_data_zip_result =
-        common::utilities::zip_utils::zip_directory_to_path(&bot2_data_zip_path, &bot2_data);
-    match bot2_data_zip_result {
-        Ok(_) => {}
-        Err(e) => {
-            error!("Failed to zip bot 2 data: {:?}", e)
-        }
-    }
+    let _ = tokio::fs::remove_dir_all(&zips_folder).await;
 
-    // Zip all controller log files into a single zip file
-    let log_root_path = Path::new(&settings.log_root);
-    let arenaclient_logs_zip_path = temp_folder.join("ac_log.zip");
-    let ac_zip_result = common::utilities::zip_utils::zip_directory_to_path(
-        &arenaclient_logs_zip_path,
-        &log_root_path,
+    // Zip the log files of all controllers
+    zip_directory_for_submit("AC", ac_zip_path.to_path_buf(), logs_folder.to_path_buf());
+
+    // Zip the logs and data of bot 1
+    zip_directory_for_submit(
+        "bot1 logs",
+        bot1_zip_dir.join("logs.zip"),
+        bots_folder
+            .join("bot1")
+            .join(bot1_name.clone())
+            .join("logs"),
     );
-    match ac_zip_result {
-        Ok(_) => {}
-        Err(e) => {
-            error!("Failed to zip AC logs: {:?}", e)
-        }
-    }
+    zip_directory_for_submit(
+        "bot1 data",
+        bot1_zip_dir.join("data.zip"),
+        bots_folder
+            .join("bot1")
+            .join(bot1_name.clone())
+            .join("data"),
+    );
+
+    // Zip the logs and data of bot 2
+    zip_directory_for_submit(
+        "bot2 logs",
+        bot2_zip_dir.join("logs.zip"),
+        bots_folder
+            .join("bot2")
+            .join(bot2_name.clone())
+            .join("logs"),
+    );
+    zip_directory_for_submit(
+        "bot2 data",
+        bot2_zip_dir.join("data.zip"),
+        bots_folder
+            .join("bot2")
+            .join(bot2_name.clone())
+            .join("data"),
+    );
 
     let replay_file = Path::new(&settings.game_directory).join(format!(
         "{}_{}_vs_{}.SC2Replay",
@@ -377,26 +332,22 @@ async fn build_logs_and_replays_object(
         upload_url: format!("{}/upload", &settings.caching_server_url),
         bot1_name,
         bot2_name,
-        bot1_dir,
-        bot2_dir,
-        arenaclient_log: arenaclient_logs_zip_path,
+        bot1_dir: bot1_zip_dir,
+        bot2_dir: bot2_zip_dir,
+        arenaclient_log: ac_zip_path,
         replay_file,
     })
 }
 
-fn init_bot_controllers(settings: &ACConfig) -> Result<[BotController; 2], url::ParseError> {
-    Ok([
-        BotController::new(&settings.bot_cont_1_host, settings.bot_cont_1_port)?,
-        BotController::new(&settings.bot_cont_2_host, settings.bot_cont_2_port)?,
-    ])
-}
+// Zips the contents of the given directory into a zip file with the given zip path
+fn zip_directory_for_submit(label: &str, zip_path: PathBuf, directory: PathBuf) {
+    println!("ZIP {:?}: {:?} -> {:?}", label, directory, zip_path);
+    let result = zip_directory_to_path(&zip_path, &directory);
 
-fn create_start_bot(player_num: PlayerNum, new_match: &Match) -> StartBot {
-    StartBot {
-        bot_name: new_match.players[&player_num].name.clone(),
-        bot_type: new_match.players[&player_num].bot_type,
-        opponent_id: new_match.players[&player_num.other_player()].id.to_string(),
-        player_num,
-        match_id: new_match.match_id,
+    match result {
+        Ok(_) => {}
+        Err(e) => {
+            error!("Failed to zip {} logs: {:?}", label, e)
+        }
     }
 }

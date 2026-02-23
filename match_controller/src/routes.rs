@@ -1,40 +1,17 @@
-use crate::state::ControllerState;
-use axum::extract::State;
-use axum::Json;
 use bytes::Bytes;
 use common::api::api_reference::aiarena::aiarena_api_client::AiArenaApiClient;
 use common::api::errors::app_error::AppError;
 use common::api::errors::download_error::DownloadError;
 use common::configuration::ac_config::ACConfig;
+use common::models::aiarena::aiarena_match::AiArenaMatch;
 use common::PlayerNum;
-use parking_lot::RwLock;
-use std::sync::Arc;
 use tracing::{self, error};
 
-#[tracing::instrument]
-pub async fn configuration(
-    State(state): State<Arc<RwLock<ControllerState>>>,
-) -> Result<Json<ACConfig>, AppError> {
-    Ok(Json(state.read().settings.clone()))
-}
-
 pub async fn download_bot(
-    state: Arc<RwLock<ControllerState>>,
+    settings: &ACConfig,
+    current_match: &AiArenaMatch,
     player_num: PlayerNum,
 ) -> Result<Bytes, AppError> {
-    let settings = state.read().settings.clone();
-
-    let current_match = match state
-        .read()
-        .current_match
-        .as_ref()
-        .and_then(|x| x.aiarena_match.clone())
-    {
-        None => {
-            return Err(DownloadError::Other("current_match is None".to_string()).into());
-        }
-        Some(m) => m,
-    };
     let api = AiArenaApiClient::new(
         &settings.base_website_url,
         settings.api_token.as_ref().unwrap(),
@@ -43,12 +20,12 @@ pub async fn download_bot(
     let (source_url, md5_hash, unique_key) = match player_num {
         PlayerNum::One => (
             current_match.bot1.bot_zip.clone(),
-            current_match.bot1.bot_zip_md5hash,
+            current_match.bot1.bot_zip_md5hash.clone(),
             format!("{}_zip", current_match.bot1.name),
         ),
         PlayerNum::Two => (
             current_match.bot2.bot_zip.clone(),
-            current_match.bot2.bot_zip_md5hash,
+            current_match.bot2.bot_zip_md5hash.clone(),
             format!("{}_zip", current_match.bot2.name),
         ),
     };
@@ -73,22 +50,10 @@ pub async fn download_bot(
 }
 
 pub async fn download_bot_data(
-    state: Arc<RwLock<ControllerState>>,
+    settings: &ACConfig,
+    current_match: &AiArenaMatch,
     player_num: PlayerNum,
 ) -> Result<Bytes, AppError> {
-    let settings = state.read().settings.clone();
-
-    let current_match = match state
-        .read()
-        .current_match
-        .as_ref()
-        .and_then(|x| x.aiarena_match.clone())
-    {
-        None => {
-            return Err(DownloadError::Other("current_match is None".to_string()).into());
-        }
-        Some(m) => m,
-    };
     let api = AiArenaApiClient::new(
         &settings.base_website_url,
         settings.api_token.as_ref().unwrap(),
@@ -102,16 +67,21 @@ pub async fn download_bot_data(
         url = url.join("/download").unwrap();
         let (md5_hash, unique_key) = match player_num {
             PlayerNum::One => (
-                current_match.bot1.bot_data_md5hash.unwrap(),
+                current_match.bot1.bot_data_md5hash.clone(),
                 format!("{}_data", current_match.bot1.name),
             ),
             PlayerNum::Two => (
-                current_match.bot2.bot_data_md5hash.unwrap(),
+                current_match.bot2.bot_data_md5hash.clone(),
                 format!("{}_data", current_match.bot2.name),
             ),
         };
         match api
-            .download_cached_file(url.as_str(), &source_url, &unique_key, &md5_hash)
+            .download_cached_file(
+                url.as_str(),
+                &source_url,
+                &unique_key,
+                md5_hash.unwrap().as_str(),
+            )
             .await
         {
             Ok(x) => Ok(x),
@@ -132,20 +102,10 @@ pub async fn download_bot_data(
     }
 }
 
-pub async fn download_map(state: Arc<RwLock<ControllerState>>) -> Result<Bytes, AppError> {
-    let settings = state.read().settings.clone();
-
-    let current_match = match state
-        .read()
-        .current_match
-        .as_ref()
-        .and_then(|x| x.aiarena_match.clone())
-    {
-        None => {
-            return Err(DownloadError::Other("current_match is None".to_string()).into());
-        }
-        Some(m) => m,
-    };
+pub async fn download_map(
+    settings: &ACConfig,
+    current_match: &AiArenaMatch,
+) -> Result<Bytes, AppError> {
     let api = AiArenaApiClient::new(
         &settings.base_website_url,
         settings.api_token.as_ref().unwrap(),
