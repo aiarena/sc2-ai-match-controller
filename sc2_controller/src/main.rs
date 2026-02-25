@@ -13,6 +13,7 @@ use crate::routes::{start_sc2_process, start_ws_server};
 use crate::ws_routes::connect;
 use common::models::aiarena::aiarena_game_result::AiArenaGameResult;
 use common::models::aiarena::aiarena_match::MatchRequest;
+use common::models::aiarena::aiarena_result::AiArenaResult;
 use common::portpicker::pick_unused_port_in_range;
 use std::error::Error;
 use std::io::{self, ErrorKind};
@@ -110,7 +111,11 @@ async fn run_match(
     start_ws_server(seat2_external_port, seat2_state.clone()).await?;
 
     info!("Waiting for the players to connect");
-    check_players_connected(seat1_state.clone(), seat2_state.clone()).await?;
+    let connect_failure =
+        check_players_connected(match_id, seat1_state.clone(), seat2_state.clone()).await?;
+    if connect_failure.result.is_some() {
+        return Ok(connect_failure);
+    }
 
     info!("Waiting for the match to complete");
     let _ = tokio::join!(rx1, rx2);
@@ -140,9 +145,11 @@ async fn run_match(
 }
 
 async fn check_players_connected(
+    match_id: u32,
     seat1_state: Arc<Mutex<PlayerSeat>>,
     seat2_state: Arc<Mutex<PlayerSeat>>,
-) -> Result<(), Box<dyn Error>> {
+) -> Result<GameResult, Box<dyn Error>> {
+    let mut game_result = GameResult::new(match_id);
     let timeout_duration = Duration::from_secs(30);
     let mut interval = interval(Duration::from_millis(200));
     let start = Instant::now();
@@ -157,13 +164,25 @@ async fn check_players_connected(
             Err(_) => true, // treat as connected if lock cannot be acquired
         };
         if seat1_connected && seat2_connected {
-            return Ok(());
+            info!("Both players connected");
+            game_result.result = None;
+            return Ok(game_result);
         }
         if start.elapsed() > timeout_duration {
-            return Err(Box::new(io::Error::new(
-                ErrorKind::TimedOut,
-                "One or both players did not connect within 30 seconds",
-            )));
+            if seat1_connected {
+                info!("Player 1 connected. Player 2 didn't");
+                game_result.result = Some(AiArenaResult::Player2TimeOut);
+                return Ok(game_result);
+            } else if seat2_connected {
+                info!("Player 2 connected. Player 1 didn't");
+                game_result.result = Some(AiArenaResult::Player1TimeOut);
+                return Ok(game_result);
+            } else {
+                return Err(Box::new(io::Error::new(
+                    ErrorKind::TimedOut,
+                    "None of the players connected within 30 seconds",
+                )));
+            }
         }
         interval.tick().await;
     }
