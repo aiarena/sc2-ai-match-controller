@@ -4,31 +4,14 @@ use anyhow::{anyhow, Result};
 use axum::routing::get;
 use axum::Router;
 use common::paths;
-use common::portpicker::pick_unused_port_in_range;
 use std::net::SocketAddr;
 use std::str::FromStr;
+use std::sync::Arc;
 use tempfile::TempDir;
+use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 
-pub async fn open_player_seat(player_num: u8) -> Result<JoinHandle<()>> {
-    // TODO: Use fixed ports instead
-    let port = pick_unused_port_in_range(9000..10000)
-        .ok_or_else(|| anyhow!("Could not allocate port".to_string()))?;
-
-    let player_seat = PlayerSeat::new(player_num, port);
-
-    start_sc2_process(&player_seat)
-        .await
-        .map_err(|e| anyhow!("Failed to start SC2 process: {e}"))?;
-
-    let ws_server = start_ws_server(&player_seat)
-        .await
-        .map_err(|e| anyhow!("Failed to start WebSocket server: {e}"))?;
-
-    Ok(ws_server)
-}
-
-async fn start_sc2_process(player_seat: &PlayerSeat) -> Result<()> {
+pub async fn start_sc2_process(player_seat: &PlayerSeat) -> Result<()> {
     let tempdir = TempDir::new().map_err(|e| anyhow!("Could not create temp dir: {e:?}"))?;
 
     // TODO: Move to logging module
@@ -74,38 +57,40 @@ async fn start_sc2_process(player_seat: &PlayerSeat) -> Result<()> {
     }
 }
 
-async fn start_ws_server(player_seat: &PlayerSeat) -> Result<JoinHandle<()>> {
-    let addr = SocketAddr::from_str(&format!("0.0.0.0:{}", player_seat.external_port)).unwrap();
+pub async fn start_ws_server(
+    external_port: u16,
+    player_seat: Arc<Mutex<PlayerSeat>>,
+) -> Result<JoinHandle<()>> {
+    let addr = SocketAddr::from_str(&format!("0.0.0.0:{}", external_port)).unwrap();
     let app = Router::new()
         .route("/sc2api", get(websocket_handler))
         .with_state(player_seat.clone());
     let ws_server =
         axum::Server::bind(&addr).serve(app.into_make_service_with_connect_info::<SocketAddr>());
-    let player_seat = player_seat.clone();
 
     let handle = tokio::spawn(async move {
         tracing::info!(
             "WebSocket server for player seat {:?} starting on {}",
-            &player_seat.external_port,
+            external_port,
             addr
         );
         if let Err(e) = ws_server.await {
             tracing::error!(
                 "WebSocket server for player seat {:?} failed: {:?}",
-                &player_seat.external_port,
+                external_port,
                 e
             );
         } else {
             tracing::info!(
                 "WebSocket server for player seat {:?} shut down gracefully",
-                &player_seat.external_port
+                external_port
             );
         }
     });
 
     tracing::info!(
         "WebSocket server for player seat {:?} opened on {}",
-        &player_seat.external_port,
+        external_port,
         addr
     );
     Ok(handle)

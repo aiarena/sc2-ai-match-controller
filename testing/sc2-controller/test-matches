@@ -11,3 +11,4 @@
 1,infinite_loop_bot,T,python,2,basic_bot,T,python,AutomatonLE,Player1TimeOut
 1,loser_bot,T,python,2,basic_bot,T,python,AutomatonLE,Player2Win
 1,loser_bot,T,python,2,leaver_bot,T,python,AutomatonLE,Player1Win
+1,connect_timeout_bot,T,python,2,connect_timeout_bot,T,python,AutomatonLE,InitializationError
