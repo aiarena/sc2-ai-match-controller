@@ -16,7 +16,7 @@ BOT_DIRECTORY = "/bots"
 GAME_DIRECTORY = "/game"
 
 # STARCRAFT
-MAX_GAME_TIME = 60486
+MAX_GAME_TIME = 80640 # 1 hour in fast speed in-game time
 MAX_REAL_TIME = 7200  # 2 hours in seconds
 MAX_FRAME_TIME = 40 # milliseconds
 REALTIME = false
