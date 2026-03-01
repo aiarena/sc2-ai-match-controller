@@ -9,7 +9,7 @@ The controller reads the following parameters from `/match/match-request.toml` a
 |-----|---------|-------------|
 | map_name | - | The name of the StarCraft II map for the match. |
 | match_id | - | An identifier for the match as seen in AI Arena |
-| max_game_time | 60486 | Maximum game loops for the match. After this limit, the controller will close the match and call it a tie. |
+| max_game_time | 80640 | Maximum game loops for the match. After this limit, the controller will close the match and call it a tie. |
 | max_frame_time | 40 | Milliseconds waiting for a bot to process a game step. After this limit the controller will raise a timeout for this bot. |
 | player_1_id | - | Identifier of player 1 |
 | player_1_name | - | Display name of player 1 |
