@@ -63,6 +63,17 @@ spec:
           readinessProbe:
             tcpSocket:
               port: 10002
+          # Game and bot controllers are limited to 2 cpu units
+          # and made burstable with lower cpu requests.
+          # We use same cpu requests for both game and bot controllers
+          # because Kubernetes uses cpu requests as basis for cpu sharing
+          # Total requested cpu for the job pod is 1.5 (3 x 0.5)
+          # Actual utilization averages between 1.2 and 1.6
+          resources:
+            limits:
+              cpu: '2'
+            requests:
+              cpu: '0.5'
           volumeMounts:
             - mountPath: /root/StarCraftII/maps
               name: game
@@ -89,7 +100,7 @@ spec:
             limits:
               cpu: '2'
             requests:
-              cpu: '1'
+              cpu: '0.5'
           volumeMounts:
             - mountPath: /bot
               name: bots
@@ -115,7 +126,7 @@ spec:
             limits:
               cpu: '2'
             requests:
-              cpu: '1'
+              cpu: '0.5'
           volumeMounts:
             - mountPath: /bot
               name: bots
