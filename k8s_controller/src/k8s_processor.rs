@@ -139,7 +139,15 @@ async fn schedule_jobs(
                     new_match.id, &ac.name
                 );
                 debug!("Creating job");
-                jobs.create(&PostParams::default(), &job_data).await?;
+                if let Err(e) = jobs.create(&PostParams::default(), &job_data).await {
+                    error!(
+                        "Error creating job {:?} for AC {:?}: {:?}",
+                        job_name, &ac.name, e
+                    );
+                    // Error when creating the job for one arenaclient should not break the loop
+                    // Otherwise, a temporary glitch for client 1 blocks all other clients
+                    continue;
+                }
                 debug!("Job created");
             }
             Err(e) => {
