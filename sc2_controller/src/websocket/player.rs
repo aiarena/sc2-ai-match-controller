@@ -2,7 +2,6 @@ use crate::game::game_config::GameConfig;
 use crate::game::player_data::PlayerData;
 use crate::game::player_result::PlayerResult;
 use crate::game::sc2_result::Sc2Result;
-use crate::websocket::errors::player_error::PlayerError;
 use crate::websocket::port_config::PortConfig;
 use crate::websocket::runtime_vars::RuntimeVars;
 use axum::extract::ws::{Message as AMessage, WebSocket};
@@ -17,128 +16,150 @@ use sc2_proto::sc2api::{
 };
 use std::path::PathBuf;
 use std::time::Duration;
+use std::{error::Error, fmt};
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
 use tokio::time::{sleep, timeout};
 use tokio_tungstenite::tungstenite::Message as TMessage;
 use tokio_tungstenite::WebSocketStream;
-use tracing::{debug, error, info, trace};
+use tracing::{error, info, trace};
 
 pub struct Player {
-    bot_ws: WebSocket,
-    sc2_ws: WebSocketStream<TcpStream>,
+    bot_ws: Option<WebSocket>,
+    sc2_ws: Option<WebSocketStream<TcpStream>>,
     bot_ws_timeout: Duration,
     sc2_ws_timeout: Duration,
 }
 
+#[derive(Debug)]
+pub enum PlayerError {
+    GameFault(&'static str),
+    PlayerFault(&'static str),
+    PlayerTimeout(&'static str),
+}
+
+impl fmt::Display for PlayerError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::GameFault(msg) => write!(f, "Game fault: {msg}"),
+            Self::PlayerFault(msg) => write!(f, "Player fault: {msg}"),
+            Self::PlayerTimeout(msg) => write!(f, "Player timeout: {msg}"),
+        }
+    }
+}
+
+impl Error for PlayerError {}
+
 impl Player {
-    pub const fn new(bot_ws: WebSocket, sc2_ws: WebSocketStream<TcpStream>) -> Self {
+    pub const fn new() -> Self {
         Self {
-            bot_ws,
-            sc2_ws,
+            bot_ws: None,
+            sc2_ws: None,
             bot_ws_timeout: Duration::from_secs(30),
             sc2_ws_timeout: Duration::from_secs(60),
         }
     }
 
-    /// Receive a message from the client
-    /// Returns None if the connection is already closed
+    pub fn is_player_connected(&self) -> bool {
+        self.bot_ws.is_some()
+    }
+
+    pub fn connect_game(&mut self, sc2_ws: WebSocketStream<TcpStream>) {
+        self.sc2_ws = Some(sc2_ws);
+    }
+
+    pub fn connect_player(&mut self, bot_ws: WebSocket) {
+        self.bot_ws = Some(bot_ws);
+    }
+
+    fn bot_ws_mut(&mut self) -> Result<&mut WebSocket, PlayerError> {
+        self.bot_ws
+            .as_mut()
+            .ok_or(PlayerError::PlayerFault("Player websocket not connected"))
+    }
+
+    fn sc2_ws_mut(&mut self) -> Result<&mut WebSocketStream<TcpStream>, PlayerError> {
+        self.sc2_ws
+            .as_mut()
+            .ok_or(PlayerError::GameFault("SC2 websocket not connected"))
+    }
+
+    /// Receive a message from the player
     pub async fn bot_recv_message(&mut self) -> Result<AMessage, PlayerError> {
-        trace!("Waiting for a message from the client");
-        match timeout(self.bot_ws_timeout, self.bot_ws.next()).await {
+        trace!("Waiting for a message from player");
+        let bot_ws_timeout = self.bot_ws_timeout;
+        let bot_ws = self.bot_ws_mut()?;
+        match timeout(bot_ws_timeout, bot_ws.next()).await {
             Ok(res_msg) => match res_msg {
                 Some(Ok(msg)) => {
-                    trace!("Message received from client:\n{:?}", &msg);
+                    trace!("Player sends message:\n{:?}", &msg);
                     Ok(msg)
                 }
-                Some(Err(e)) => Err(PlayerError::BotWebsocket(e)),
-                None => Err(PlayerError::NoMessageAvailable),
+                Some(Err(e)) => {
+                    info!("Player errors:\n{:?}", e);
+                    Err(PlayerError::PlayerFault("Connection error"))
+                }
+                None => {
+                    info!("Player closed the connection");
+                    Err(PlayerError::PlayerFault("Connection closed"))
+                }
             },
-            Err(_) => Err(PlayerError::BotTimeout(self.bot_ws_timeout)),
+            Err(_) => Err(PlayerError::PlayerTimeout("Connection timeout")),
         }
     }
-    /// Send message to the client
-    pub async fn bot_send_message(&mut self, msg: AMessage) -> Result<(), PlayerError> {
-        trace!("Sending message to client");
-        timeout(self.bot_ws_timeout, self.bot_ws.send(msg))
-            .await
-            .map_err(|_| PlayerError::BotTimeout(self.bot_ws_timeout))
-            .and_then(|r| r.map_err(|e| e.into()))
-    }
-    /// Send a protobuf response to the client
+
+    /// Send a protobuf response to the player
     pub async fn bot_send_response(&mut self, r: &Response) -> Result<(), PlayerError> {
         trace!(
-            "Response to client: [{}]",
+            "Sending response to player: [{}]",
             format!("{r:?}").chars().take(10).collect::<String>()
         );
+        let bot_ws_timeout = self.bot_ws_timeout;
+        let bot_ws = self.bot_ws_mut()?;
         timeout(
-            self.bot_ws_timeout,
-            self.bot_send_message(AMessage::Binary(
+            bot_ws_timeout,
+            bot_ws.send(AMessage::Binary(
                 r.write_to_bytes().expect("Invalid protobuf message"),
             )),
         )
         .await
-        .map_err(|_| PlayerError::BotTimeout(self.bot_ws_timeout))
-        .and_then(|r| r)
-    }
-    pub async fn bot_send_bytes(&mut self, r: &[u8]) -> Result<(), PlayerError> {
-        trace!(
-            "Response to client: [{}]",
-            format!("{r:?}").chars().take(100).collect::<String>()
-        );
-        timeout(
-            self.bot_ws_timeout,
-            self.bot_send_message(AMessage::Binary(r.to_owned())),
-        )
-        .await
-        .map_err(|_| PlayerError::BotTimeout(self.bot_ws_timeout))
-        .and_then(|r| r)
+        .map_err(|_| PlayerError::PlayerTimeout("Connection timeout"))
+        .and_then(|r| r.map_err(|_| PlayerError::PlayerFault("Connection error")))
     }
 
-    /// Get a protobuf request from the client
-    /// Returns None if the connection is already closed
+    /// Get a protobuf request from the player
     pub async fn bot_recv_request(&mut self) -> Result<Request, PlayerError> {
         match self.bot_recv_message().await? {
             AMessage::Binary(bytes) => {
-                let resp =
-                    Message::parse_from_bytes(&bytes).map_err(PlayerError::ProtoParseError)?;
-                trace!("Message from client parsed:\n{}", &resp);
+                let resp = Message::parse_from_bytes(&bytes)
+                    .map_err(|_| PlayerError::PlayerFault("Bad protobuf message"))?;
+                trace!("Received message from player:\n{}", &resp);
                 Ok(resp)
             }
-            other => Err(PlayerError::BotUnexpectedMessage(other)),
+            other => {
+                info!("Player errors:\n{:?}", other);
+                Err(PlayerError::PlayerFault("Connection error"))
+            }
         }
     }
 
-    pub async fn bot_recv_request_bytes(&mut self) -> Result<Vec<u8>, PlayerError> {
-        match self.bot_recv_message().await? {
-            AMessage::Binary(bytes) => Ok(bytes),
-
-            other => Err(PlayerError::BotUnexpectedMessage(other)),
-        }
-    }
-
-    /// Send message to sc2
-    /// Returns None if the connection is already closed
-    async fn sc2_send_message(&mut self, msg: TMessage) -> Result<(), PlayerError> {
-        timeout(self.sc2_ws_timeout, self.sc2_ws.send(msg))
-            .await
-            .map_err(|_| PlayerError::Sc2Timeout(self.sc2_ws_timeout))
-            .and_then(|r| r.map_err(|e| e.into()))
-    }
-
-    /// Send protobuf request to sc2
-    /// Returns None if the connection is already closed
+    /// Send protobuf request to SC2
     pub async fn sc2_send_request(&mut self, r: &Request) -> Result<(), PlayerError> {
-        trace!("sc2_send_request: {}", r);
-        self.sc2_send_message(TMessage::binary(
-            r.write_to_bytes().expect("Invalid protobuf message"),
-        ))
+        trace!("Sending request to game: {}", r);
+        let sc2_ws_timeout = self.sc2_ws_timeout;
+        let sc2_ws = self.sc2_ws_mut()?;
+        timeout(
+            sc2_ws_timeout,
+            sc2_ws.send(TMessage::binary(
+                r.write_to_bytes().expect("Invalid protobuf message"),
+            )),
+        )
         .await
+        .map_err(|_| PlayerError::GameFault("Connection timeout"))
+        .and_then(|r| r.map_err(|_| PlayerError::GameFault("Connection error")))
     }
-    pub async fn sc2_send_bytes(&mut self, r: Vec<u8>) -> Result<(), PlayerError> {
-        self.sc2_send_message(TMessage::binary(r)).await
-    }
+
     /// Protobuf to create a new handler
     fn proto_create_game(players: &[CreateGamePlayer], map: &str, realtime: bool) -> Request {
         use sc2_proto::sc2api::{LocalMap, RequestCreateGame};
@@ -157,19 +178,25 @@ impl Player {
         request
     }
 
-    pub async fn create_game(&mut self, map: &str, realtime: bool) -> Result<(), PlayerError> {
+    pub async fn ping_game(&mut self) -> Result<(), PlayerError> {
         let ping_request = create_ping_request();
-        for _ in 0..10 {
+
+        for _ in 0..30 {
             match self.sc2_query(&ping_request).await {
                 Ok(_) => {
-                    break;
+                    return Ok(());
                 }
                 Err(e) => {
                     trace!("Error {:?}", e);
-                    sleep(Duration::from_secs(3)).await;
+                    sleep(Duration::from_secs(1)).await;
                 }
             }
         }
+
+        Err(PlayerError::GameFault("Game is unresponsive"))
+    }
+
+    pub async fn create_game(&mut self, map: &str, realtime: bool) -> Result<(), PlayerError> {
         // Craft CreateGame request
         let player_configs: Vec<CreateGamePlayer> = vec![CreateGamePlayer::Participant; 2];
 
@@ -181,98 +208,65 @@ impl Player {
         if resp_create_game.has_error() {
             let error = resp_create_game.error();
             error!("Could not create handler: {:?}", &error);
-            return Err(PlayerError::CreateGame(error));
+            return Err(PlayerError::GameFault("Unable to create game"));
         }
-        // // Throttle fast bots
-        // for _ in 0..10 {
-        //     match self.sc2_query(&ping_request).await {
-        //         Ok(resp) => {
-        //             if resp.has_status(){
-        //                 if resp.status() == Status::launched{
-        //                     break;
-        //                 }
-        //             }
-        //             sleep(Duration::from_secs(3)).await;
-        //         }
-        //         Err(e) => {
-        //             trace!("Error {:?}", e);
-        //             sleep(Duration::from_secs(3)).await;
-        //         }
-        //     }
-        // }
 
         info!("Game created successfully");
 
         Ok(())
     }
 
-    /// Wait and receive a protobuf request from sc2
-    /// Returns None if the connection is already closed
+    /// Wait and receive a protobuf request from SC2
     pub async fn sc2_recv_response(&mut self) -> Result<Response, PlayerError> {
-        match timeout(self.sc2_ws_timeout, self.sc2_ws.next()).await {
+        let sc2_ws_timeout = self.sc2_ws_timeout;
+        let sc2_ws = self.sc2_ws_mut()?;
+        match timeout(sc2_ws_timeout, sc2_ws.next()).await {
             Ok(socket) => match socket {
                 Some(Ok(TMessage::Binary(bytes))) => {
-                    let msg =
-                        Message::parse_from_bytes(&bytes).map_err(PlayerError::ProtoParseError)?;
+                    let msg = Message::parse_from_bytes(&bytes)
+                        .map_err(|_| PlayerError::GameFault("Bad protobuf message"))?;
                     trace!(
-                        "sc2_recv_response: {:?}",
+                        "Received message from game: {:?}",
                         format!("{msg:?}").chars().take(250).collect::<String>()
                     );
                     Ok(msg)
                 }
-                Some(Ok(other)) => Err(PlayerError::Sc2UnexpectedMessage(other)),
-                Some(Err(e)) => Err(PlayerError::Sc2Websocket(e)),
-                None => Err(PlayerError::NoMessageAvailable),
+                Some(Ok(other)) => {
+                    info!("Game errors:\n{:?}", other);
+                    Err(PlayerError::GameFault("Connection error"))
+                }
+                Some(Err(e)) => {
+                    info!("Game errors:\n{:?}", e);
+                    Err(PlayerError::GameFault("Connection error"))
+                }
+                None => {
+                    info!("Game closed the connection");
+                    Err(PlayerError::GameFault("Connection closed"))
+                }
             },
-            Err(_) => Err(PlayerError::Sc2Timeout(self.sc2_ws_timeout)),
-        }
-    }
-
-    pub async fn sc2_recv_bytes(&mut self) -> Result<Vec<u8>, PlayerError> {
-        match timeout(self.sc2_ws_timeout, self.sc2_ws.next()).await {
-            Ok(Some(Ok(TMessage::Binary(bytes)))) => Ok(bytes),
-            Ok(Some(Ok(other))) => Err(PlayerError::Sc2UnexpectedMessage(other)),
-            Ok(Some(Err(e))) => Err(PlayerError::Sc2Websocket(e)),
-            Ok(None) => Err(PlayerError::NoMessageAvailable),
-            Err(_) => Err(PlayerError::Sc2Timeout(self.sc2_ws_timeout)),
+            Err(_) => Err(PlayerError::GameFault("Connection timeout")),
         }
     }
 
     /// Send a request to SC2 and return the reponse
-    /// Returns None if the connection is already closed
     pub async fn sc2_query(&mut self, r: &Request) -> Result<Response, PlayerError> {
-        trace!("sc2_query");
+        trace!("Sending query to game");
         self.sc2_send_request(r).await?;
-        #[cfg(debug_assertions)]
-        {
-            let msg = self.sc2_recv_response().await;
-            match &msg {
-                Ok(resp) => {
-                    if !resp.error().is_empty() {
-                        error!("{:?}", resp.error());
-                    }
-                }
-                Err(e) => {
-                    error!("{:?}", e);
-                }
-            }
-            msg
-        }
-        #[cfg(not(debug_assertions))]
-        {
-            self.sc2_recv_response().await
-        }
+        self.sc2_recv_response().await
     }
-    pub async fn sc2_query_bytes(&mut self, r: Vec<u8>) -> Result<Vec<u8>, PlayerError> {
-        self.sc2_send_bytes(r).await?;
-        self.sc2_recv_bytes().await
-    }
+
     /// Saves replay to path
     pub async fn save_replay(&mut self, path: &str) -> bool {
         if path.is_empty() {
             return false;
         }
+
         let path = PathBuf::from(path);
+        if path.exists() {
+            info!("Replay file is at {:?}", &path);
+            return true;
+        }
+
         if let Some(parent) = path.parent() {
             if !parent.exists() && tokio::fs::create_dir_all(parent).await.is_err() {
                 return false;
@@ -317,7 +311,7 @@ impl Player {
             let msg = self.bot_recv_request().await?;
 
             if msg.has_quit() {
-                return Err(PlayerError::BotQuit);
+                return Err(PlayerError::PlayerFault("Player quit"));
             } else if msg.has_ping() {
                 let resp = self.sc2_query(&msg).await?;
                 self.bot_send_response(&resp).await?;
@@ -331,7 +325,7 @@ impl Player {
                 );
 
                 if req_raw.is_none() {
-                    return Err(PlayerError::NoMessageAvailable);
+                    return Err(PlayerError::PlayerFault("Bad join game request"));
                 }
 
                 let resp = self.sc2_query(&req_raw.unwrap()).await?;
@@ -351,7 +345,11 @@ impl Player {
 
                 return Ok(resp.join_game().player_id);
             } else {
-                return Err(PlayerError::UnexpectedRequest(msg));
+                info!(
+                    "Received unexpected message from player: {:?}",
+                    format!("{msg:?}").chars().take(250).collect::<String>()
+                );
+                return Err(PlayerError::PlayerFault("Unexpected message"));
             }
         }
     }
@@ -372,139 +370,89 @@ impl Player {
             .await?;
 
         loop {
-            match self.bot_recv_request().await {
-                Ok(mut request) => {
-                    r_vars.record_frame_time();
+            let mut request = self.bot_recv_request().await?;
+            r_vars.record_frame_time();
 
-                    if config.disable_debug && request.has_debug() {
-                        let debug_response = create_empty_debug_response(&request);
-                        self.bot_send_response(&debug_response).await?;
-                        continue;
-                    } else if request.has_leave_game() || request.has_quit() {
-                        self.save_replay(r_vars.replay_path()).await;
-                        r_vars.set_surrender_flag();
-                    }
+            if config.disable_debug && request.has_debug() {
+                let debug_response = create_empty_debug_response(&request);
+                self.bot_send_response(&debug_response).await?;
+                continue;
+            } else if request.has_leave_game() || request.has_quit() {
+                self.save_replay(r_vars.replay_path()).await;
+                r_vars.set_surrender_flag();
+            }
 
-                    // Using disable_fog=true in observation requests in combination with
-                    // show_cloaked/show_burrowed_shadows in the join game request
-                    // results in visibility of opponent units in the fog of war.
-                    // Here, we make sure it doesn't happen by clearing disable_fog.
-                    if request.has_observation() {
-                        request.mut_observation().clear_disable_fog();
-                    }
+            // Using disable_fog=true in observation requests in combination with
+            // show_cloaked/show_burrowed_shadows in the join game request
+            // results in visibility of opponent units in the fog of war.
+            // Here, we make sure it doesn't happen by clearing disable_fog.
+            if request.has_observation() {
+                request.mut_observation().clear_disable_fog();
+            }
 
-                    r_vars.add_tags(&request);
+            r_vars.add_tags(&request);
 
-                    response = self.sc2_query(&request).await?;
+            response = self.sc2_query(&request).await?;
 
-                    if response.has_game_info() {
-                        for pi in &mut response.mut_game_info().player_info {
-                            if pi.player_id() != r_vars.player_id() {
-                                pi.player_name =
-                                    Some(config.players[&player_num.other_player()].name.clone());
-                                pi.race_actual = pi.race_requested;
-                            } else {
-                                pi.player_name = Some(config.players[&player_num].name.clone());
-                            }
-                        }
-                    }
-                    self.bot_send_response(&response).await?;
-
-                    r_vars.start_timing();
-                    r_vars.start_time();
-
-                    if response.has_leave_game() || response.has_quit() {
-                        // self.save_replay(r_vars.replay_path()).await;
-                        r_vars.record_avg_frame_time();
-                        let result = r_vars.build_result(Sc2Result::Defeat);
-
-                        return Ok(result);
-                    } else if response.has_observation() {
-                        r_vars.record_avg_frame_time();
-
-                        let observation = response.observation();
-                        r_vars.set_game_loops(observation.observation.game_loop());
-
-                        let observation_results = &observation.player_result;
-
-                        if !observation_results.is_empty() {
-                            let sc2_result = observation_results
-                                .iter()
-                                .find(|x| x.player_id() == r_vars.player_id())
-                                .map(|x| Sc2Result::from_proto(x.result()))
-                                .unwrap();
-                            self.save_replay(r_vars.replay_path()).await;
-                            let result = r_vars.build_result(sc2_result);
-
-                            return Ok(result);
-                        }
-
-                        if r_vars.game_loops > config.max_game_time {
-                            self.save_replay(r_vars.replay_path()).await;
-                            r_vars.record_avg_frame_time();
-                            let mut request = Request::new();
-                            let leave_game = RequestLeaveGame::new();
-                            request.set_leave_game(leave_game);
-                            let _resp = self.sc2_query(&request).await;
-                            debug!("Max time reached");
-                            let result = r_vars.build_result(Sc2Result::Tie);
-                            return Ok(result);
-                        }
+            if response.has_game_info() {
+                for pi in &mut response.mut_game_info().player_info {
+                    if pi.player_id() != r_vars.player_id() {
+                        pi.player_name =
+                            Some(config.players[&player_num.other_player()].name.clone());
+                        pi.race_actual = pi.race_requested;
+                    } else {
+                        pi.player_name = Some(config.players[&player_num].name.clone());
                     }
                 }
-                Err(e) => {
-                    error!("{:?}", e);
-                    return match e {
-                        PlayerError::NoMessageAvailable => {
-                            Ok(r_vars.build_result(Sc2Result::Crash))
-                        }
-                        PlayerError::BotWebsocket(error) => {
-                            error!("{:?}", error);
-                            self.save_replay(r_vars.replay_path()).await;
-                            r_vars.record_avg_frame_time();
-                            let mut request = Request::new();
-                            let leave_game = RequestLeaveGame::new();
-                            request.set_leave_game(leave_game);
-                            let _resp = self.sc2_query(&request).await;
-                            Ok(r_vars.build_result(Sc2Result::Crash))
-                        }
-                        PlayerError::Sc2Websocket(error) => {
-                            error!("{:?}", error);
-                            Ok(r_vars.build_result(Sc2Result::SC2Crash))
-                        }
-                        PlayerError::BotUnexpectedMessage(message) => {
-                            error!("BotUnexpectedMessage: {:?}", message);
-                            self.save_replay(r_vars.replay_path()).await;
-                            r_vars.record_avg_frame_time();
-                            let mut request = Request::new();
-                            let leave_game = RequestLeaveGame::new();
-                            request.set_leave_game(leave_game);
-                            let _resp = self.sc2_query(&request).await;
+            }
+            self.bot_send_response(&response).await?;
 
-                            Ok(r_vars.build_result(Sc2Result::Crash))
-                        }
-                        PlayerError::Sc2UnexpectedMessage(message) => {
-                            error!("SC2UnexpectedMessage: {:?}", message);
-                            self.save_replay(r_vars.replay_path()).await;
-                            r_vars.record_avg_frame_time();
-                            Ok(r_vars.build_result(Sc2Result::SC2Crash))
-                        }
-                        PlayerError::BotTimeout(d) => {
-                            error!("Bot Timeout of {:?}s reached", d);
-                            self.save_replay(r_vars.replay_path()).await;
-                            r_vars.record_avg_frame_time();
-                            let mut request = Request::new();
-                            let leave_game = RequestLeaveGame::new();
-                            request.set_leave_game(leave_game);
-                            let _resp = self.sc2_query(&request).await;
+            r_vars.start_timing();
+            r_vars.start_time();
 
-                            Ok(r_vars.build_result(Sc2Result::Timeout))
-                        }
-                        other => Err(other),
-                    };
+            if response.has_leave_game() || response.has_quit() {
+                r_vars.record_avg_frame_time();
+                let result = r_vars.build_result(Sc2Result::Defeat);
+
+                return Ok(result);
+            } else if response.has_observation() {
+                r_vars.record_avg_frame_time();
+
+                let observation = response.observation();
+                r_vars.set_game_loops(observation.observation.game_loop());
+
+                let observation_results = &observation.player_result;
+
+                if !observation_results.is_empty() {
+                    let sc2_result = observation_results
+                        .iter()
+                        .find(|x| x.player_id() == r_vars.player_id())
+                        .map(|x| Sc2Result::from_proto(x.result()))
+                        .unwrap();
+                    self.save_replay(r_vars.replay_path()).await;
+                    let result = r_vars.build_result(sc2_result);
+
+                    return Ok(result);
+                }
+
+                if r_vars.game_loops > config.max_game_time {
+                    info!("Max time reached");
+                    self.save_replay(r_vars.replay_path()).await;
+                    let result = r_vars.build_result(Sc2Result::Tie);
+
+                    return Ok(result);
                 }
             }
         }
+    }
+
+    /// Leaves game. Waits for the game to process the request but we're not interested in the response.
+    pub async fn leave_game(&mut self) {
+        info!("Player leaves game");
+        let mut request = Request::new();
+        let leave_game = RequestLeaveGame::new();
+        request.set_leave_game(leave_game);
+        let _ = self.sc2_query(&request).await;
     }
 }
 
@@ -571,7 +519,7 @@ fn do_passes_match(a: u32, b: u32) -> bool {
     let b = b / 10;
 
     if a != b {
-        error!("Player provided wrong pass port {}, expected {}", a, b);
+        info!("Player provided wrong pass port {}, expected {}", a, b);
         return false;
     }
     true
