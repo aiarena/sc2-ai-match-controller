@@ -1,0 +1,148 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: monitoring
+  namespace: grafana
+data:
+  datasources: |
+    apiVersion: 1
+    datasources:
+     - name: 'Prometheus'
+       type: 'prometheus'
+       org_id: 1
+       url: 'http://prometheus:9090'
+       is_default: true
+       version: 1
+       editable: true
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+    scrape_configs:
+      - job_name: 'cadvisor'
+        scrape_interval: 15s
+        kubernetes_sd_configs:
+          - role: pod
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_name]
+            regex: cadvisor
+            action: keep
+          - source_labels: [__meta_kubernetes_pod_container_port_number]
+            regex: 8080
+            action: keep
+      - job_name: 'node-exporter'
+        scrape_interval: 15s
+        kubernetes_sd_configs:
+          - role: endpoints
+            namespaces:
+              names:
+                - grafana
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_endpoints_name]
+            regex: 'node-exporter'
+            action: keep
+
+---
+
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: monitoring
+  namespace: grafana
+rules:
+- apiGroups: [""]
+  resources:
+    - nodes
+    - nodes/metrics
+    - services
+    - endpoints
+    - pods
+  verbs: ["get", "list", "watch"]
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: monitoring
+  namespace: grafana
+subjects:
+  - kind: ServiceAccount
+    name: monitoring
+    namespace: grafana
+roleRef:
+  kind: Role
+  name: monitoring
+  apiGroup: rbac.authorization.k8s.io
+
+---
+
+kind: Service
+apiVersion: v1
+metadata:
+  name: node-exporter
+  namespace: grafana
+  labels:
+    app: node-exporter
+spec:
+  ports:
+    - name: metrics
+      port: 9100
+      targetPort: 9100
+  selector:
+    app: node-exporter
+  type: ClusterIP
+
+---
+
+kind: DaemonSet
+apiVersion: apps/v1
+metadata:
+  name: node-exporter
+  namespace: grafana
+  labels:
+    app: node-exporter
+spec:
+  selector:
+    matchLabels:
+      app: node-exporter
+  template:
+    metadata:
+      labels:
+        app: node-exporter
+    spec:
+      hostNetwork: true
+      hostPID: true
+      containers:
+      - name: node-exporter
+        image: quay.io/prometheus/node-exporter:v1.10.2
+        args:
+          - "--path.procfs=/host/proc"
+          - "--path.sysfs=/host/sys"
+          - "--path.rootfs=/host/root"
+        ports:
+          - containerPort: 9100
+            hostPort: 9100
+            name: metrics
+        volumeMounts:
+          - name: proc
+            mountPath: /host/proc
+            readOnly: true
+          - name: sys
+            mountPath: /host/sys
+            readOnly: true
+          - name: root
+            mountPath: /host/root
+            mountPropagation: HostToContainer
+            readOnly: true
+      volumes:
+        - name: proc
+          hostPath:
+            path: /proc
+        - name: sys
+          hostPath:
+            path: /sys
+        - name: root
+          hostPath:
+            path: /
+
+---

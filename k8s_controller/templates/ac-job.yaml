@@ -7,6 +7,9 @@ metadata:
     ac-name: PLACEHOLDER_API_CLIENT
     match-id: 'PLACEHOLDER_MATCH_ID'
 spec:
+  # Automatically delete finished jobs
+  ttlSecondsAfterFinished: 0
+
   template:
     spec:
       restartPolicy: Never
@@ -63,7 +66,7 @@ spec:
           readinessProbe:
             tcpSocket:
               port: 10002
-          # Game and bot controllers are limited to 2 cpu units
+          # Bot and game controllers are limited to 2 and 4 cpu units
           # and made burstable with lower cpu requests.
           # We use same cpu requests for both game and bot controllers
           # because Kubernetes uses cpu requests as basis for cpu sharing
@@ -71,7 +74,7 @@ spec:
           # Actual utilization averages between 1.2 and 1.6
           resources:
             limits:
-              cpu: '2'
+              cpu: '4'
             requests:
               cpu: '0.5'
           volumeMounts:
