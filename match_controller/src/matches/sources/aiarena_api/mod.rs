@@ -188,15 +188,18 @@ impl MatchSource for HttpApiSource {
         // Try GraphQL submission first
         debug!("Attempting to submit result with GraphQL");
         match self
-            .submit_result_with_graphql(game_result, Some(LogsAndReplays {
-                upload_url: upload_url.clone(),
-                bot1_name: bot1_name.clone(),
-                bot2_name: bot2_name.clone(),
-                bot1_dir: bot1_dir.clone(),
-                bot2_dir: bot2_dir.clone(),
-                arenaclient_log: arenaclient_log.clone(),
-                replay_file: replay_file.clone(),
-            }))
+            .submit_result_with_graphql(
+                game_result,
+                Some(LogsAndReplays {
+                    upload_url: upload_url.clone(),
+                    bot1_name: bot1_name.clone(),
+                    bot2_name: bot2_name.clone(),
+                    bot1_dir: bot1_dir.clone(),
+                    bot2_dir: bot2_dir.clone(),
+                    arenaclient_log: arenaclient_log.clone(),
+                    replay_file: replay_file.clone(),
+                }),
+            )
             .await
         {
             Ok(()) => return Ok(()),

@@ -150,11 +150,7 @@ pub async fn upload_file_with_retries(
     Err(last_err.unwrap())
 }
 
-async fn upload_file(
-    website_url: &str,
-    token: &str,
-    file_path: &Path,
-) -> anyhow::Result<String> {
+async fn upload_file(website_url: &str, token: &str, file_path: &Path) -> anyhow::Result<String> {
     let client = Client::new();
     let graphql_url = format!("{}/graphql/", website_url.trim_end_matches('/'));
 
@@ -215,7 +211,12 @@ async fn upload_file(
         .with_context(|| format!("Failed to read file: {}", file_path.display()))?;
     let file_size_kb = file_bytes.len() / 1024;
 
-    info!("Uploading {} ({} KB) -> {}", file_path.display(), file_size_kb, upload_id);
+    info!(
+        "Uploading {} ({} KB) -> {}",
+        file_path.display(),
+        file_size_kb,
+        upload_id
+    );
     client
         .put(&upload_url)
         .body(file_bytes)
@@ -242,10 +243,7 @@ pub async fn submit_result_with_retries(
         match submit_result(website_url, token, input).await {
             Ok(id) => return Ok(id),
             Err(e) => {
-                error!(
-                    "Submit result attempt {}/{} failed: {}",
-                    attempt, limit, e
-                );
+                error!("Submit result attempt {}/{} failed: {}", attempt, limit, e);
                 last_err = Some(e);
                 if attempt < limit {
                     // TODO: Implement incremental cooldown
