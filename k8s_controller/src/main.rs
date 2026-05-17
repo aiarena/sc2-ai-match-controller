@@ -1,3 +1,4 @@
+mod arena_api;
 mod arenaclient;
 // mod old;
 mod k8s_config;

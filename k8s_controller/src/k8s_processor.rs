@@ -1,6 +1,5 @@
 use crate::templating::{render_job_template, JobTemplateValues};
-use crate::{arenaclient::Arenaclient, k8s_config::K8sConfig, profile::Profile};
-use common::api::api_reference::aiarena::aiarena_api_client::AiArenaApiClient;
+use crate::{arena_api, arenaclient::Arenaclient, k8s_config::K8sConfig, profile::Profile};
 use k8s_openapi::api::batch::v1::Job;
 use kube::{
     api::{Api, ListParams, PostParams},
@@ -79,8 +78,7 @@ pub async fn process(settings: K8sConfig) {
 }
 
 async fn retrieve_match(settings: &K8sConfig, ac: &Arenaclient) -> anyhow::Result<Job> {
-    let api_client = AiArenaApiClient::new(&settings.website_url, &ac.token)?;
-    let new_match = api_client.get_match().await?;
+    let new_match = arena_api::get_next_match(&settings.website_url, &ac.token).await?;
 
     info!("Retrieved match {:?} for AC {:?}", new_match.id, ac.name);
 

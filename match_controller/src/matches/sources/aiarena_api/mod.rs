@@ -1,3 +1,5 @@
+pub mod graphql;
+
 use crate::matches::sources::file_source::errors::SubmissionError;
 use crate::matches::sources::{LogsAndReplays, MatchSource};
 use async_trait::async_trait;
@@ -19,6 +21,8 @@ use tracing::{debug, info};
 
 pub struct HttpApiSource {
     api: AiArenaApiClient,
+    website_url: String,
+    token: String,
 }
 
 impl HttpApiSource {
@@ -33,7 +37,11 @@ impl HttpApiSource {
                 &settings.base_website_url, e
             )
         })?;
-        Ok(Self { api })
+        Ok(Self {
+            api,
+            website_url: settings.base_website_url.clone(),
+            token: api_token.clone(),
+        })
     }
     async fn download_map(
         &self,
@@ -47,6 +55,70 @@ impl HttpApiSource {
         let map_path = base_dir().join("maps").join(format!("{map_name}.SC2Map"));
         let mut file = tokio::fs::File::create(map_path).await?;
         Ok(file.write_all(&map_bytes).await?)
+    }
+
+    async fn upload_file(&self, path: &PathBuf) -> Result<String, SubmissionError> {
+        if path.exists() {
+            // TODO: Increase retries to 60 before old API is retired
+            graphql::upload_file_with_retries(&self.website_url, &self.token, path, 3)
+                .await
+                .map_err(|e| {
+                    error!("Failed to upload {}: {}", path.display(), e);
+                    SubmissionError::LogsAndReplaysNull
+                })
+        } else {
+            Ok(String::new())
+        }
+    }
+
+    pub async fn submit_result_with_graphql(
+        &self,
+        game_result: &AiArenaGameResult,
+        logs_and_replays: Option<LogsAndReplays>,
+    ) -> Result<(), SubmissionError> {
+        if logs_and_replays.is_none() {
+            return Err(SubmissionError::LogsAndReplaysNull);
+        }
+        let LogsAndReplays {
+            bot1_dir,
+            bot2_dir,
+            arenaclient_log,
+            replay_file,
+            ..
+        } = logs_and_replays.unwrap();
+
+        let replay_id = self.upload_file(&replay_file).await?;
+        let arenaclient_log_id = self.upload_file(&arenaclient_log).await?;
+        let bot1_data_id = self.upload_file(&bot1_dir.join("data.zip")).await?;
+        let bot2_data_id = self.upload_file(&bot2_dir.join("data.zip")).await?;
+        let bot1_log_id = self.upload_file(&bot1_dir.join("logs.zip")).await?;
+        let bot2_log_id = self.upload_file(&bot2_dir.join("logs.zip")).await?;
+
+        let input = graphql::SubmitResultInput {
+            match_id: graphql::encode_match_id(&game_result.match_id.to_string()),
+            result_type: game_result.result.to_string(),
+            game_steps: game_result.game_steps,
+            bot1_avg_step_time: game_result.bot1_avg_step_time.unwrap_or(0.0),
+            bot2_avg_step_time: game_result.bot2_avg_step_time.unwrap_or(0.0),
+            bot1_tags: game_result.bot1_tags.clone().unwrap_or_default(),
+            bot2_tags: game_result.bot2_tags.clone().unwrap_or_default(),
+            replay_file: replay_id,
+            arenaclient_log: arenaclient_log_id,
+            bot1_data: bot1_data_id,
+            bot2_data: bot2_data_id,
+            bot1_log: bot1_log_id,
+            bot2_log: bot2_log_id,
+        };
+
+        // TODO: Increase retries to 60 before old API is retired
+        graphql::submit_result_with_retries(&self.website_url, &self.token, &input, 3)
+            .await
+            .map_err(|e| {
+                error!("Failed to submit result via GraphQL: {}", e);
+                SubmissionError::LogsAndReplaysNull
+            })?;
+
+        Ok(())
     }
 }
 
@@ -113,6 +185,28 @@ impl MatchSource for HttpApiSource {
                 error!("Error uploading to cache server: {}", e);
             }
         }
+
+        // Try GraphQL submission first
+        debug!("Attempting to submit result with GraphQL");
+        match self
+            .submit_result_with_graphql(
+                game_result,
+                Some(LogsAndReplays {
+                    upload_url: upload_url.clone(),
+                    bot1_name: bot1_name.clone(),
+                    bot2_name: bot2_name.clone(),
+                    bot1_dir: bot1_dir.clone(),
+                    bot2_dir: bot2_dir.clone(),
+                    arenaclient_log: arenaclient_log.clone(),
+                    replay_file: replay_file.clone(),
+                }),
+            )
+            .await
+        {
+            Ok(()) => return Ok(()),
+            Err(e) => error!("GraphQL submission failed: {:?}", e),
+        }
+
         while attempt < 60 {
             debug!("Attempting to submit result. Attempt number: {}", attempt);
 
