@@ -16,7 +16,7 @@ spec:
         app: aiarena-k8s-controller
     spec:
       containers:
-      - image: aiarena/k8s-controller:2026.05.09-20.45
+      - image: aiarena/k8s-controller:2026.05.17-12.33
         name: k8s-controller
         ports:
         - containerPort: 8085
