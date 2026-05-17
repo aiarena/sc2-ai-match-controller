@@ -59,7 +59,8 @@ impl HttpApiSource {
 
     async fn upload_file(&self, path: &PathBuf) -> Result<String, SubmissionError> {
         if path.exists() {
-            graphql::upload_file_with_retries(&self.website_url, &self.token, path, 60)
+            // TODO: Increase retries to 60 before old API is retired
+            graphql::upload_file_with_retries(&self.website_url, &self.token, path, 3)
                 .await
                 .map_err(|e| {
                     error!("Failed to upload {}: {}", path.display(), e);
