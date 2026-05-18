@@ -115,6 +115,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: loki-loki-distributed-compactor
+  namespace: grafana-loki
 spec:
   selector:
     app: loki-compactor
@@ -129,6 +130,7 @@ kind: Deployment
 apiVersion: apps/v1
 metadata:
   name: loki-loki-distributed-compactor
+  namespace: grafana-loki
 spec:
   replicas: 1
   selector:
