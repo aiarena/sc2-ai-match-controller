@@ -18,6 +18,7 @@ pub struct SubmitResultInput {
     pub bot2_avg_step_time: f32,
     pub bot1_tags: Vec<String>,
     pub bot2_tags: Vec<String>,
+    #[serde(skip_serializing_if = "String::is_empty")]
     pub replay_file: String,
     pub arenaclient_log: String,
     #[serde(skip_serializing_if = "String::is_empty")]
