@@ -1,9 +1,6 @@
 use common::models::aiarena::aiarena_game_result::AiArenaGameResult;
 use common::models::aiarena::aiarena_result::AiArenaResult;
-use common::PlayerNum;
-use once_cell::sync::Lazy;
-use std::sync::{Arc, RwLock};
-use tracing::debug;
+use tracing::info;
 
 use crate::game::player_result::PlayerResult;
 use crate::game::sc2_result::Sc2Result;
@@ -55,20 +52,13 @@ impl GameResult {
         }
     }
 
-    pub fn add_player_result(
-        &mut self,
-        match_id: u32,
-        player_num: PlayerNum,
-        player_result: PlayerResult,
-    ) {
-        if match_id == self.match_id {
-            match player_num {
-                PlayerNum::One => {
-                    self.player1_result = Some(player_result);
-                }
-                PlayerNum::Two => {
-                    self.player2_result = Some(player_result);
-                }
+    pub fn add_player_result(&mut self, player_num: u8, player_result: PlayerResult) {
+        match player_num {
+            1 => {
+                self.player1_result = Some(player_result);
+            }
+            _ => {
+                self.player2_result = Some(player_result);
             }
         }
     }
@@ -87,7 +77,7 @@ impl From<&GameResult> for AiArenaGameResult {
         match &game_result.player1_result {
             None => {}
             Some(player1_result) => {
-                debug!("Player1Result: {:?}", player1_result);
+                info!("Player1Result: {:?}", player1_result);
                 bot1_avg_step_time = Some(player1_result.frame_time);
                 bot1_tags = Some(player1_result.tags.iter().cloned().collect());
                 game_steps = player1_result.game_loops;
@@ -97,7 +87,7 @@ impl From<&GameResult> for AiArenaGameResult {
         match &game_result.player2_result {
             None => {}
             Some(player2_result) => {
-                debug!("Player2Result: {:?}", player2_result);
+                info!("Player2Result: {:?}", player2_result);
                 bot2_avg_step_time = Some(player2_result.frame_time);
                 bot2_tags = Some(player2_result.tags.iter().cloned().collect());
                 game_steps = player2_result.game_loops;
@@ -136,9 +126,6 @@ impl From<&GameResult> for AiArenaGameResult {
         }
     }
 }
-
-pub static GAME_RESULT: Lazy<Arc<RwLock<GameResult>>> =
-    Lazy::new(|| Arc::new(RwLock::new(GameResult::new(0))));
 
 #[cfg(test)]
 mod tests {
