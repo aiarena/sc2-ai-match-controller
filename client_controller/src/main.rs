@@ -15,9 +15,13 @@ fn main() {
     if !config.api_url.is_empty() {
         println!("Reading matches from API at: {}", config.api_url);
 
-        println!("This version of client controller supports only the test-server-api with a single test match");
+        println!("This version of client controller supports only the test-server-api with a couple of test match");
         let match_request = MatchRequest::from_csv_line("1,basic_bot,T,python,2,loser_bot,T,python,AutomatonLE");
 
+        println!("Running match 1 (cold cache - downloads from source)");
+        run_match("aiarena", &config, &match_request);
+
+        println!("Running match 2 (warm cache - downloads from cache server)");
         run_match("aiarena", &config, &match_request);
     } else if !config.matches_file.is_empty() {
         println!("Reading matches from file: {}", config.matches_file);

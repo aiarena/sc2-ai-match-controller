@@ -1,6 +1,6 @@
 use axum::{
     body::Body,
-    extract::{Host, Json, Path, Query, Request},
+    extract::{Host, Json, Path, Query, Request, State},
     http::{header, StatusCode},
     middleware::{self, Next},
     response::{IntoResponse, Response},
@@ -10,6 +10,10 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::net::SocketAddr;
+use std::sync::{
+    atomic::{AtomicUsize, Ordering},
+    Arc,
+};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -18,6 +22,14 @@ const ETAG_BOT1_DATA: &str = "\"test-etag-basic-bot-data\"";
 const ETAG_BOT2_ZIP: &str = "\"test-etag-loser-bot-zip\"";
 const ETAG_BOT2_DATA: &str = "\"test-etag-loser-bot-data\"";
 const ETAG_MAP: &str = "\"test-etag-automaton-map\"";
+
+#[derive(Clone)]
+struct AppState {
+    // Counts how many getNextMatch calls have been made.
+    // Match 1 (count == 1): cold cache — /download returns 404, source GETs serve files.
+    // Match 2 (count >= 2): warm cache — /download serves files, source GETs return 500.
+    match_count: Arc<AtomicUsize>,
+}
 
 #[derive(Debug, Deserialize, Serialize)]
 struct DownloadRequest {
@@ -49,6 +61,10 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
+    let state = AppState {
+        match_count: Arc::new(AtomicUsize::new(0)),
+    };
+
     let protected_routes = Router::new()
         .route("/graphql/", post(graphql_handler))
         .layer(middleware::from_fn(check_authorization));
@@ -78,7 +94,8 @@ async fn main() {
     let app = Router::new()
         .merge(protected_routes)
         .merge(public_routes)
-        .layer(TraceLayer::new_for_http());
+        .layer(TraceLayer::new_for_http())
+        .with_state(state);
 
     let port = std::env::var("PORT")
         .ok()
@@ -100,9 +117,15 @@ async fn check_authorization(request: Request, next: Next) -> Response {
     next.run(request).await
 }
 
-async fn graphql_handler(Host(host): Host, Json(body): Json<GraphQLBody>) -> Response {
+async fn graphql_handler(
+    State(state): State<AppState>,
+    Host(host): Host,
+    Json(body): Json<GraphQLBody>,
+) -> Response {
     let query = &body.query;
     if query.contains("getNextMatch") {
+        let count = state.match_count.fetch_add(1, Ordering::SeqCst) + 1;
+        tracing::info!("getNextMatch call #{}", count);
         graphql_get_next_match(&host)
     } else if query.contains("requestUploadUrls") {
         graphql_request_upload_urls(&host)
@@ -197,7 +220,13 @@ fn graphql_submit_result() -> Response {
         .into_response()
 }
 
-async fn get_map() -> Response {
+// Source URL handlers — return 500 in match 2 to verify no direct downloads happen.
+
+async fn get_map(State(state): State<AppState>) -> Response {
+    if state.match_count.load(Ordering::SeqCst) >= 2 {
+        tracing::error!("Unexpected direct download of map in match 2 — should come from cache");
+        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+    }
     let map_data = include_bytes!("../../testing-maps/AutomatonLE.SC2Map");
     (
         StatusCode::OK,
@@ -211,7 +240,11 @@ async fn head_map() -> Response {
     (StatusCode::OK, [(header::ETAG, ETAG_MAP)]).into_response()
 }
 
-async fn get_bot1_zip() -> Response {
+async fn get_bot1_zip(State(state): State<AppState>) -> Response {
+    if state.match_count.load(Ordering::SeqCst) >= 2 {
+        tracing::error!("Unexpected direct download of bot1 zip in match 2 — should come from cache");
+        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+    }
     let bot_data = include_bytes!("../data/basic_bot.zip");
     (
         StatusCode::OK,
@@ -225,7 +258,11 @@ async fn head_bot1_zip() -> Response {
     (StatusCode::OK, [(header::ETAG, ETAG_BOT1_ZIP)]).into_response()
 }
 
-async fn get_bot1_data() -> Response {
+async fn get_bot1_data(State(state): State<AppState>) -> Response {
+    if state.match_count.load(Ordering::SeqCst) >= 2 {
+        tracing::error!("Unexpected direct download of bot1 data in match 2 — should come from cache");
+        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+    }
     let bot_data = include_bytes!("../data/basic_bot_data.zip");
     (
         StatusCode::OK,
@@ -239,7 +276,11 @@ async fn head_bot1_data() -> Response {
     (StatusCode::OK, [(header::ETAG, ETAG_BOT1_DATA)]).into_response()
 }
 
-async fn get_bot2_zip() -> Response {
+async fn get_bot2_zip(State(state): State<AppState>) -> Response {
+    if state.match_count.load(Ordering::SeqCst) >= 2 {
+        tracing::error!("Unexpected direct download of bot2 zip in match 2 — should come from cache");
+        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+    }
     let bot_data = include_bytes!("../data/loser_bot.zip");
     (
         StatusCode::OK,
@@ -253,7 +294,11 @@ async fn head_bot2_zip() -> Response {
     (StatusCode::OK, [(header::ETAG, ETAG_BOT2_ZIP)]).into_response()
 }
 
-async fn get_bot2_data() -> Response {
+async fn get_bot2_data(State(state): State<AppState>) -> Response {
+    if state.match_count.load(Ordering::SeqCst) >= 2 {
+        tracing::error!("Unexpected direct download of bot2 data in match 2 — should come from cache");
+        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+    }
     let bot_data = include_bytes!("../data/loser_bot_data.zip");
     (
         StatusCode::OK,
@@ -272,9 +317,21 @@ async fn s3_upload(Path(id): Path<String>) -> Response {
     StatusCode::OK.into_response()
 }
 
-async fn download(Host(host): Host, Json(payload): Json<DownloadRequest>) -> Response {
-    tracing::debug!("Download request: {:?}", payload);
+async fn download(
+    State(state): State<AppState>,
+    Host(host): Host,
+    Json(payload): Json<DownloadRequest>,
+) -> Response {
+    let count = state.match_count.load(Ordering::SeqCst);
+    tracing::debug!("Download request (match {}): {:?}", count, payload);
 
+    // Match 1: cold cache — always miss so the client falls back to source URLs.
+    if count <= 1 {
+        tracing::debug!("Cache miss (match 1) for key: {}", payload.unique_key);
+        return StatusCode::NOT_FOUND.into_response();
+    }
+
+    // Match 2+: warm cache — serve from "cache" and validate etag.
     let base_url = format!("http://{}", host);
     let json_str = include_str!("../data/match.json");
     let modified = json_str.replace("https://aiarena.net", &base_url);
@@ -319,6 +376,11 @@ async fn download(Host(host): Host, Json(payload): Json<DownloadRequest>) -> Res
         _ => {}
     }
 
+    tracing::error!(
+        "Cache miss in match {} for key '{}' — etag or url mismatch",
+        count,
+        payload.unique_key
+    );
     StatusCode::NOT_FOUND.into_response()
 }
 
