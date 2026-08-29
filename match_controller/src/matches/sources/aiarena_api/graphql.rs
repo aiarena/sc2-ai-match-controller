@@ -1,5 +1,8 @@
 use anyhow::{anyhow, Context};
-use base64::Engine;
+use base64::{engine::general_purpose::STANDARD, Engine};
+use common::models::aiarena::aiarena_bot::AiArenaBot;
+use common::models::aiarena::aiarena_map::AiArenaMap;
+use common::models::aiarena::aiarena_match::AiArenaMatch;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -30,6 +33,55 @@ pub struct SubmitResultInput {
     #[serde(skip_serializing_if = "String::is_empty")]
     pub bot2_log: String,
 }
+
+// --- getNextMatch types ---
+
+#[derive(Debug, Deserialize)]
+struct GetNextMatchResponse {
+    data: Option<GetNextMatchData>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct GetNextMatchData {
+    get_next_match: Option<GetNextMatchWrapper>,
+}
+
+#[derive(Debug, Deserialize)]
+struct GetNextMatchWrapper {
+    #[serde(rename = "match")]
+    match_info: Option<MatchInfo>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct MatchInfo {
+    id: String,
+    map: MapInfo,
+    participant1: ParticipantInfo,
+    participant2: ParticipantInfo,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct MapInfo {
+    name: String,
+    download_link: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ParticipantInfo {
+    name: String,
+    game_display_id: String,
+    plays_race: String,
+    #[serde(rename = "type")]
+    bot_type: String,
+    bot_zip_url: String,
+    bot_data_url: Option<String>,
+}
+
+// --- requestUploadUrls / submitResult types ---
 
 #[derive(Debug, Deserialize)]
 struct UploadUrlsResponse {
@@ -88,6 +140,38 @@ struct ResultInfo {
     id: String,
 }
 
+// --- Queries ---
+
+const GET_NEXT_MATCH_QUERY: &str = r#"
+mutation {
+  getNextMatch {
+    match {
+      id
+      map {
+        name
+        downloadLink
+      }
+      participant1 {
+        name
+        gameDisplayId
+        playsRace
+        type
+        botZipUrl
+        botDataUrl
+      }
+      participant2 {
+        name
+        gameDisplayId
+        playsRace
+        type
+        botZipUrl
+        botDataUrl
+      }
+    }
+  }
+}
+"#;
+
 const REQUEST_UPLOAD_URLS_QUERY: &str = r#"
 mutation($input: RequestUploadUrlsInput!) {
   requestUploadUrls(input: $input) {
@@ -119,6 +203,44 @@ mutation($input: SubmitResultInput!) {
 }
 "#;
 
+// --- Public API ---
+
+pub async fn get_next_match(website_url: &str, token: &str) -> anyhow::Result<AiArenaMatch> {
+    let client = Client::new();
+    let graphql_url = format!("{}/graphql/", website_url.trim_end_matches('/'));
+
+    let body = serde_json::json!({
+        "query": GET_NEXT_MATCH_QUERY,
+    });
+
+    let resp = client
+        .post(&graphql_url)
+        .header("Authorization", format!("Token {}", token))
+        .header("Accept", "application/json")
+        .json(&body)
+        .send()
+        .await
+        .context("Failed to send getNextMatch GraphQL request")?;
+
+    let text = resp
+        .text()
+        .await
+        .context("Failed to read getNextMatch response body")?;
+
+    let parsed: GetNextMatchResponse =
+        serde_json::from_str(&text).context("Failed to parse getNextMatch response")?;
+
+    let match_info = parsed
+        .data
+        .ok_or_else(|| anyhow!("getNextMatch response has no data"))?
+        .get_next_match
+        .ok_or_else(|| anyhow!("getNextMatch response has no getNextMatch"))?
+        .match_info
+        .ok_or_else(|| anyhow!("getNextMatch returned no match"))?;
+
+    Ok(convert_match(match_info))
+}
+
 pub async fn upload_file_with_retries(
     website_url: &str,
     token: &str,
@@ -141,14 +263,81 @@ pub async fn upload_file_with_retries(
                 );
                 last_err = Some(e);
                 if attempt < limit {
-                    // TODO: Implement incremental cooldown
-                    // 10s, 20s, 40s, 80s, 120s, 120s, until 10m.
-                    tokio::time::sleep(Duration::from_secs(10)).await;
+                    tokio::time::sleep(cooldown_duration(attempt)).await;
                 }
             }
         }
     }
     Err(last_err.unwrap())
+}
+
+pub async fn submit_result_with_retries(
+    website_url: &str,
+    token: &str,
+    input: &SubmitResultInput,
+    retries: u32,
+) -> anyhow::Result<String> {
+    let limit = retries.max(1);
+    let mut last_err = None;
+
+    for attempt in 1..=limit {
+        match submit_result(website_url, token, input).await {
+            Ok(id) => return Ok(id),
+            Err(e) => {
+                error!("Submit result attempt {}/{} failed: {}", attempt, limit, e);
+                last_err = Some(e);
+                if attempt < limit {
+                    tokio::time::sleep(cooldown_duration(attempt)).await;
+                }
+            }
+        }
+    }
+    Err(last_err.unwrap())
+}
+
+pub fn encode_match_id(text: &str) -> String {
+    STANDARD.encode(format!("MatchType:{}", text))
+}
+
+// --- Private helpers ---
+
+fn cooldown_duration(attempt: u32) -> Duration {
+    // 10s, 20s, 40s, 80s, then capped at 120s
+    let secs = (10u64 * 2u64.pow(attempt - 1)).min(120);
+    Duration::from_secs(secs)
+}
+
+fn decode_base64_id(encoded: &str) -> Option<u32> {
+    let bytes = STANDARD.decode(encoded).ok()?;
+    let decoded = String::from_utf8(bytes).ok()?;
+    let id_str = decoded.rsplit(':').next()?;
+    id_str.parse().ok()
+}
+
+fn convert_match(m: MatchInfo) -> AiArenaMatch {
+    let id = decode_base64_id(&m.id).unwrap_or(0);
+    AiArenaMatch {
+        id,
+        bot1: convert_bot(m.participant1),
+        bot2: convert_bot(m.participant2),
+        map: AiArenaMap {
+            name: m.map.name,
+            download_link: m.map.download_link,
+        },
+        game_base: None,
+    }
+}
+
+fn convert_bot(p: ParticipantInfo) -> AiArenaBot {
+    AiArenaBot {
+        name: p.name,
+        game_display_id: p.game_display_id,
+        plays_race: p.plays_race,
+        _type: p.bot_type,
+        bot_zip_url: p.bot_zip_url,
+        bot_data_url: p.bot_data_url,
+        bot_base: None,
+    }
 }
 
 async fn upload_file(website_url: &str, token: &str, file_path: &Path) -> anyhow::Result<String> {
@@ -231,32 +420,6 @@ async fn upload_file(website_url: &str, token: &str, file_path: &Path) -> anyhow
     Ok(upload_id)
 }
 
-pub async fn submit_result_with_retries(
-    website_url: &str,
-    token: &str,
-    input: &SubmitResultInput,
-    retries: u32,
-) -> anyhow::Result<String> {
-    let limit = retries.max(1);
-    let mut last_err = None;
-
-    for attempt in 1..=limit {
-        match submit_result(website_url, token, input).await {
-            Ok(id) => return Ok(id),
-            Err(e) => {
-                error!("Submit result attempt {}/{} failed: {}", attempt, limit, e);
-                last_err = Some(e);
-                if attempt < limit {
-                    // TODO: Implement incremental cooldown
-                    // 10s, 20s, 40s, 80s, 120s, 120s, until 10m.
-                    tokio::time::sleep(Duration::from_secs(10)).await;
-                }
-            }
-        }
-    }
-    Err(last_err.unwrap())
-}
-
 async fn submit_result(
     website_url: &str,
     token: &str,
@@ -272,9 +435,6 @@ async fn submit_result(
         }
     });
 
-    // TODO: Remove this trace before old API is retired
-    info!("Submitting result: {}", body);
-
     let resp = client
         .post(&graphql_url)
         .header("Authorization", format!("Token {}", token))
@@ -288,9 +448,6 @@ async fn submit_result(
         .text()
         .await
         .context("Failed to read submitResult response body")?;
-
-    // TODO: Remove this trace before old API is retired
-    info!("Response to SubmitResult: |{}|", text);
 
     let parsed: SubmitResultResponse =
         serde_json::from_str(&text).context("Failed to parse submitResult response")?;
@@ -316,8 +473,4 @@ async fn submit_result(
         .id;
 
     Ok(result_id)
-}
-
-pub fn encode_match_id(text: &str) -> String {
-    base64::engine::general_purpose::STANDARD.encode(format!("MatchType:{}", text))
 }

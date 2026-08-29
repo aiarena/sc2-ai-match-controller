@@ -152,8 +152,8 @@ async fn download_assets(
 
     tracing::debug!("Downloading bots and bot data");
 
-    let bot1_data = arena_match.bot1.bot_data.as_ref();
-    let bot2_data = arena_match.bot2.bot_data.as_ref();
+    let bot1_data = arena_match.bot1.bot_data_url.as_ref();
+    let bot2_data = arena_match.bot2.bot_data_url.as_ref();
 
     let bytes = download_bot(&settings, &arena_match, PlayerNum::One)
         .await
