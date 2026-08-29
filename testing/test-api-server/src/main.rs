@@ -1,30 +1,42 @@
 use axum::{
     body::Body,
-    extract::{Host, Json, Query, Request},
+    extract::{Host, Json, Path, Query, Request},
     http::{header, StatusCode},
     middleware::{self, Next},
     response::{IntoResponse, Response},
-    routing::{get, post},
+    routing::{get, post, put},
     Router,
 };
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use std::net::SocketAddr;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+
+const ETAG_BOT1_ZIP: &str = "\"test-etag-basic-bot-zip\"";
+const ETAG_BOT1_DATA: &str = "\"test-etag-basic-bot-data\"";
+const ETAG_BOT2_ZIP: &str = "\"test-etag-loser-bot-zip\"";
+const ETAG_BOT2_DATA: &str = "\"test-etag-loser-bot-data\"";
+const ETAG_MAP: &str = "\"test-etag-automaton-map\"";
 
 #[derive(Debug, Deserialize, Serialize)]
 struct DownloadRequest {
     #[serde(rename = "uniqueKey")]
     unique_key: String,
     url: String,
-    #[serde(rename = "md5hash")]
-    md5_hash: String,
+    #[serde(rename = "md5hash")] // cache server API uses "md5hash" as the key name
+    etag: String,
 }
 
 #[derive(Debug, Deserialize)]
 struct UploadParams {
     #[serde(rename = "uniqueKey")]
     unique_key: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct GraphQLBody {
+    query: String,
 }
 
 #[tokio::main]
@@ -38,17 +50,29 @@ async fn main() {
         .init();
 
     let protected_routes = Router::new()
-        .route("/api/arenaclient/v2/next-match/", post(next_match))
-        .route("/api/arenaclient/v2/submit-result/", post(submit_result))
+        .route("/graphql/", post(graphql_handler))
         .layer(middleware::from_fn(check_authorization));
 
     let public_routes = Router::new()
-        .route("/api/arenaclient/matches/1/1/zip/", get(get_bot1_zip))
-        .route("/api/arenaclient/matches/1/1/data/", get(get_bot1_data))
-        .route("/api/arenaclient/matches/1/2/zip/", get(get_bot2_zip))
-        .route("/api/arenaclient/matches/1/2/data/", get(get_bot2_data))
+        .route(
+            "/api/arenaclient/matches/1/1/zip/",
+            get(get_bot1_zip).head(head_bot1_zip),
+        )
+        .route(
+            "/api/arenaclient/matches/1/1/data/",
+            get(get_bot1_data).head(head_bot1_data),
+        )
+        .route(
+            "/api/arenaclient/matches/1/2/zip/",
+            get(get_bot2_zip).head(head_bot2_zip),
+        )
+        .route(
+            "/api/arenaclient/matches/1/2/data/",
+            get(get_bot2_data).head(head_bot2_data),
+        )
+        .route("/media/maps/AutomatonLE", get(get_map).head(head_map))
+        .route("/s3-upload/:id", put(s3_upload))
         .route("/download", post(download))
-        .route("/media/maps/AutomatonLE", get(get_map))
         .route("/upload", post(upload));
 
     let app = Router::new()
@@ -76,90 +100,226 @@ async fn check_authorization(request: Request, next: Next) -> Response {
     next.run(request).await
 }
 
-async fn next_match(Host(host): Host) -> Response {
-    let match_response = load_match_response_with_host(&host);
+async fn graphql_handler(Host(host): Host, Json(body): Json<GraphQLBody>) -> Response {
+    let query = &body.query;
+    if query.contains("getNextMatch") {
+        graphql_get_next_match(&host)
+    } else if query.contains("requestUploadUrls") {
+        graphql_request_upload_urls(&host)
+    } else if query.contains("submitResult") {
+        graphql_submit_result()
+    } else {
+        (StatusCode::BAD_REQUEST, "Unknown mutation").into_response()
+    }
+}
+
+fn graphql_get_next_match(host: &str) -> Response {
+    let base_url = format!("http://{}", host);
+    let json_str = include_str!("../data/match.json");
+    let modified = json_str.replace("https://aiarena.net", &base_url);
+    let m: serde_json::Value = serde_json::from_str(&modified).unwrap();
+
+    let response = json!({
+        "data": {
+            "getNextMatch": {
+                "match": {
+                    "id": "TWF0Y2hUeXBlOjE=",
+                    "map": {
+                        "name": m["map"]["name"],
+                        "downloadLink": m["map"]["download_link"]
+                    },
+                    "participant1": {
+                        "name": m["bot1"]["name"],
+                        "gameDisplayId": m["bot1"]["game_display_id"],
+                        "playsRace": m["bot1"]["plays_race"],
+                        "type": m["bot1"]["type"],
+                        "botZipUrl": m["bot1"]["bot_zip_url"],
+                        "botDataUrl": m["bot1"]["bot_data_url"]
+                    },
+                    "participant2": {
+                        "name": m["bot2"]["name"],
+                        "gameDisplayId": m["bot2"]["game_display_id"],
+                        "playsRace": m["bot2"]["plays_race"],
+                        "type": m["bot2"]["type"],
+                        "botZipUrl": m["bot2"]["bot_zip_url"],
+                        "botDataUrl": m["bot2"]["bot_data_url"]
+                    }
+                }
+            }
+        }
+    });
 
     (
         StatusCode::OK,
         [(header::CONTENT_TYPE, "application/json")],
-        serde_json::to_string(&match_response).unwrap(),
+        serde_json::to_string(&response).unwrap(),
+    )
+        .into_response()
+}
+
+fn graphql_request_upload_urls(host: &str) -> Response {
+    let base_url = format!("http://{}", host);
+    let response = json!({
+        "data": {
+            "requestUploadUrls": {
+                "uploads": [
+                    {
+                        "upload": {"id": "test-upload-1"},
+                        "uploadUrl": format!("{}/s3-upload/test-upload-1", base_url)
+                    }
+                ],
+                "errors": []
+            }
+        }
+    });
+    (
+        StatusCode::OK,
+        [(header::CONTENT_TYPE, "application/json")],
+        serde_json::to_string(&response).unwrap(),
+    )
+        .into_response()
+}
+
+fn graphql_submit_result() -> Response {
+    let response = json!({
+        "data": {
+            "submitResult": {
+                "result": {"id": "test-result-1"},
+                "errors": []
+            }
+        }
+    });
+    (
+        StatusCode::OK,
+        [(header::CONTENT_TYPE, "application/json")],
+        serde_json::to_string(&response).unwrap(),
     )
         .into_response()
 }
 
 async fn get_map() -> Response {
     let map_data = include_bytes!("../../testing-maps/AutomatonLE.SC2Map");
-    (StatusCode::OK, Body::from(&map_data[..])).into_response()
+    (
+        StatusCode::OK,
+        [(header::ETAG, ETAG_MAP)],
+        Body::from(&map_data[..]),
+    )
+        .into_response()
+}
+
+async fn head_map() -> Response {
+    (StatusCode::OK, [(header::ETAG, ETAG_MAP)]).into_response()
 }
 
 async fn get_bot1_zip() -> Response {
     let bot_data = include_bytes!("../data/basic_bot.zip");
-    (StatusCode::OK, Body::from(&bot_data[..])).into_response()
+    (
+        StatusCode::OK,
+        [(header::ETAG, ETAG_BOT1_ZIP)],
+        Body::from(&bot_data[..]),
+    )
+        .into_response()
 }
 
-async fn get_bot2_zip() -> Response {
-    let bot_data = include_bytes!("../data/loser_bot.zip");
-    (StatusCode::OK, Body::from(&bot_data[..])).into_response()
+async fn head_bot1_zip() -> Response {
+    (StatusCode::OK, [(header::ETAG, ETAG_BOT1_ZIP)]).into_response()
 }
 
 async fn get_bot1_data() -> Response {
     let bot_data = include_bytes!("../data/basic_bot_data.zip");
-    (StatusCode::OK, Body::from(&bot_data[..])).into_response()
+    (
+        StatusCode::OK,
+        [(header::ETAG, ETAG_BOT1_DATA)],
+        Body::from(&bot_data[..]),
+    )
+        .into_response()
+}
+
+async fn head_bot1_data() -> Response {
+    (StatusCode::OK, [(header::ETAG, ETAG_BOT1_DATA)]).into_response()
+}
+
+async fn get_bot2_zip() -> Response {
+    let bot_data = include_bytes!("../data/loser_bot.zip");
+    (
+        StatusCode::OK,
+        [(header::ETAG, ETAG_BOT2_ZIP)],
+        Body::from(&bot_data[..]),
+    )
+        .into_response()
+}
+
+async fn head_bot2_zip() -> Response {
+    (StatusCode::OK, [(header::ETAG, ETAG_BOT2_ZIP)]).into_response()
 }
 
 async fn get_bot2_data() -> Response {
     let bot_data = include_bytes!("../data/loser_bot_data.zip");
-    (StatusCode::OK, Body::from(&bot_data[..])).into_response()
+    (
+        StatusCode::OK,
+        [(header::ETAG, ETAG_BOT2_DATA)],
+        Body::from(&bot_data[..]),
+    )
+        .into_response()
 }
 
-async fn submit_result() -> Response {
+async fn head_bot2_data() -> Response {
+    (StatusCode::OK, [(header::ETAG, ETAG_BOT2_DATA)]).into_response()
+}
+
+async fn s3_upload(Path(id): Path<String>) -> Response {
+    tracing::debug!("S3 upload for id: {}", id);
     StatusCode::OK.into_response()
 }
 
 async fn download(Host(host): Host, Json(payload): Json<DownloadRequest>) -> Response {
     tracing::debug!("Download request: {:?}", payload);
 
-    let match_response = load_match_response_with_host(&host);
+    let base_url = format!("http://{}", host);
+    let json_str = include_str!("../data/match.json");
+    let modified = json_str.replace("https://aiarena.net", &base_url);
+    let m: serde_json::Value = serde_json::from_str(&modified).unwrap();
 
-    if payload.unique_key == "basic_bot_zip" {
-        let bot1_md5 = match_response["bot1"]["bot_zip_md5hash"].as_str().unwrap();
-        let bot1_url = match_response["bot1"]["bot_zip"].as_str().unwrap();
-
-        if payload.url == bot1_url && payload.md5_hash == bot1_md5 {
-            let bot_data = include_bytes!("../data/basic_bot.zip");
-            return (StatusCode::OK, Body::from(&bot_data[..])).into_response();
+    match payload.unique_key.as_str() {
+        "basic_bot_zip" => {
+            let url = m["bot1"]["bot_zip_url"].as_str().unwrap_or("");
+            if payload.url == url && payload.etag == ETAG_BOT1_ZIP {
+                let bot_data = include_bytes!("../data/basic_bot.zip");
+                return (StatusCode::OK, Body::from(&bot_data[..])).into_response();
+            }
         }
-    }
-
-    if payload.unique_key == "loser_bot_zip" {
-        let bot2_md5 = match_response["bot2"]["bot_zip_md5hash"].as_str().unwrap();
-        let bot2_url = match_response["bot2"]["bot_zip"].as_str().unwrap();
-
-        if payload.url == bot2_url && payload.md5_hash == bot2_md5 {
-            let bot_data = include_bytes!("../data/loser_bot.zip");
-            return (StatusCode::OK, Body::from(&bot_data[..])).into_response();
+        "basic_bot_data" => {
+            let url = m["bot1"]["bot_data_url"].as_str().unwrap_or("");
+            if payload.url == url && payload.etag == ETAG_BOT1_DATA {
+                let bot_data = include_bytes!("../data/basic_bot_data.zip");
+                return (StatusCode::OK, Body::from(&bot_data[..])).into_response();
+            }
         }
-    }
-
-    if payload.unique_key == "AutomatonLE" {
-        let map_md5 = match_response["map"]["file_hash"].as_str().unwrap();
-        let map_url = match_response["map"]["file"].as_str().unwrap();
-
-        if payload.url == map_url && payload.md5_hash == map_md5 {
-            let map_data = include_bytes!("../../testing-maps/AutomatonLE.SC2Map");
-            return (StatusCode::OK, Body::from(&map_data[..])).into_response();
+        "loser_bot_zip" => {
+            let url = m["bot2"]["bot_zip_url"].as_str().unwrap_or("");
+            if payload.url == url && payload.etag == ETAG_BOT2_ZIP {
+                let bot_data = include_bytes!("../data/loser_bot.zip");
+                return (StatusCode::OK, Body::from(&bot_data[..])).into_response();
+            }
         }
+        "loser_bot_data" => {
+            let url = m["bot2"]["bot_data_url"].as_str().unwrap_or("");
+            if payload.url == url && payload.etag == ETAG_BOT2_DATA {
+                let bot_data = include_bytes!("../data/loser_bot_data.zip");
+                return (StatusCode::OK, Body::from(&bot_data[..])).into_response();
+            }
+        }
+        "AutomatonLE" => {
+            let url = m["map"]["download_link"].as_str().unwrap_or("");
+            if payload.url == url && payload.etag == ETAG_MAP {
+                let map_data = include_bytes!("../../testing-maps/AutomatonLE.SC2Map");
+                return (StatusCode::OK, Body::from(&map_data[..])).into_response();
+            }
+        }
+        _ => {}
     }
 
     StatusCode::NOT_FOUND.into_response()
-}
-
-fn load_match_response_with_host(host: &str) -> serde_json::Value {
-    let base_url = format!("http://{}", host);
-    
-    let json_str = include_str!("../data/match.json");
-    let modified_json = json_str.replace("https://aiarena.net", &base_url);
-    serde_json::from_str(&modified_json).unwrap()
 }
 
 async fn upload(Query(params): Query<UploadParams>) -> Response {

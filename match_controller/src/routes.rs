@@ -17,23 +17,36 @@ pub async fn download_bot(
         settings.api_token.as_ref().unwrap(),
     )
     .unwrap(); //Would've failed before this point already
-    let (source_url, md5_hash, unique_key) = match player_num {
+    let (source_url, unique_key) = match player_num {
         PlayerNum::One => (
-            current_match.bot1.bot_zip.clone(),
-            current_match.bot1.bot_zip_md5hash.clone(),
+            current_match.bot1.bot_zip_url.clone(),
             format!("{}_zip", current_match.bot1.name),
         ),
         PlayerNum::Two => (
-            current_match.bot2.bot_zip.clone(),
-            current_match.bot2.bot_zip_md5hash.clone(),
+            current_match.bot2.bot_zip_url.clone(),
             format!("{}_zip", current_match.bot2.name),
         ),
     };
+
+    let etag = match api.get_etag(&source_url).await {
+        Ok(e) => e,
+        Err(e) => {
+            error!(
+                "Failed to get ETag, downloading from original source: {:?}",
+                e
+            );
+            return api
+                .download_zip(&source_url, !settings.aws)
+                .await
+                .map_err(|e| AppError::Download(DownloadError::Other(e.to_string())));
+        }
+    };
+
     let mut url = url::Url::parse(&settings.caching_server_url).unwrap();
     url = url.join("/download").unwrap();
 
     match api
-        .download_cached_file(url.as_str(), &source_url, &unique_key, &md5_hash)
+        .download_cached_file(url.as_str(), &source_url, &unique_key, &etag)
         .await
     {
         Ok(x) => Ok(x),
@@ -59,29 +72,36 @@ pub async fn download_bot_data(
         settings.api_token.as_ref().unwrap(),
     )
     .unwrap(); //Would've failed before this point already
-    if let Some(source_url) = match player_num {
-        PlayerNum::One => current_match.bot1.bot_data.clone(),
-        PlayerNum::Two => current_match.bot2.bot_data.clone(),
-    } {
+    let source_url = match player_num {
+        PlayerNum::One => current_match.bot1.bot_data_url.clone(),
+        PlayerNum::Two => current_match.bot2.bot_data_url.clone(),
+    };
+
+    if let Some(source_url) = source_url {
+        let unique_key = match player_num {
+            PlayerNum::One => format!("{}_data", current_match.bot1.name),
+            PlayerNum::Two => format!("{}_data", current_match.bot2.name),
+        };
+
+        let etag = match api.get_etag(&source_url).await {
+            Ok(e) => e,
+            Err(e) => {
+                error!(
+                    "Failed to get ETag, downloading from original source: {:?}",
+                    e
+                );
+                return api
+                    .download_zip(&source_url, !settings.aws)
+                    .await
+                    .map_err(|e| AppError::Download(DownloadError::Other(e.to_string())));
+            }
+        };
+
         let mut url = url::Url::parse(&settings.caching_server_url).unwrap();
         url = url.join("/download").unwrap();
-        let (md5_hash, unique_key) = match player_num {
-            PlayerNum::One => (
-                current_match.bot1.bot_data_md5hash.clone(),
-                format!("{}_data", current_match.bot1.name),
-            ),
-            PlayerNum::Two => (
-                current_match.bot2.bot_data_md5hash.clone(),
-                format!("{}_data", current_match.bot2.name),
-            ),
-        };
+
         match api
-            .download_cached_file(
-                url.as_str(),
-                &source_url,
-                &unique_key,
-                md5_hash.unwrap().as_str(),
-            )
+            .download_cached_file(url.as_str(), &source_url, &unique_key, &etag)
             .await
         {
             Ok(x) => Ok(x),
@@ -111,29 +131,39 @@ pub async fn download_map(
         settings.api_token.as_ref().unwrap(),
     )
     .unwrap(); //Would've failed before this point already
-    let source_url = &current_match.map.file;
+    let source_url = &current_match.map.download_link;
     let unique_key = &current_match.map.name;
+
+    let etag = match api.get_etag(source_url).await {
+        Ok(e) => e,
+        Err(e) => {
+            error!(
+                "Failed to get map ETag, downloading from original source: {:?}",
+                e
+            );
+            return api
+                .download_map(source_url, !settings.aws)
+                .await
+                .map_err(|e| AppError::Download(DownloadError::Other(e.to_string())));
+        }
+    };
+
     let mut url = url::Url::parse(&settings.caching_server_url).unwrap();
     url = url.join("/download").unwrap();
-    if let Some(md5_hash) = &current_match.map.file_hash {
-        match api
-            .download_cached_file(url.as_str(), &source_url, &unique_key, &md5_hash)
-            .await
-        {
-            Ok(x) => Ok(x),
-            Err(e) => {
-                error!(
-                    "Cached map download failed, downloading from original source: {:?}",
-                    e
-                );
-                api.download_map(source_url, !settings.aws)
-                    .await
-                    .map_err(|e| AppError::Download(DownloadError::Other(e.to_string())))
-            }
+
+    match api
+        .download_cached_file(url.as_str(), source_url, unique_key, &etag)
+        .await
+    {
+        Ok(x) => Ok(x),
+        Err(e) => {
+            error!(
+                "Cached map download failed, downloading from original source: {:?}",
+                e
+            );
+            api.download_map(source_url, !settings.aws)
+                .await
+                .map_err(|e| AppError::Download(DownloadError::Other(e.to_string())))
         }
-    } else {
-        api.download_map(source_url, !settings.aws)
-            .await
-            .map_err(|e| AppError::Download(DownloadError::Other(e.to_string())))
     }
 }

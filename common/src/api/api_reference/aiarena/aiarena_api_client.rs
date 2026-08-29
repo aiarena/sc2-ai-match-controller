@@ -2,11 +2,10 @@ use crate::api::api_reference::aiarena::errors::AiArenaApiError;
 use std::time::Duration;
 
 use crate::api::api_reference::{ApiError, ControllerApi, ResponseContent};
-use crate::models::aiarena::aiarena_match::AiArenaMatch;
 use async_trait::async_trait;
 use bytes::Bytes;
 use reqwest::multipart::Form;
-use reqwest::{Client, ClientBuilder, StatusCode, Url};
+use reqwest::{Client, ClientBuilder, Url};
 use serde::{Deserialize, Serialize};
 use tracing::{debug, error, trace};
 
@@ -17,9 +16,6 @@ pub struct AiArenaApiClient {
 }
 
 impl AiArenaApiClient {
-    pub const API_MATCHES_ENDPOINT: &'static str = "/api/arenaclient/v2/next-match/";
-    pub const API_RESULTS_ENDPOINT: &'static str = "/api/arenaclient/v2/submit-result/";
-
     pub fn new(website_url: &str, token: &str) -> Result<Self, url::ParseError> {
         let url = Url::parse(website_url)?;
 
@@ -29,46 +25,19 @@ impl AiArenaApiClient {
             token: token.to_string(),
         })
     }
-    pub async fn get_match(&self) -> Result<AiArenaMatch, ApiError<AiArenaApiError>> {
-        // static string, so the constructor should catch any parse errors
-        let api_matches_url = self.url.join(Self::API_MATCHES_ENDPOINT).unwrap();
 
-        let request = self
-            .client
-            .request(reqwest::Method::POST, api_matches_url)
-            .header(reqwest::header::AUTHORIZATION, self.token_header())
-            .build()?;
-        trace!("Sending request: {:?}", request);
+    pub async fn get_etag(&self, url: &str) -> Result<String, ApiError<AiArenaApiError>> {
+        let url = Url::parse(url).map_err(ApiError::from)?;
+        let request = self.client.request(reqwest::Method::HEAD, url).build()?;
+        trace!("Sending HEAD request: {:?}", request);
         let response = self.client.execute(request).await?;
-
-        let status = response.status();
-        let content = response.text().await?;
-
-        if !status.is_client_error() && !status.is_server_error() {
-            match serde_json::from_str::<AiArenaMatch>(&content).map_err(ApiError::from) {
-                Err(e) => {
-                    error!("{}", e);
-                    debug!("{}", &content);
-                    Err(e)
-                }
-                e => e,
-            }
-        } else {
-            match serde_json::from_str::<AiArenaApiError>(&content).map_err(ApiError::from) {
-                Ok(api_error_message) => {
-                    let error = ResponseContent {
-                        status,
-                        api_error_message,
-                    };
-                    Err(ApiError::ResponseError(error))
-                }
-                Err(e) => {
-                    error!("status={},error{}", status, e);
-                    debug!("{}", &content);
-                    Err(e)
-                }
-            }
-        }
+        let etag = response
+            .headers()
+            .get(reqwest::header::ETAG)
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("")
+            .to_string();
+        Ok(etag)
     }
 
     pub async fn download_map(
@@ -76,7 +45,6 @@ impl AiArenaApiClient {
         map_url: &str,
         _add_auth_header: bool,
     ) -> Result<Bytes, ApiError<AiArenaApiError>> {
-        // static string, so the constructor should catch any parse errors
         let map_url = Url::parse(map_url).map_err(ApiError::from)?;
 
         let mut request_builder = self.client.request(reqwest::Method::GET, map_url.clone());
@@ -114,15 +82,16 @@ impl AiArenaApiClient {
             }
         }
     }
+
     fn token_header(&self) -> String {
         format!("Token {}", &self.token)
     }
+
     pub async fn download_zip(
         &self,
         url: &str,
         _add_auth_header: bool,
     ) -> Result<Bytes, ApiError<AiArenaApiError>> {
-        // static string, so the constructor should catch any parse errors
         let url = Url::parse(url).map_err(ApiError::from)?;
 
         let mut request_builder = self.client.request(reqwest::Method::GET, url.clone());
@@ -172,15 +141,14 @@ impl AiArenaApiClient {
         url: &str,
         source_url: &str,
         unique_key: &str,
-        md5_hash: &str,
+        etag: &str,
     ) -> Result<Bytes, ApiError<AiArenaApiError>> {
-        // static string, so the constructor should catch any parse errors
         let url = Url::parse(url).map_err(ApiError::from)?;
 
         let json_body = CacheDownloadRequest {
             unique_key: unique_key.to_string(),
             url: source_url.to_string(),
-            md5_hash: md5_hash.to_string(),
+            etag: etag.to_string(),
         };
         let request_builder = self
             .client
@@ -274,35 +242,6 @@ impl AiArenaApiClient {
             Err(ApiError::ResponseError(error))
         }
     }
-    pub async fn submit_result(&self, form: Form) -> Result<StatusCode, reqwest::Error> {
-        let api_submission_url = self.url.join(Self::API_RESULTS_ENDPOINT).unwrap();
-        let request = self
-            .client
-            .request(reqwest::Method::POST, api_submission_url)
-            .multipart(form)
-            .header(reqwest::header::AUTHORIZATION, self.token_header())
-            .build()
-            .unwrap();
-
-        let response = self.client.execute(request).await?;
-
-        let mut status = response.status();
-
-        if status.is_client_error() || status.is_server_error() {
-            let response_text_result = response.text().await;
-            if let Ok(response_text) = &response_text_result {
-                if response_text
-                    .to_lowercase()
-                    .contains("result with this match already exists")
-                {
-                    status = StatusCode::OK; // Don't try to resubmit error if the result already exists
-                }
-            }
-            error!("{:?}: {:?}", &status, &response_text_result);
-        }
-
-        Ok(status)
-    }
 }
 
 #[async_trait]
@@ -323,6 +262,6 @@ pub struct CacheDownloadRequest {
     #[serde(rename = "uniqueKey")]
     pub unique_key: String,
     pub url: String,
-    #[serde(rename = "md5hash")]
-    pub md5_hash: String,
+    #[serde(rename = "md5hash")] // cache server API uses "md5hash" as the key name
+    pub etag: String,
 }
