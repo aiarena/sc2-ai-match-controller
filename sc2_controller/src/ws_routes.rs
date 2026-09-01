@@ -7,6 +7,7 @@ use std::time::Duration;
 use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
 use tokio_tungstenite::WebSocketStream;
 
+use crate::arena::{AiArenaGameResult, MatchRequest, PlayerNum};
 use crate::game::game_config::GameConfig;
 use crate::game::game_result::GAME_RESULT;
 use crate::game::player_result::PlayerResult;
@@ -15,7 +16,6 @@ use crate::player_seats::PlayerSeat;
 use axum::extract::ws::WebSocket;
 use axum::extract::{ConnectInfo, State, WebSocketUpgrade};
 use axum::response::IntoResponse;
-use crate::arena::{AiArenaGameResult, MatchRequest, PlayerNum};
 use tokio::net::TcpStream;
 use tokio::time::sleep;
 use tracing::{debug, error, info, Instrument};
