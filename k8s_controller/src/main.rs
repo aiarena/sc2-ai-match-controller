@@ -37,14 +37,11 @@ static PREFIX: &str = "ACK8S";
 #[tokio::main]
 async fn main() {
     // Install the default CryptoProvider for rustls
-    rustls::crypto::ring::default_provider()
-        .install_default()
-        .expect("Failed to install rustls crypto provider");
+    rustls::crypto::ring::default_provider().install_default().expect("Failed to install rustls crypto provider");
 
     let host_url = get_host_url(PREFIX, 8085);
 
-    let env_log = std::env::var("RUST_LOG")
-        .unwrap_or_else(|_| format!("info,common={},k8s_controller={}", "debug", "debug"));
+    let env_log = std::env::var("RUST_LOG").unwrap_or_else(|_| format!("info,common={},k8s_controller={}", "debug", "debug"));
     let log_path = "/logs/k8s_controller".to_string();
     let log_file = "k8s_controller.log";
     let full_path = Path::new(&log_path).join(log_file);
@@ -91,10 +88,7 @@ async fn main() {
                     if error.is::<tower::timeout::error::Elapsed>() {
                         Ok(StatusCode::REQUEST_TIMEOUT)
                     } else {
-                        Err((
-                            StatusCode::INTERNAL_SERVER_ERROR,
-                            format!("Unhandled internal error: {error}"),
-                        ))
+                        Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Unhandled internal error: {error}")))
                     }
                 }))
                 .timeout(Duration::from_secs(120))
@@ -111,11 +105,9 @@ async fn main() {
     let addr = SocketAddr::from_str(&host_url).unwrap();
     tracing::debug!("listening on {}", addr);
 
-    let graceful_server = axum::Server::bind(&addr)
-        .serve(app.into_make_service_with_connect_info::<SocketAddr>())
-        .with_graceful_shutdown(async {
-            shutdown_signal().await;
-        });
+    let graceful_server = axum::Server::bind(&addr).serve(app.into_make_service_with_connect_info::<SocketAddr>()).with_graceful_shutdown(async {
+        shutdown_signal().await;
+    });
 
     if let Err(e) = graceful_server.await {
         tracing::error!("server error: {}", e);
@@ -126,9 +118,7 @@ async fn main() {
 /// We use this in our hyper `Server` method `with_graceful_shutdown`.
 async fn shutdown_signal() {
     let ctrl_c = async {
-        tokio::signal::ctrl_c()
-            .await
-            .expect("failed to install Ctrl+C handler");
+        tokio::signal::ctrl_c().await.expect("failed to install Ctrl+C handler");
     };
 
     #[cfg(unix)]

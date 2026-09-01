@@ -53,10 +53,7 @@ pub async fn process(settings: K8sConfig) {
                             }
                         }
                         Err(e) => {
-                            error!(
-                                "Error while retrieving match for AC {:?}: {:?}",
-                                &ac.name, e
-                            );
+                            error!("Error while retrieving match for AC {:?}: {:?}", &ac.name, e);
 
                             // Use large cooldown to not overwhelm AI Arena API
                             tokio::time::sleep(Duration::from_secs(60)).await;
@@ -64,10 +61,7 @@ pub async fn process(settings: K8sConfig) {
                     }
                 }
                 Err(e) => {
-                    error!(
-                        "Error while checking if job exists for AC {:?}: {:?}",
-                        ac.name, e
-                    );
+                    error!("Error while checking if job exists for AC {:?}: {:?}", ac.name, e);
                 }
             }
         }
@@ -86,12 +80,7 @@ async fn retrieve_match(settings: &K8sConfig, ac: &Arenaclient) -> anyhow::Resul
     let job_name = if settings.job_prefix.is_empty() {
         format!("{}-{}", ac.name.replace('_', "-"), new_match.id)
     } else {
-        format!(
-            "{}-{}-{}",
-            settings.job_prefix,
-            ac.name.replace('_', "-"),
-            new_match.id
-        )
+        format!("{}-{}-{}", settings.job_prefix, ac.name.replace('_', "-"), new_match.id)
     };
 
     let configmap_name = if settings.job_prefix.is_empty() {
