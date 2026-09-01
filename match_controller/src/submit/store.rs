@@ -25,7 +25,7 @@ pub async fn upload_zip(settings: &Settings, directory: &Path, cacheable: bool) 
     if cacheable {
         let name = directory.file_name().and_then(|n| n.to_str()).unwrap_or("unknown");
         if let Err(e) = super::cache::upload_cache(settings, name, &data).await {
-            error!("Cache upload failed: {}", e);
+            info!("Cache upload failed: {}", e);
         }
     }
     upload_data(settings, &data).await
@@ -71,6 +71,8 @@ async fn upload_data(settings: &Settings, data: &[u8]) -> anyhow::Result<String>
 }
 
 pub(super) fn zip_directory(zip_path: &Path, directory: &Path) -> anyhow::Result<()> {
+    // Remove the empty placeholder file so 7z creates the archive from scratch.
+    std::fs::remove_file(zip_path).ok();
     let file = zip_path.to_string_lossy().to_string();
     let dir = directory.join("*").to_string_lossy().to_string();
     let process = Command::new("7z").arg("a").arg(file).arg(dir).arg("-y").output()?;
