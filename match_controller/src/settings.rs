@@ -39,7 +39,6 @@ pub fn load() -> Settings {
     config::Config::builder()
         .add_source(config::File::from_str(default_config, config::FileFormat::Toml).required(true))
         .add_source(config::File::new("config.toml", config::FileFormat::Toml).required(false))
-        .add_source(config::File::new("config.json", config::FileFormat::Json).required(false))
         .add_source(config::Environment::default().prefix(PREFIX))
         .build()
         .expect("Could not load config")

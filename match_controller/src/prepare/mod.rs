@@ -47,14 +47,14 @@ async fn download_assets(settings: &Settings, match_request: &MatchRequest, link
     let bot_path = PathBuf::from(&settings.bot_directory).join("bot1").join(&match_request.player_1_name);
     info!("Downloading bot {:?} to {:?}", match_request.player_1_name, bot_path);
     store::download_zip(settings, &links.bot1_zip, &format!("{}_zip", match_request.player_1_name), &bot_path).await?;
-    if links.bot1_data.as_ref().map_or(false, |s| !s.is_empty()) {
+    if links.bot1_data.as_ref().is_some_and(|s| !s.is_empty()) {
         store::download_zip(settings, links.bot1_data.as_ref().unwrap(), &format!("{}_data", match_request.player_1_name), &bot_path.join("data")).await?;
     }
 
     let bot_path = PathBuf::from(&settings.bot_directory).join("bot2").join(&match_request.player_2_name);
     info!("Downloading bot {:?} to {:?}", match_request.player_2_name, bot_path);
     store::download_zip(settings, &links.bot2_zip, &format!("{}_zip", match_request.player_2_name), &bot_path).await?;
-    if links.bot2_data.as_ref().map_or(false, |s| !s.is_empty()) {
+    if links.bot2_data.as_ref().is_some_and(|s| !s.is_empty()) {
         store::download_zip(settings, links.bot2_data.as_ref().unwrap(), &format!("{}_data", match_request.player_2_name), &bot_path.join("data")).await?;
     }
 
