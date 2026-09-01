@@ -1,8 +1,5 @@
 use anyhow::{anyhow, Context};
 use base64::{engine::general_purpose::STANDARD, Engine};
-use common::models::aiarena::aiarena_bot::AiArenaBot;
-use common::models::aiarena::aiarena_map::AiArenaMap;
-use common::models::aiarena::aiarena_match::AiArenaMatch;
 use reqwest::Client;
 use serde::Deserialize;
 
@@ -25,17 +22,17 @@ struct GetNextMatch {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct MatchInfo {
-    id: String,
-    participant1: Participant,
-    participant2: Participant,
+pub struct MatchInfo {
+    pub id: String,
+    pub participant1: Participant,
+    pub participant2: Participant,
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct Participant {
-    name: String,
-    game_display_id: String,
+pub struct Participant {
+    pub name: String,
+    pub game_display_id: String,
 }
 
 const GET_NEXT_MATCH_QUERY: &str = r#"
@@ -56,7 +53,7 @@ mutation {
 }
 "#;
 
-pub async fn get_next_match(website_url: &str, token: &str) -> anyhow::Result<AiArenaMatch> {
+pub async fn get_next_match(website_url: &str, token: &str) -> anyhow::Result<MatchInfo> {
     let client = Client::new();
 
     let body = serde_json::json!({
@@ -78,7 +75,7 @@ pub async fn get_next_match(website_url: &str, token: &str) -> anyhow::Result<Ai
 
     let parsed: GraphQLResponse = serde_json::from_str(&text).context("Failed to parse GraphQL response")?;
 
-    let match_info = parsed
+    let mut match_info = parsed
         .data
         .ok_or_else(|| anyhow!("GraphQL response has no data"))?
         .get_next_match
@@ -86,44 +83,11 @@ pub async fn get_next_match(website_url: &str, token: &str) -> anyhow::Result<Ai
         .match_info
         .ok_or_else(|| anyhow!("GraphQL response has no match"))?;
 
-    Ok(convert_to_aiarena_match(match_info))
-}
+    match_info.id = decode_base64_id(&match_info.id)
+        .map(|n| n.to_string())
+        .unwrap_or_else(|| "0".to_string());
 
-fn convert_to_aiarena_match(m: MatchInfo) -> AiArenaMatch {
-    let id = decode_base64_id(&m.id).unwrap_or(0);
-    AiArenaMatch {
-        id,
-        bot1: AiArenaBot {
-            id: 0,
-            name: m.participant1.name,
-            game_display_id: m.participant1.game_display_id,
-            bot_zip: String::new(),
-            bot_zip_md5hash: String::new(),
-            bot_data: None,
-            bot_data_md5hash: None,
-            plays_race: String::new(),
-            _type: String::new(),
-            bot_base: None,
-        },
-        bot2: AiArenaBot {
-            id: 0,
-            name: m.participant2.name,
-            game_display_id: m.participant2.game_display_id,
-            bot_zip: String::new(),
-            bot_zip_md5hash: String::new(),
-            bot_data: None,
-            bot_data_md5hash: None,
-            plays_race: String::new(),
-            _type: String::new(),
-            bot_base: None,
-        },
-        map: AiArenaMap {
-            name: String::new(),
-            file: String::new(),
-            file_hash: None,
-        },
-        game_base: None,
-    }
+    Ok(match_info)
 }
 
 fn decode_base64_id(encoded: &str) -> Option<u32> {
