@@ -48,10 +48,7 @@ impl GameConfig {
                 },
             ),
         ]);
-        let replay_name = format!(
-            "{}_{}_vs_{}.SC2Replay",
-            match_id, player_1_name, player_2_name
-        );
+        let replay_name = format!("{}_{}_vs_{}.SC2Replay", match_id, player_1_name, player_2_name);
 
         Self {
             match_id: match_id,

@@ -11,10 +11,7 @@ use common::PlayerNum;
 use futures_util::{SinkExt, StreamExt};
 use protobuf::{EnumOrUnknown, Message, MessageField};
 use sc2_proto::common::Race;
-use sc2_proto::sc2api::{
-    Request, RequestJoinGame, RequestLeaveGame, RequestPing, RequestSaveReplay, Response,
-    ResponseDebug, Status,
-};
+use sc2_proto::sc2api::{Request, RequestJoinGame, RequestLeaveGame, RequestPing, RequestSaveReplay, Response, ResponseDebug, Status};
 use std::path::PathBuf;
 use std::time::Duration;
 use tokio::fs::File;
@@ -68,32 +65,18 @@ impl Player {
     }
     /// Send a protobuf response to the client
     pub async fn bot_send_response(&mut self, r: &Response) -> Result<(), PlayerError> {
-        trace!(
-            "Response to client: [{}]",
-            format!("{r:?}").chars().take(10).collect::<String>()
-        );
-        timeout(
-            self.bot_ws_timeout,
-            self.bot_send_message(AMessage::Binary(
-                r.write_to_bytes().expect("Invalid protobuf message"),
-            )),
-        )
-        .await
-        .map_err(|_| PlayerError::BotTimeout(self.bot_ws_timeout))
-        .and_then(|r| r)
+        trace!("Response to client: [{}]", format!("{r:?}").chars().take(10).collect::<String>());
+        timeout(self.bot_ws_timeout, self.bot_send_message(AMessage::Binary(r.write_to_bytes().expect("Invalid protobuf message"))))
+            .await
+            .map_err(|_| PlayerError::BotTimeout(self.bot_ws_timeout))
+            .and_then(|r| r)
     }
     pub async fn bot_send_bytes(&mut self, r: &[u8]) -> Result<(), PlayerError> {
-        trace!(
-            "Response to client: [{}]",
-            format!("{r:?}").chars().take(100).collect::<String>()
-        );
-        timeout(
-            self.bot_ws_timeout,
-            self.bot_send_message(AMessage::Binary(r.to_owned())),
-        )
-        .await
-        .map_err(|_| PlayerError::BotTimeout(self.bot_ws_timeout))
-        .and_then(|r| r)
+        trace!("Response to client: [{}]", format!("{r:?}").chars().take(100).collect::<String>());
+        timeout(self.bot_ws_timeout, self.bot_send_message(AMessage::Binary(r.to_owned())))
+            .await
+            .map_err(|_| PlayerError::BotTimeout(self.bot_ws_timeout))
+            .and_then(|r| r)
     }
 
     /// Get a protobuf request from the client
@@ -101,8 +84,7 @@ impl Player {
     pub async fn bot_recv_request(&mut self) -> Result<Request, PlayerError> {
         match self.bot_recv_message().await? {
             AMessage::Binary(bytes) => {
-                let resp =
-                    Message::parse_from_bytes(&bytes).map_err(PlayerError::ProtoParseError)?;
+                let resp = Message::parse_from_bytes(&bytes).map_err(PlayerError::ProtoParseError)?;
                 trace!("Message from client parsed:\n{}", &resp);
                 Ok(resp)
             }
@@ -131,10 +113,7 @@ impl Player {
     /// Returns None if the connection is already closed
     pub async fn sc2_send_request(&mut self, r: &Request) -> Result<(), PlayerError> {
         trace!("sc2_send_request: {}", r);
-        self.sc2_send_message(TMessage::binary(
-            r.write_to_bytes().expect("Invalid protobuf message"),
-        ))
-        .await
+        self.sc2_send_message(TMessage::binary(r.write_to_bytes().expect("Invalid protobuf message"))).await
     }
     pub async fn sc2_send_bytes(&mut self, r: Vec<u8>) -> Result<(), PlayerError> {
         self.sc2_send_message(TMessage::binary(r)).await
@@ -212,12 +191,8 @@ impl Player {
         match timeout(self.sc2_ws_timeout, self.sc2_ws.next()).await {
             Ok(socket) => match socket {
                 Some(Ok(TMessage::Binary(bytes))) => {
-                    let msg =
-                        Message::parse_from_bytes(&bytes).map_err(PlayerError::ProtoParseError)?;
-                    trace!(
-                        "sc2_recv_response: {:?}",
-                        format!("{msg:?}").chars().take(250).collect::<String>()
-                    );
+                    let msg = Message::parse_from_bytes(&bytes).map_err(PlayerError::ProtoParseError)?;
+                    trace!("sc2_recv_response: {:?}", format!("{msg:?}").chars().take(250).collect::<String>());
                     Ok(msg)
                 }
                 Some(Ok(other)) => Err(PlayerError::Sc2UnexpectedMessage(other)),
@@ -285,10 +260,7 @@ impl Player {
                 match File::create(&path).await {
                     Ok(mut buffer) => {
                         let data: &[u8] = response.save_replay().data();
-                        buffer
-                            .write_all(data)
-                            .await
-                            .expect("Could not write to replay file");
+                        buffer.write_all(data).await.expect("Could not write to replay file");
                         info!("Replay saved to {:?}", &path);
                         true
                     }
@@ -306,13 +278,7 @@ impl Player {
             false
         }
     }
-    async fn wait_for_join_game(
-        &mut self,
-        port_config: PortConfig,
-        config: &GameConfig,
-        player_num: PlayerNum,
-        player_pass: u32,
-    ) -> Result<Option<u32>, PlayerError> {
+    async fn wait_for_join_game(&mut self, port_config: PortConfig, config: &GameConfig, player_num: PlayerNum, player_pass: u32) -> Result<Option<u32>, PlayerError> {
         loop {
             let msg = self.bot_recv_request().await?;
 
@@ -322,13 +288,7 @@ impl Player {
                 let resp = self.sc2_query(&msg).await?;
                 self.bot_send_response(&resp).await?;
             } else if msg.has_join_game() {
-                let req_raw = proto_join_game_participant(
-                    &msg,
-                    &port_config,
-                    config,
-                    player_num,
-                    player_pass,
-                );
+                let req_raw = proto_join_game_participant(&msg, &port_config, config, player_num, player_pass);
 
                 if req_raw.is_none() {
                     return Err(PlayerError::NoMessageAvailable);
@@ -356,20 +316,12 @@ impl Player {
         }
     }
 
-    pub async fn run(
-        &mut self,
-        config: GameConfig,
-        port_config: PortConfig,
-        player_num: PlayerNum,
-        player_pass: u32,
-    ) -> Result<PlayerResult, PlayerError> {
+    pub async fn run(&mut self, config: GameConfig, port_config: PortConfig, player_num: PlayerNum, player_pass: u32) -> Result<PlayerResult, PlayerError> {
         let mut r_vars = RuntimeVars::new(&config);
         self.bot_ws_timeout = r_vars.timeout_secs;
         let mut response: Response;
 
-        r_vars.player_id = self
-            .wait_for_join_game(port_config, &config, player_num, player_pass)
-            .await?;
+        r_vars.player_id = self.wait_for_join_game(port_config, &config, player_num, player_pass).await?;
 
         loop {
             match self.bot_recv_request().await {
@@ -400,8 +352,7 @@ impl Player {
                     if response.has_game_info() {
                         for pi in &mut response.mut_game_info().player_info {
                             if pi.player_id() != r_vars.player_id() {
-                                pi.player_name =
-                                    Some(config.players[&player_num.other_player()].name.clone());
+                                pi.player_name = Some(config.players[&player_num.other_player()].name.clone());
                                 pi.race_actual = pi.race_requested;
                             } else {
                                 pi.player_name = Some(config.players[&player_num].name.clone());
@@ -455,9 +406,7 @@ impl Player {
                 Err(e) => {
                     error!("{:?}", e);
                     return match e {
-                        PlayerError::NoMessageAvailable => {
-                            Ok(r_vars.build_result(Sc2Result::Crash))
-                        }
+                        PlayerError::NoMessageAvailable => Ok(r_vars.build_result(Sc2Result::Crash)),
                         PlayerError::BotWebsocket(error) => {
                             error!("{:?}", error);
                             self.save_replay(r_vars.replay_path()).await;
@@ -532,13 +481,7 @@ impl CreateGamePlayer {
     }
 }
 
-fn proto_join_game_participant(
-    request: &Request,
-    port_config: &PortConfig,
-    config: &GameConfig,
-    player_num: PlayerNum,
-    player_pass: u32,
-) -> Option<Request> {
+fn proto_join_game_participant(request: &Request, port_config: &PortConfig, config: &GameConfig, player_num: PlayerNum, player_pass: u32) -> Option<Request> {
     let mut r_join_game = RequestJoinGame::new();
     let mut player_data = PlayerData::from_join_request(request.join_game());
 
