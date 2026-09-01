@@ -14,11 +14,7 @@ impl PlayerData {
     pub fn from_join_request(req: &RequestJoinGame) -> Self {
         Self {
             race: req.race(),
-            name: if req.has_player_name() {
-                Some(req.player_name().to_owned())
-            } else {
-                None
-            },
+            name: if req.has_player_name() { Some(req.player_name().to_owned()) } else { None },
             pass_port: req.client_ports()[0].base_port() as u32,
             interface_options: {
                 let mut if_opts = req.options.clone().unwrap();

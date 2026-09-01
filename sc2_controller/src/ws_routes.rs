@@ -30,20 +30,11 @@ struct GameReadyFlag {
     pub ready: bool,
 }
 
-static GAME_READY_FLAG: Lazy<Arc<RwLock<GameReadyFlag>>> =
-    Lazy::new(|| Arc::new(RwLock::new(GameReadyFlag { ready: false })));
+static GAME_READY_FLAG: Lazy<Arc<RwLock<GameReadyFlag>>> = Lazy::new(|| Arc::new(RwLock::new(GameReadyFlag { ready: false })));
 
-static PORT_CONFIG: Lazy<Arc<RwLock<PortConfig>>> = Lazy::new(|| {
-    Arc::new(RwLock::new(
-        PortConfig::new().expect("Could not create port configuration"),
-    ))
-});
+static PORT_CONFIG: Lazy<Arc<RwLock<PortConfig>>> = Lazy::new(|| Arc::new(RwLock::new(PortConfig::new().expect("Could not create port configuration"))));
 
-pub async fn websocket_handler(
-    ws: WebSocketUpgrade,
-    ConnectInfo(addr): ConnectInfo<SocketAddr>,
-    State(state): State<PlayerSeat>,
-) -> impl IntoResponse {
+pub async fn websocket_handler(ws: WebSocketUpgrade, ConnectInfo(addr): ConnectInfo<SocketAddr>, State(state): State<PlayerSeat>) -> impl IntoResponse {
     ws.max_message_size(128 << 20) // 128MiB
         .max_frame_size(32 << 20) // 32MiB
         .accept_unmasked_frames(true)
@@ -52,10 +43,7 @@ pub async fn websocket_handler(
 
 #[tracing::instrument(skip(bot_ws, player_seat), fields(bot_name))]
 async fn websocket(bot_ws: WebSocket, player_seat: PlayerSeat, addr: SocketAddr) {
-    debug!(
-        "Player seat connects {:?} to {:?}",
-        addr, player_seat.internal_port
-    );
+    debug!("Player seat connects {:?} to {:?}", addr, player_seat.internal_port);
 
     let match_request = MatchRequest::read();
     debug!("Match Request: {:?}", match_request);
@@ -120,11 +108,7 @@ async fn websocket(bot_ws: WebSocket, player_seat: PlayerSeat, addr: SocketAddr)
 
     if counter <= max_counter {
         debug!("Starting Client Run");
-        let p_result = match client_ws
-            .run(game_config, port_config, player_num, player_seat.pass_port)
-            .instrument(tracing::Span::current())
-            .await
-        {
+        let p_result = match client_ws.run(game_config, port_config, player_num, player_seat.pass_port).instrument(tracing::Span::current()).await {
             Ok(result) => result,
             Err(e) => {
                 let mut temp_result = Sc2Result::SC2Crash;
@@ -194,10 +178,7 @@ async fn websocket(bot_ws: WebSocket, player_seat: PlayerSeat, addr: SocketAddr)
             }
         };
         debug!("{:?}", &p_result);
-        GAME_RESULT
-            .write()
-            .unwrap()
-            .add_player_result(match_id, player_num, p_result);
+        GAME_RESULT.write().unwrap().add_player_result(match_id, player_num, p_result);
     } else {
         error!("Timeout while waiting for game to become ready");
         GAME_RESULT.write().unwrap().set_init_error(match_id);
@@ -222,10 +203,7 @@ pub async fn connect(port: u16) -> Option<WebSocketStream<TcpStream>> {
 
     for _ in 0..60 {
         sleep(Duration::new(1, 0)).await;
-        let socket = match tokio::time::timeout(Duration::from_secs(120), TcpStream::connect(&addr))
-            .await
-            .ok()?
-        {
+        let socket = match tokio::time::timeout(Duration::from_secs(120), TcpStream::connect(&addr)).await.ok()? {
             Ok(e) => e,
             Err(ref e) if e.kind() == ConnectionRefused => {
                 continue;
@@ -235,9 +213,7 @@ pub async fn connect(port: u16) -> Option<WebSocketStream<TcpStream>> {
 
         socket.set_nodelay(true).unwrap();
 
-        let (ws_stream, _) = tokio_tungstenite::client_async_with_config(url, socket, Some(config))
-            .await
-            .expect("Failed to connect");
+        let (ws_stream, _) = tokio_tungstenite::client_async_with_config(url, socket, Some(config)).await.expect("Failed to connect");
 
         return Some(ws_stream);
     }
@@ -264,9 +240,6 @@ fn store_game_result(match_id: u32) {
             info!("Waiting for results from both players before storing the game result");
         }
     } else {
-        info!(
-            "Ignoring game result for match {} as current match is {}",
-            match_id, game_result.match_id
-        );
+        info!("Ignoring game result for match {} as current match is {}", match_id, game_result.match_id);
     }
 }

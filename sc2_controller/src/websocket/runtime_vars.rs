@@ -71,20 +71,14 @@ impl RuntimeVars {
     }
 
     pub fn add_tags(&mut self, request: &Request) {
-        for tag in request
-            .action()
-            .actions
-            .iter()
-            .filter(|a| a.action_chat.has_message())
-            .filter_map(|x| {
-                let msg = x.action_chat.message();
-                if msg.contains("Tag:") {
-                    msg.strip_prefix("Tag:").map(String::from)
-                } else {
-                    None
-                }
-            })
-        {
+        for tag in request.action().actions.iter().filter(|a| a.action_chat.has_message()).filter_map(|x| {
+            let msg = x.action_chat.message();
+            if msg.contains("Tag:") {
+                msg.strip_prefix("Tag:").map(String::from)
+            } else {
+                None
+            }
+        }) {
             self.tags.insert(tag);
         }
     }

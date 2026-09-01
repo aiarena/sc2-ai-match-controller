@@ -35,11 +35,7 @@ impl GameResult {
         self.result = None;
     }
     pub fn is_ready(&self) -> bool {
-        (self.player1_result.is_some() && self.player2_result.is_some())
-            || matches!(
-                self.result,
-                Some(AiArenaResult::Error | AiArenaResult::InitializationError)
-            )
+        (self.player1_result.is_some() && self.player2_result.is_some()) || matches!(self.result, Some(AiArenaResult::Error | AiArenaResult::InitializationError))
     }
     pub fn has_any_result(&self) -> bool {
         self.player1_result.is_some() || self.player2_result.is_some()
@@ -55,12 +51,7 @@ impl GameResult {
         }
     }
 
-    pub fn add_player_result(
-        &mut self,
-        match_id: u32,
-        player_num: PlayerNum,
-        player_result: PlayerResult,
-    ) {
+    pub fn add_player_result(&mut self, match_id: u32, player_num: PlayerNum, player_result: PlayerResult) {
         if match_id == self.match_id {
             match player_num {
                 PlayerNum::One => {
@@ -104,27 +95,19 @@ impl From<&GameResult> for AiArenaGameResult {
                 p2_result = Some(player2_result.result);
             }
         }
-        let result = game_result
-            .result
-            .unwrap_or_else(|| match (p1_result, p2_result) {
-                (Some(Sc2Result::SC2Crash), _) | (_, Some(Sc2Result::SC2Crash)) => {
-                    AiArenaResult::Error
-                }
-                (Some(Sc2Result::Tie), _) | (_, Some(Sc2Result::Tie)) => AiArenaResult::Tie,
-                (Some(Sc2Result::Crash), _) => AiArenaResult::Player1Crash,
-                (_, Some(Sc2Result::Crash)) => AiArenaResult::Player2Crash,
-                (Some(Sc2Result::Timeout), _) => AiArenaResult::Player1TimeOut,
-                (_, Some(Sc2Result::Timeout)) => AiArenaResult::Player2TimeOut,
-                (Some(Sc2Result::Victory), _) | (_, Some(Sc2Result::Defeat)) => {
-                    AiArenaResult::Player1Win
-                }
-                (_, Some(Sc2Result::Victory)) | (Some(Sc2Result::Defeat), _) => {
-                    AiArenaResult::Player2Win
-                }
-                #[cfg(test)]
-                (Some(Sc2Result::Placeholder), Some(Sc2Result::Placeholder)) => unreachable!(),
-                (_, _) => unreachable!(),
-            });
+        let result = game_result.result.unwrap_or_else(|| match (p1_result, p2_result) {
+            (Some(Sc2Result::SC2Crash), _) | (_, Some(Sc2Result::SC2Crash)) => AiArenaResult::Error,
+            (Some(Sc2Result::Tie), _) | (_, Some(Sc2Result::Tie)) => AiArenaResult::Tie,
+            (Some(Sc2Result::Crash), _) => AiArenaResult::Player1Crash,
+            (_, Some(Sc2Result::Crash)) => AiArenaResult::Player2Crash,
+            (Some(Sc2Result::Timeout), _) => AiArenaResult::Player1TimeOut,
+            (_, Some(Sc2Result::Timeout)) => AiArenaResult::Player2TimeOut,
+            (Some(Sc2Result::Victory), _) | (_, Some(Sc2Result::Defeat)) => AiArenaResult::Player1Win,
+            (_, Some(Sc2Result::Victory)) | (Some(Sc2Result::Defeat), _) => AiArenaResult::Player2Win,
+            #[cfg(test)]
+            (Some(Sc2Result::Placeholder), Some(Sc2Result::Placeholder)) => unreachable!(),
+            (_, _) => unreachable!(),
+        });
         Self {
             match_id: game_result.match_id,
             bot1_avg_step_time,
@@ -137,8 +120,7 @@ impl From<&GameResult> for AiArenaGameResult {
     }
 }
 
-pub static GAME_RESULT: Lazy<Arc<RwLock<GameResult>>> =
-    Lazy::new(|| Arc::new(RwLock::new(GameResult::new(0))));
+pub static GAME_RESULT: Lazy<Arc<RwLock<GameResult>>> = Lazy::new(|| Arc::new(RwLock::new(GameResult::new(0))));
 
 #[cfg(test)]
 mod tests {
@@ -175,8 +157,7 @@ mod tests {
         let mut game_result = game_result();
         game_result.result = Some(AiArenaResult::Error);
         let aiarena_game_result = AiArenaGameResult::from(&game_result);
-        let serialized =
-            serde_json::to_value(aiarena_game_result).expect("Could not serialize GameResult");
+        let serialized = serde_json::to_value(aiarena_game_result).expect("Could not serialize GameResult");
         assert_eq!(serialized["type"], "Error");
     }
 
@@ -187,8 +168,7 @@ mod tests {
         game_result.player2_result.as_mut().unwrap().result = Sc2Result::Defeat;
         game_result.result = None;
         let aiarena_game_result = AiArenaGameResult::from(&game_result);
-        let serialized =
-            serde_json::to_value(aiarena_game_result).expect("Could not serialize GameResult");
+        let serialized = serde_json::to_value(aiarena_game_result).expect("Could not serialize GameResult");
         assert_eq!(serialized["type"], "Player1Win");
     }
 
@@ -199,8 +179,7 @@ mod tests {
         game_result.player2_result.as_mut().unwrap().result = Sc2Result::Victory;
         game_result.result = None;
         let aiarena_game_result = AiArenaGameResult::from(&game_result);
-        let serialized =
-            serde_json::to_value(aiarena_game_result).expect("Could not serialize GameResult");
+        let serialized = serde_json::to_value(aiarena_game_result).expect("Could not serialize GameResult");
         assert_eq!(serialized["type"], "Player2Win");
     }
 
@@ -211,8 +190,7 @@ mod tests {
         game_result.player2_result = None;
         game_result.result = None;
         let aiarena_game_result = AiArenaGameResult::from(&game_result);
-        let serialized =
-            serde_json::to_value(aiarena_game_result).expect("Could not serialize GameResult");
+        let serialized = serde_json::to_value(aiarena_game_result).expect("Could not serialize GameResult");
         assert_eq!(serialized["type"], "Player1TimeOut");
     }
 
@@ -223,8 +201,7 @@ mod tests {
         game_result.player2_result.as_mut().unwrap().result = Sc2Result::Timeout;
         game_result.result = None;
         let aiarena_game_result = AiArenaGameResult::from(&game_result);
-        let serialized =
-            serde_json::to_value(aiarena_game_result).expect("Could not serialize GameResult");
+        let serialized = serde_json::to_value(aiarena_game_result).expect("Could not serialize GameResult");
         assert_eq!(serialized["type"], "Player2TimeOut");
     }
 
@@ -235,8 +212,7 @@ mod tests {
         game_result.player2_result.as_mut().unwrap().result = Sc2Result::Tie;
         game_result.result = None;
         let aiarena_game_result = AiArenaGameResult::from(&game_result);
-        let serialized =
-            serde_json::to_value(aiarena_game_result).expect("Could not serialize GameResult");
+        let serialized = serde_json::to_value(aiarena_game_result).expect("Could not serialize GameResult");
         assert_eq!(serialized["type"], "Tie");
     }
 
@@ -247,8 +223,7 @@ mod tests {
         game_result.player2_result.as_mut().unwrap().result = Sc2Result::Victory;
         game_result.result = None;
         let aiarena_game_result = AiArenaGameResult::from(&game_result);
-        let serialized =
-            serde_json::to_value(aiarena_game_result).expect("Could not serialize GameResult");
+        let serialized = serde_json::to_value(aiarena_game_result).expect("Could not serialize GameResult");
         assert_eq!(serialized["type"], "Error");
     }
 
@@ -259,8 +234,7 @@ mod tests {
         game_result.player2_result.as_mut().unwrap().result = Sc2Result::Victory;
         game_result.result = None;
         let aiarena_game_result = AiArenaGameResult::from(&game_result);
-        let serialized =
-            serde_json::to_value(aiarena_game_result).expect("Could not serialize GameResult");
+        let serialized = serde_json::to_value(aiarena_game_result).expect("Could not serialize GameResult");
         assert_eq!(serialized["type"], "Player1Crash");
     }
 
@@ -271,8 +245,7 @@ mod tests {
         game_result.player2_result.as_mut().unwrap().result = Sc2Result::Crash;
         game_result.result = None;
         let aiarena_game_result = AiArenaGameResult::from(&game_result);
-        let serialized =
-            serde_json::to_value(aiarena_game_result).expect("Could not serialize GameResult");
+        let serialized = serde_json::to_value(aiarena_game_result).expect("Could not serialize GameResult");
         assert_eq!(serialized["type"], "Player2Crash");
     }
 
@@ -282,8 +255,7 @@ mod tests {
         let match_id = 10;
         game_result.match_id = match_id;
         let aiarena_game_result = AiArenaGameResult::from(&game_result);
-        let serialized =
-            serde_json::to_value(aiarena_game_result).expect("Could not serialize GameResult");
+        let serialized = serde_json::to_value(aiarena_game_result).expect("Could not serialize GameResult");
         assert_eq!(serialized["match"], match_id);
     }
 
