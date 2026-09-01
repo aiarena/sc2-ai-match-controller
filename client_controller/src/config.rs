@@ -25,20 +25,27 @@ pub fn initialize_config() -> ControllerConfig {
         .try_deserialize::<ControllerConfig>()
         .expect("Could not deserialize the client controller configuration");
 
-    // Convert bots_directory to absolute path
-    let bots_path = Path::new(&config.bots_directory);
-    if bots_path.is_relative() {
-        config.bots_directory = std::env::current_dir()
-            .expect("Failed to get current directory")
-            .join(bots_path)
-            .to_string_lossy()
-            .to_string()
-            .replace('\\', "/");
-    } else {
-        config.bots_directory = config.bots_directory.replace('\\', "/");
-    }
+    // Convert to absolute paths with forward slashes so Docker volume mounts work correctly.
+    // logs_directory is intentionally left as-is: it is used as a relative volume path in
+    // docker-compose.yaml (located in target/), so Docker resolves it relative to that file.
+    config.bots_directory = normalize_path(&config.bots_directory);
+    config.gamesets_directory = normalize_path(&config.gamesets_directory);
 
     config
+}
+
+fn normalize_path(p: &str) -> String {
+    let path = Path::new(p);
+    if path.is_relative() {
+        std::env::current_dir()
+            .expect("Failed to get current directory")
+            .join(path)
+            .to_string_lossy()
+            .to_string()
+            .replace('\\', "/")
+    } else {
+        p.replace('\\', "/")
+    }
 }
 
 #[derive(Debug, Clone, Default)]
@@ -53,6 +60,7 @@ pub struct Bot {
 pub struct MatchRequest {
     pub bot1: Bot,
     pub bot2: Bot,
+    pub expected_result: Option<String>,
 }
 
 impl MatchRequest {
@@ -75,6 +83,7 @@ impl MatchRequest {
                 runtype: bot2_type,
                 base: bot2_base,
             },
+            expected_result: parts.get(9).filter(|s| !s.is_empty()).map(|s| s.to_string()),
         }
     }
 
