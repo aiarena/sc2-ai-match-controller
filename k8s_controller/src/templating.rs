@@ -26,10 +26,7 @@ pub fn render_job_template(template: &str, values: &JobTemplateValues) -> anyhow
         .replace("PLACEHOLDER_MATCH_ID", &values.match_id)
         .replace("PLACEHOLDER_API_CLIENT", &values.api_client)
         .replace("PLACEHOLDER_API_TOKEN", &values.api_token)
-        .replace(
-            "PLACEHOLDER_MATCH_CONTROLLER",
-            &values.match_controller_image,
-        )
+        .replace("PLACEHOLDER_MATCH_CONTROLLER", &values.match_controller_image)
         .replace("PLACEHOLDER_GAME_CONTROLLER", &values.game_controller_image)
         .replace("PLACEHOLDER_BOT1_CONTROLLER", &values.bot1_controller_image)
         .replace("PLACEHOLDER_BOT1_NAME", &values.bot1_name)

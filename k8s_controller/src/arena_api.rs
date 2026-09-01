@@ -76,8 +76,7 @@ pub async fn get_next_match(website_url: &str, token: &str) -> anyhow::Result<Ai
 
     let text = resp.text().await.context("Failed to read response body")?;
 
-    let parsed: GraphQLResponse =
-        serde_json::from_str(&text).context("Failed to parse GraphQL response")?;
+    let parsed: GraphQLResponse = serde_json::from_str(&text).context("Failed to parse GraphQL response")?;
 
     let match_info = parsed
         .data
