@@ -1,6 +1,4 @@
-use common::models::aiarena::aiarena_game_result::AiArenaGameResult;
-use common::models::aiarena::aiarena_result::AiArenaResult;
-use common::PlayerNum;
+use crate::arena::{AiArenaGameResult, AiArenaResult, PlayerNum};
 use once_cell::sync::Lazy;
 use std::sync::{Arc, RwLock};
 use tracing::debug;
@@ -128,8 +126,7 @@ mod tests {
     use crate::game::game_result::GameResult;
     use crate::game::player_result::PlayerResult;
     use crate::game::sc2_result::Sc2Result;
-    use common::models::aiarena::aiarena_game_result::AiArenaGameResult;
-    use common::models::aiarena::aiarena_result::AiArenaResult;
+    use crate::arena::{AiArenaGameResult, AiArenaResult};
 
     fn game_result() -> GameResult {
         GameResult {

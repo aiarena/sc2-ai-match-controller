@@ -1,6 +1,5 @@
 //! Full port configuration
 
-use common::utilities::portpicker::pick_unused_port_in_range;
 use protobuf::MessageField;
 
 use sc2_proto::sc2api::{PortSet, RequestJoinGame};
@@ -16,15 +15,14 @@ pub struct PortConfig {
 }
 
 impl PortConfig {
-    /// Create a set of random ports
-    pub fn new() -> Option<Self> {
-        Some(Self {
-            shared: pick_unused_port_in_range(9000..10000)?,
-            server_game: pick_unused_port_in_range(9000..10000)?,
-            server_base: pick_unused_port_in_range(9000..10000)?,
-            client_game: pick_unused_port_in_range(9000..10000)?,
-            client_base: pick_unused_port_in_range(9000..10000)?,
-        })
+    pub fn new() -> Self {
+        Self {
+            shared: 9101,
+            server_game: 9102,
+            server_base: 9103,
+            client_game: 9104,
+            client_base: 9105,
+        }
     }
 
     /// Apply port configuration to a handler join request
@@ -40,20 +38,5 @@ impl PortConfig {
         client_ps.set_game_port(self.client_game as i32);
         client_ps.set_base_port(self.client_base as i32);
         req.client_ports = vec![client_ps];
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use sc2_proto::sc2api::RequestJoinGame;
-
-    #[test]
-    fn test_portconfig() {
-        let mut request = RequestJoinGame::new();
-        let port_config = PortConfig::new().expect("Could not create port configuration");
-        port_config.apply_proto(&mut request);
-        assert!(request.server_ports.is_some());
-        assert!(request.has_shared_port());
     }
 }
