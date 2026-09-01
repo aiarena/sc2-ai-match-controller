@@ -1,44 +1,16 @@
-ARENA_CLIENT_ID = "aiarenaclient_local"  # ID of arenaclient. Used for AiArena
-API_TOKEN = ""  # API Token to retrieve matches and submit results. Used for AiArena
-BASE_WEBSITE_URL = ""
-DEBUG_MODE = true  # Enables debug mode for more logging
-PYTHON = "python"  # Which python version to use
-RUN_TYPE = "prepare"  # "prepare" to download match assets and "submit" to submit match result
-HASH_CHECK = true
-KEEP_ALIVE = false  # Used in Kubernetes or Docker compose to keep the container alive when necessary
+RUN_TYPE = "prepare"    # "prepare" to download match assets, "submit" to submit match result
+KEEP_ALIVE = false      # Keep container alive after match (useful in Kubernetes/Docker Compose)
 
-# LOGGING
+LOGGING_LEVEL = "debug" # info, debug, error, trace
 LOG_ROOT = "/logs"
-LOGGING_LEVEL = "debug" #info,debug,error,trace
 
-# Directories
 BOT_DIRECTORY = "/bots"
 GAME_DIRECTORY = "/game"
 
-# STARCRAFT
-MAX_GAME_TIME = 80640 # 1 hour in fast speed in-game time
-MAX_REAL_TIME = 7200  # 2 hours in seconds
-MAX_FRAME_TIME = 40 # milliseconds
-REALTIME = false
-VISUALIZE = false
-TIMEOUT_SECS = 30 # seconds
+API_TOKEN = ""          # API token to retrieve matches and submit results
+BASE_WEBSITE_URL = ""   # AI Arena website URL; leave empty to use local match files instead
 
-# MATCHES
-DISABLE_DEBUG = true
-VALIDATE_RACE = false
+MATCHES_FILE = ""       # Path to local match request file (used when BASE_WEBSITE_URL is empty)
+RESULTS_FILE = ""       # Path to local results file (used when BASE_WEBSITE_URL is empty)
 
-
-# Local
-MATCHES_FILE=""
-RESULTS_FILE=""
-
-# Controllers
-BOT_CONT_1_HOST="127.0.0.1"
-BOT_CONT_1_PORT=8081
-BOT_CONT_2_HOST="127.0.0.1"
-BOT_CONT_2_PORT=8082
-SC2_CONT_HOST="127.0.0.1"
-SC2_CONT_PORT=8083
-
-AWS = false
-CACHING_SERVER_URL="http://aiarena-caching-nodeport-service"
+CACHING_SERVER_URL = "http://aiarena-caching-nodeport-service"
