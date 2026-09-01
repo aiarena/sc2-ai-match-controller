@@ -18,15 +18,6 @@ spec:
       containers:
       - image: aiarena/k8s-controller
         name: k8s-controller
-        ports:
-        - containerPort: 8085
-          name: 8085tcp
-          protocol: TCP
-        readinessProbe:
-          httpGet:
-            path: /health
-            port: 8085
-            scheme: HTTP
         volumeMounts:
         - mountPath: /app/arenaclients.json
           name: arenaclients-json

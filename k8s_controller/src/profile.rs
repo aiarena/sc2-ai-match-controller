@@ -1,4 +1,4 @@
-use common::models::aiarena::aiarena_match::AiArenaMatch;
+use crate::arena_api::MatchInfo;
 
 // Profiles are used to run matches in a specific Kubernetes configuration that depends on the given match.
 // For example, certain competitions may require less or more time for the match to complete;
@@ -10,8 +10,8 @@ pub struct Profile {
 }
 
 impl Profile {
-    pub fn get(arena_match: &AiArenaMatch) -> Self {
-        let profile_name = select_profile(arena_match);
+    pub fn get(match_info: &MatchInfo) -> Self {
+        let profile_name = select_profile(match_info);
 
         Self {
             template: load_template(profile_name),
@@ -19,11 +19,9 @@ impl Profile {
     }
 }
 
-fn select_profile(arena_match: &AiArenaMatch) -> &str {
-    match arena_match.map.name.as_str() {
-        // Use the default template for all other maps
-        _ => "default",
-    }
+fn select_profile(_match_info: &MatchInfo) -> &str {
+    // Use the default template for all matches
+    "default"
 }
 
 fn load_template(profile_name: &str) -> &'static str {
