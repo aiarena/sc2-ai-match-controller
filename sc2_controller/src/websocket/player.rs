@@ -1,3 +1,4 @@
+use crate::arena::{BotRace, PlayerNum};
 use crate::game::game_config::GameConfig;
 use crate::game::player_data::PlayerData;
 use crate::game::player_result::PlayerResult;
@@ -6,7 +7,6 @@ use crate::websocket::errors::player_error::PlayerError;
 use crate::websocket::port_config::PortConfig;
 use crate::websocket::runtime_vars::RuntimeVars;
 use axum::extract::ws::{Message as AMessage, WebSocket};
-use crate::arena::{BotRace, PlayerNum};
 use futures_util::{SinkExt, StreamExt};
 use protobuf::{EnumOrUnknown, Message, MessageField};
 use sc2_proto::common::Race;

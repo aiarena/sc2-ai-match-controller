@@ -34,28 +34,28 @@ async fn start_sc2_process(player_seat: &PlayerSeat) -> Result<()> {
     let stderr = async_process::Stdio::from(stderr_file);
 
     let process_result = (async_process::Command::new(SC2_EXECUTABLE)
-            .stdout(stdout)
-            .stderr(stderr)
-            .arg("-listen")
-            .arg("0.0.0.0")
-            .arg("-port")
-            .arg(player_seat.internal_port.to_string())
-            .arg("-dataDir")
-            .arg(SC2_BASE)
-            .arg("-displayMode")
-            .arg("0")
-            .arg("-tempDir")
-            .arg(tempdir.path().to_str().unwrap())
-            .current_dir(SC2_BASE))
-        .spawn();
+        .stdout(stdout)
+        .stderr(stderr)
+        .arg("-listen")
+        .arg("0.0.0.0")
+        .arg("-port")
+        .arg(player_seat.internal_port.to_string())
+        .arg("-dataDir")
+        .arg(SC2_BASE)
+        .arg("-displayMode")
+        .arg("0")
+        .arg("-tempDir")
+        .arg(tempdir.path().to_str().unwrap())
+        .current_dir(SC2_BASE))
+    .spawn();
 
-        match process_result {
-            Ok(_) => {
-                tracing::info!("SC2 process for player seat {:?} started at port {:?}", &player_seat.external_port, &player_seat.internal_port);
-                Ok(())
-            }
-            Err(e) => Err(anyhow!("Failed to start SC2 process: {e}")),
+    match process_result {
+        Ok(_) => {
+            tracing::info!("SC2 process for player seat {:?} started at port {:?}", &player_seat.external_port, &player_seat.internal_port);
+            Ok(())
         }
+        Err(e) => Err(anyhow!("Failed to start SC2 process: {e}")),
+    }
 }
 
 async fn start_ws_server(player_seat: &PlayerSeat) -> Result<JoinHandle<()>> {

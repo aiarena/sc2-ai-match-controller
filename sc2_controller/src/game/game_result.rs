@@ -126,7 +126,6 @@ mod tests {
     use crate::game::game_result::GameResult;
     use crate::game::player_result::PlayerResult;
     use crate::game::sc2_result::Sc2Result;
-    use crate::arena::{AiArenaGameResult, AiArenaResult};
 
     fn game_result() -> GameResult {
         GameResult {

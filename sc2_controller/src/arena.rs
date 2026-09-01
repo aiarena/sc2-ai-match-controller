@@ -64,28 +64,12 @@ pub struct MatchRequest {
 impl MatchRequest {
     pub fn read() -> Self {
         config::Config::builder()
-            .add_source(
-                config::File::new("/match/match-request.toml", config::FileFormat::Toml)
-                    .required(false),
-            )
+            .add_source(config::File::new("/match/match-request.toml", config::FileFormat::Toml).required(false))
             .add_source(config::Environment::default())
             .build()
             .expect("Could not read match request data")
             .try_deserialize::<MatchRequest>()
             .expect("Could not parse match request data")
-    }
-
-    pub fn write(&self) -> Result<(), std::io::Error> {
-        let toml_str = toml::to_string(self).map_err(|_| {
-            std::io::Error::new(
-                std::io::ErrorKind::Other,
-                "Could not serialize match request data",
-            )
-        })?;
-        tracing::debug!("Writing match request to file: {}", toml_str);
-
-        std::fs::create_dir_all("/match")?;
-        std::fs::write("/match/match-request.toml", toml_str)
     }
 }
 

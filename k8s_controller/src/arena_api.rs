@@ -83,9 +83,7 @@ pub async fn get_next_match(website_url: &str, token: &str) -> anyhow::Result<Ma
         .match_info
         .ok_or_else(|| anyhow!("GraphQL response has no match"))?;
 
-    match_info.id = decode_base64_id(&match_info.id)
-        .map(|n| n.to_string())
-        .unwrap_or_else(|| "0".to_string());
+    match_info.id = decode_base64_id(&match_info.id).map(|n| n.to_string()).unwrap_or_else(|| "0".to_string());
 
     Ok(match_info)
 }
