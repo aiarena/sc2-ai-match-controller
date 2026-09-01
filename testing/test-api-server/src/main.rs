@@ -366,7 +366,7 @@ async fn download(
                 return (StatusCode::OK, Body::from(&bot_data[..])).into_response();
             }
         }
-        "AutomatonLE" => {
+        "AutomatonLE.SC2Map" => {
             let url = m["map"]["download_link"].as_str().unwrap_or("");
             if payload.url == url && payload.etag == ETAG_MAP {
                 let map_data = include_bytes!("../../testing-maps/AutomatonLE.SC2Map");

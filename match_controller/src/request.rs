@@ -1,7 +1,7 @@
 use crate::race::BotRace;
-use anyhow::{bail, Context};
+use anyhow::bail;
+use anyhow::Context;
 use serde::{Deserialize, Serialize};
-use std::cmp::Ordering;
 
 #[derive(Serialize, Deserialize)]
 pub struct MatchRequest {
@@ -49,28 +49,21 @@ impl MatchRequest {
 }
 
 fn parse_match_line(line: &str) -> anyhow::Result<MatchRequest> {
-    let mut vec_line: Vec<String> = line.split(',').map(std::string::ToString::to_string).collect();
+    let vec_line: Vec<String> = line.split(',').map(std::string::ToString::to_string).collect();
 
-    match vec_line.len().cmp(&10) {
-        Ordering::Greater => bail!("Too many fields in line: {:?}", vec_line),
-        Ordering::Less => bail!("Not enough fields in line: {:?}", vec_line),
-        Ordering::Equal => {}
+    if vec_line.len() < 9 || vec_line.len() > 10 {
+        bail!("Expected 9 or 10 fields in line, got {}: {:?}", vec_line.len(), vec_line);
     }
-
-    let bot1: Vec<String> = vec_line.drain(0..4).collect();
-    let bot2: Vec<String> = vec_line.drain(0..4).collect();
-
-    let map_name = vec_line.pop().ok_or_else(|| anyhow::anyhow!("Could not extract map from: {:?}", vec_line))?;
 
     Ok(MatchRequest {
         match_id: 0,
-        map_name,
-        player_1_id: bot1.get(0).ok_or_else(|| anyhow::anyhow!("Missing bot1 id"))?.clone(),
-        player_1_name: bot1.get(1).ok_or_else(|| anyhow::anyhow!("Missing bot1 name"))?.clone(),
-        player_1_race: BotRace::from_str(bot1.get(2).map(String::as_str).unwrap_or("")) as u8,
-        player_2_id: bot2.get(0).ok_or_else(|| anyhow::anyhow!("Missing bot2 id"))?.clone(),
-        player_2_name: bot2.get(1).ok_or_else(|| anyhow::anyhow!("Missing bot2 name"))?.clone(),
-        player_2_race: BotRace::from_str(bot2.get(2).map(String::as_str).unwrap_or("")) as u8,
+        map_name: format!("{}.SC2Map", vec_line[8]),
+        player_1_id: vec_line[0].clone(),
+        player_1_name: vec_line[1].clone(),
+        player_1_race: BotRace::from_str(&vec_line[2]) as u8,
+        player_2_id: vec_line[4].clone(),
+        player_2_name: vec_line[5].clone(),
+        player_2_race: BotRace::from_str(&vec_line[6]) as u8,
     })
 }
 
@@ -89,7 +82,7 @@ mod tests {
         assert_eq!(m.player_2_name, "loser_bot");
         assert_eq!(m.player_1_race, 1); // Terran
         assert_eq!(m.player_2_race, 3); // Protoss
-        assert_eq!(m.map_name, "AutomatonLE");
+        assert_eq!(m.map_name, "AutomatonLE.SC2Map");
     }
 
     #[test]
