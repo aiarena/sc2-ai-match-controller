@@ -34,7 +34,7 @@ impl MatchRequest {
     }
 
     pub fn write_to_file(&self) -> std::io::Result<()> {
-        let toml_str = toml::to_string(self).map_err(|_| std::io::Error::new(std::io::ErrorKind::Other, "Could not serialize match request"))?;
+        let toml_str = toml::to_string(self).map_err(|_| std::io::Error::other("Could not serialize match request"))?;
         std::fs::create_dir_all("/match")?;
         std::fs::write("/match/match-request.toml", toml_str)
     }
