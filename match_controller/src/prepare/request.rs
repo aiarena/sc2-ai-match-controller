@@ -107,7 +107,7 @@ pub async fn fetch_match_request(settings: &Settings) -> anyhow::Result<(MatchRe
         .unwrap_or(0);
     let match_request = MatchRequest {
         match_id,
-        map_name: m.map.name,
+        map_name: format!("{}.SC2Map", m.map.name),
         player_1_id: m.participant1.game_display_id.clone(),
         player_1_name: m.participant1.name.clone(),
         player_1_race: BotRace::from_str(&m.participant1.plays_race) as u8,
