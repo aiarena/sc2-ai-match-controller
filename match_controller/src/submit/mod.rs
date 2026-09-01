@@ -52,7 +52,11 @@ async fn wait_for_match_result(settings: &Settings, match_request: &MatchRequest
             sleep(Duration::from_secs(3)).await;
         }
     } else {
-        MatchResult::new_initialization_error(match_request.match_id)
+        let result = MatchResult::new_initialization_error(match_request.match_id);
+        if let Err(e) = result.write_to_file() {
+            error!("Failed to write initialization error result: {:?}", e);
+        }
+        result
     };
 
     info!("Match result: {:?}", &match_result);
