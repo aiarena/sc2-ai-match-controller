@@ -24,20 +24,6 @@ impl Sc2Result {
             Result::Undecided => panic!("Undecided result not allowed"),
         }
     }
-
-    pub const fn to_proto(self) -> sc2_proto::sc2api::Result {
-        use sc2_proto::sc2api::Result;
-        match self {
-            Self::Victory => Result::Victory,
-            Self::Defeat => Result::Defeat,
-            Self::Tie => Result::Tie,
-            Self::Crash => Result::Defeat,
-            Self::Timeout => Result::Defeat,
-            Self::SC2Crash => Result::Undecided,
-            #[cfg(test)]
-            Self::Placeholder => Result::Undecided,
-        }
-    }
 }
 impl fmt::Display for Sc2Result {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

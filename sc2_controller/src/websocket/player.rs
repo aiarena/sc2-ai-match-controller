@@ -70,14 +70,6 @@ impl Player {
             .map_err(|_| PlayerError::BotTimeout(self.bot_ws_timeout))
             .and_then(|r| r)
     }
-    pub async fn bot_send_bytes(&mut self, r: &[u8]) -> Result<(), PlayerError> {
-        trace!("Response to client: [{}]", format!("{r:?}").chars().take(100).collect::<String>());
-        timeout(self.bot_ws_timeout, self.bot_send_message(AMessage::Binary(r.to_owned())))
-            .await
-            .map_err(|_| PlayerError::BotTimeout(self.bot_ws_timeout))
-            .and_then(|r| r)
-    }
-
     /// Get a protobuf request from the client
     /// Returns None if the connection is already closed
     pub async fn bot_recv_request(&mut self) -> Result<Request, PlayerError> {
@@ -87,14 +79,6 @@ impl Player {
                 trace!("Message from client parsed:\n{}", &resp);
                 Ok(resp)
             }
-            other => Err(PlayerError::BotUnexpectedMessage(other)),
-        }
-    }
-
-    pub async fn bot_recv_request_bytes(&mut self) -> Result<Vec<u8>, PlayerError> {
-        match self.bot_recv_message().await? {
-            AMessage::Binary(bytes) => Ok(bytes),
-
             other => Err(PlayerError::BotUnexpectedMessage(other)),
         }
     }
@@ -113,9 +97,6 @@ impl Player {
     pub async fn sc2_send_request(&mut self, r: &Request) -> Result<(), PlayerError> {
         trace!("sc2_send_request: {}", r);
         self.sc2_send_message(TMessage::binary(r.write_to_bytes().expect("Invalid protobuf message"))).await
-    }
-    pub async fn sc2_send_bytes(&mut self, r: Vec<u8>) -> Result<(), PlayerError> {
-        self.sc2_send_message(TMessage::binary(r)).await
     }
     /// Protobuf to create a new handler
     fn proto_create_game(players: &[CreateGamePlayer], map: &str, realtime: bool) -> Request {
@@ -202,16 +183,6 @@ impl Player {
         }
     }
 
-    pub async fn sc2_recv_bytes(&mut self) -> Result<Vec<u8>, PlayerError> {
-        match timeout(self.sc2_ws_timeout, self.sc2_ws.next()).await {
-            Ok(Some(Ok(TMessage::Binary(bytes)))) => Ok(bytes),
-            Ok(Some(Ok(other))) => Err(PlayerError::Sc2UnexpectedMessage(other)),
-            Ok(Some(Err(e))) => Err(PlayerError::Sc2Websocket(e)),
-            Ok(None) => Err(PlayerError::NoMessageAvailable),
-            Err(_) => Err(PlayerError::Sc2Timeout(self.sc2_ws_timeout)),
-        }
-    }
-
     /// Send a request to SC2 and return the reponse
     /// Returns None if the connection is already closed
     pub async fn sc2_query(&mut self, r: &Request) -> Result<Response, PlayerError> {
@@ -236,10 +207,6 @@ impl Player {
         {
             self.sc2_recv_response().await
         }
-    }
-    pub async fn sc2_query_bytes(&mut self, r: Vec<u8>) -> Result<Vec<u8>, PlayerError> {
-        self.sc2_send_bytes(r).await?;
-        self.sc2_recv_bytes().await
     }
     /// Saves replay to path
     pub async fn save_replay(&mut self, path: &str) -> bool {

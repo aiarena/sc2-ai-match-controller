@@ -14,7 +14,7 @@ fn create_log_file(file_name: &str) -> File {
         .write(true)
         .truncate(true)
         .open(&log_path)
-        .expect(&format!("Could not create file {}", file_name))
+        .unwrap_or_else(|_| panic!("Could not create file {file_name}"))
 }
 
 pub fn init_logs() -> (tracing_appender::non_blocking::WorkerGuard, tracing_appender::non_blocking::WorkerGuard) {
