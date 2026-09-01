@@ -30,7 +30,7 @@ async fn download_data(settings: &Settings, url: &str, name: &str) -> anyhow::Re
     let etag = match get_etag(url).await {
         Ok(e) => e,
         Err(e) => {
-            error!("No ETag, downloading from store: {:?}", e);
+            info!("No ETag, downloading from store: {:?}", e);
             return download_from_url(url).await;
         }
     };
@@ -38,7 +38,7 @@ async fn download_data(settings: &Settings, url: &str, name: &str) -> anyhow::Re
     match download_cache(settings, url, name, &etag).await {
         Ok(bytes) => Ok(bytes),
         Err(e) => {
-            error!("No cache, downloading from store: {:?}", e);
+            info!("No cache, downloading from store: {:?}", e);
             download_from_url(url).await
         }
     }
