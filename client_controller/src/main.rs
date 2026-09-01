@@ -16,13 +16,15 @@ fn main() {
         println!("Reading matches from API at: {}", config.api_url);
 
         println!("This version of client controller supports only the test-server-api with a couple of test match");
-        let match_request = MatchRequest::from_csv_line("1,basic_bot,T,python,2,loser_bot,T,python,AutomatonLE");
+        let match_request = MatchRequest::from_csv_line("1,basic_bot,T,python,2,loser_bot,T,python,AutomatonLE,Player1Win");
 
         println!("Running match 1 (cold cache - downloads from source)");
         run_match("aiarena", &config, &match_request);
+        check_expected_result(&match_request);
 
         println!("Running match 2 (warm cache - downloads from cache server)");
         run_match("aiarena", &config, &match_request);
+        check_expected_result(&match_request);
     } else if !config.matches_file.is_empty() {
         println!("Reading matches from file: {}", config.matches_file);
 
@@ -32,7 +34,7 @@ fn main() {
 
         fs::create_dir_all("target/logs/match")
             .unwrap_or_else(|e| panic!("Could not create target directory: {e:?}"));
-        
+
         let path = Path::new("target/logs/match/match_result.json");
         if path.exists() {
             let _ = fs::remove_file(path);
@@ -58,6 +60,7 @@ fn main() {
                 .unwrap_or_else(|e| panic!("Could not write to match file: {e:?}"));
 
             run_match("test", &config, &match_request);
+            check_expected_result(&match_request);
         }
 
     } else {
@@ -66,4 +69,20 @@ fn main() {
     }
 
     println!("Client controller exits.");
+}
+
+fn check_expected_result(match_request: &MatchRequest) {
+    if let Some(expected) = &match_request.expected_result {
+        let result_path = "target/logs/match/match_result.json";
+        let result_json = std::fs::read_to_string(result_path)
+            .unwrap_or_else(|e| panic!("Could not read match result from {result_path}: {e:?}"));
+        let result_value: serde_json::Value = serde_json::from_str(&result_json)
+            .unwrap_or_else(|e| panic!("Could not parse match result: {e:?}"));
+        let actual = result_value["type"].as_str().unwrap_or("");
+        if actual != expected.as_str() {
+            eprintln!("Expected result {expected} but got {actual}");
+            std::process::exit(1);
+        }
+        println!("Result matches expected: {expected}");
+    }
 }
