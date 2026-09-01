@@ -147,10 +147,6 @@ async fn websocket(bot_ws: WebSocket, player_seat: PlayerSeat, addr: SocketAddr)
                         error!("{:?}", e);
                         GAME_RESULT.write().unwrap().set_init_error(match_id);
                     }
-                    PlayerError::JoinGameTimeout(e) => {
-                        error!("{:?}", e);
-                        GAME_RESULT.write().unwrap().set_init_error(match_id);
-                    }
                     PlayerError::Sc2Timeout(e) => {
                         error!("{:?}", e);
                         // If the game completion was forced (timeout or crash), the other bot might get a timeout
@@ -231,7 +227,7 @@ fn store_game_result(match_id: u32) {
 
             info!("Game result: {:?}", &aiarena_game_result);
 
-            aiarena_game_result.to_json_file();
+            let _ = aiarena_game_result.to_json_file();
 
             info!("Game result stored successfully");
         } else {

@@ -15,7 +15,6 @@ pub enum PlayerError {
     UnexpectedRequest(sc2_proto::sc2api::Request),
     ProtoParseError(protobuf::Error),
     CreateGame(sc2_proto::sc2api::response_create_game::Error),
-    JoinGameTimeout(Duration),
     Sc2Timeout(Duration),
     BotTimeout(Duration),
 }
@@ -50,7 +49,6 @@ impl fmt::Display for PlayerError {
             Self::UnexpectedRequest(e) => ("UnexpectedRequest", format!("Unexpected request received: {e}")),
             Self::ProtoParseError(e) => ("ProtoParseError", format!("Could not parse proto message: {e:?}")),
             Self::CreateGame(e) => ("CreateGame", format!("Could not create game: {e:?}")),
-            Self::JoinGameTimeout(d) => ("JoinGameTimeout", format!("Timeout of {d:?}s reached while waiting for bot to join")),
             Self::Sc2Timeout(d) => ("SC2Timeout", format!("Timeout of {d:?}s while waiting for SC2 communication")),
             Self::BotTimeout(d) => ("BotTimeout", format!("Timeout of {d:?}s while waiting for bot communication")),
         };

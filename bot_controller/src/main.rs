@@ -110,7 +110,7 @@ fn create_log_file(file_name: &str) -> File {
         .write(true)
         .truncate(true)
         .open(file_name)
-        .expect(&format!("Could not create file {}", file_name))
+        .unwrap_or_else(|_| panic!("Could not create file {file_name}"))
 }
 
 fn construct_bot_command(bot_folder: &str, bot_name: &str) -> Command {
@@ -118,17 +118,17 @@ fn construct_bot_command(bot_folder: &str, bot_name: &str) -> Command {
 
     let bot_path = Path::new(&bot_folder);
 
-    if exists(&bot_folder, "run.py") {
+    if exists(bot_folder, "run.py") {
         command("python", &["run.py"])
-    } else if exists(&bot_folder, &format!("{bot_name}.dll")) {
+    } else if exists(bot_folder, &format!("{bot_name}.dll")) {
         command("dotnet", &[&format!("{bot_name}.dll")])
-    } else if exists(&bot_folder, &format!("{bot_name}.jar")) {
+    } else if exists(bot_folder, &format!("{bot_name}.jar")) {
         command("java", &["-jar", &format!("{bot_name}.jar")])
-    } else if exists(&bot_folder, &format!("{bot_name}.js")) {
+    } else if exists(bot_folder, &format!("{bot_name}.js")) {
         command("node", &[&format!("{bot_name}.js")])
-    } else if exists(&bot_folder, &format!("{bot_name}.exe")) {
+    } else if exists(bot_folder, &format!("{bot_name}.exe")) {
         command("wine", &[&format!("{bot_name}.exe")])
-    } else if exists(&bot_folder, &format!("./{bot_name}")) {
+    } else if exists(bot_folder, &format!("./{bot_name}")) {
         #[cfg(unix)]
         {
             let bot_binary = Path::new(&bot_folder).join(&bot_name);
@@ -144,7 +144,7 @@ fn construct_bot_command(bot_folder: &str, bot_name: &str) -> Command {
     } else {
         // The executable was not found, list the contents of the bot folder for debugging
         info!("Listing contents of bot folder: {}", bot_folder);
-        if let Ok(entries) = std::fs::read_dir(&bot_path) {
+        if let Ok(entries) = std::fs::read_dir(bot_path) {
             for entry in entries.flatten() {
                 info!("{:?}", entry.path());
             }

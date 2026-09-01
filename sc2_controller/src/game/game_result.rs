@@ -26,12 +26,6 @@ impl GameResult {
     pub fn set(&mut self, match_id: u32) {
         self.match_id = match_id;
     }
-    pub fn reset(&mut self) {
-        self.match_id = 0;
-        self.player1_result = None;
-        self.player2_result = None;
-        self.result = None;
-    }
     pub fn is_ready(&self) -> bool {
         (self.player1_result.is_some() && self.player2_result.is_some()) || matches!(self.result, Some(AiArenaResult::Error | AiArenaResult::InitializationError))
     }
@@ -123,6 +117,7 @@ pub static GAME_RESULT: Lazy<Arc<RwLock<GameResult>>> = Lazy::new(|| Arc::new(Rw
 #[cfg(test)]
 mod tests {
 
+    use crate::arena::{AiArenaGameResult, AiArenaResult};
     use crate::game::game_result::GameResult;
     use crate::game::player_result::PlayerResult;
     use crate::game::sc2_result::Sc2Result;

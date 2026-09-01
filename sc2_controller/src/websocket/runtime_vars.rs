@@ -66,10 +66,6 @@ impl RuntimeVars {
         self.player_id.unwrap()
     }
 
-    pub fn set_player_id(&mut self, player_id: u32) {
-        self.player_id = Some(player_id);
-    }
-
     pub fn add_tags(&mut self, request: &Request) {
         for tag in request.action().actions.iter().filter(|a| a.action_chat.has_message()).filter_map(|x| {
             let msg = x.action_chat.message();

@@ -24,8 +24,6 @@ fn select_profile(_match_info: &MatchInfo) -> &str {
     "default"
 }
 
-fn load_template(profile_name: &str) -> &'static str {
-    match profile_name {
-        _ => include_str!("../templates/ac-job.yaml"),
-    }
+fn load_template(_profile_name: &str) -> &'static str {
+    include_str!("../templates/ac-job.yaml")
 }

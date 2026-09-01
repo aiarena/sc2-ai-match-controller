@@ -49,44 +49,23 @@ impl GameConfig {
         let replay_name = format!("{}_{}_vs_{}.SC2Replay", match_id, player_1_name, player_2_name);
 
         Self {
-            match_id: match_id,
+            match_id,
             map: map_name.to_string(),
-            players: players,
+            players,
 
             max_game_time: 80640,
             max_frame_time: 40,
             timeout_secs: 30,
             replay_path: "/root/StarCraftII/maps".to_string(),
-            replay_name: replay_name,
+            replay_name,
             disable_debug: true,
             real_time: false,
             validate_race: true,
-            visualize: false, // Not used
+            visualize: false,
         }
     }
 
-    pub fn player_1(&self) -> &MatchPlayer {
-        &self.players[&PlayerNum::One]
-    }
-    pub fn player_2(&self) -> &MatchPlayer {
-        &self.players[&PlayerNum::Two]
-    }
-    pub const fn map(&self) -> &String {
-        &self.map
-    }
-    pub const fn disable_debug(&self) -> bool {
-        self.disable_debug
-    }
-    pub const fn realtime(&self) -> bool {
-        self.real_time
-    }
-    pub const fn max_game_time(&self) -> u32 {
-        self.max_game_time
-    }
     pub fn replay_path(&self) -> &str {
         &self.replay_path
-    }
-    pub const fn validate_race(&self) -> bool {
-        self.validate_race
     }
 }

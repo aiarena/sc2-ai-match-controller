@@ -105,18 +105,6 @@ pub struct AiArenaGameResult {
 }
 
 impl AiArenaGameResult {
-    pub fn new_initialization_error(match_id: u32) -> Self {
-        AiArenaGameResult {
-            match_id,
-            bot1_avg_step_time: None,
-            bot1_tags: None,
-            bot2_avg_step_time: None,
-            bot2_tags: None,
-            result: AiArenaResult::InitializationError,
-            game_steps: 0,
-        }
-    }
-
     pub fn from_json_file() -> Result<Self, Box<dyn Error>> {
         let file = File::open("/match/match_result.json")?;
         let reader = BufReader::new(file);
@@ -136,14 +124,6 @@ impl AiArenaGameResult {
 
         let file = File::create(path)?;
         serde_json::to_writer_pretty(file, &self)?;
-        Ok(())
-    }
-
-    pub fn delete_json_file() -> Result<(), Box<dyn Error>> {
-        let path = Path::new("/match/match_result.json");
-        if path.exists() {
-            std::fs::remove_file(path)?;
-        }
         Ok(())
     }
 }

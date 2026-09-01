@@ -43,7 +43,7 @@ pub async fn process(settings: K8sConfig) {
                     }
 
                     info!("Retrieving new match for AC {:?}", ac.name);
-                    match retrieve_match(&settings, &ac).await {
+                    match retrieve_match(&settings, ac).await {
                         Ok(job_data) => {
                             info!("Creating new job for AC {:?}", &ac.name);
                             if let Err(e) = jobs.create(&PostParams::default(), &job_data).await {
