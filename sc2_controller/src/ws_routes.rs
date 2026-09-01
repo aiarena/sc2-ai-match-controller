@@ -15,9 +15,7 @@ use crate::player_seats::PlayerSeat;
 use axum::extract::ws::WebSocket;
 use axum::extract::{ConnectInfo, State, WebSocketUpgrade};
 use axum::response::IntoResponse;
-use common::models::aiarena::aiarena_game_result::AiArenaGameResult;
-use common::models::aiarena::aiarena_match::MatchRequest;
-use common::PlayerNum;
+use crate::arena::{AiArenaGameResult, MatchRequest, PlayerNum};
 use tokio::net::TcpStream;
 use tokio::time::sleep;
 use tracing::{debug, error, info, Instrument};
@@ -32,7 +30,7 @@ struct GameReadyFlag {
 
 static GAME_READY_FLAG: Lazy<Arc<RwLock<GameReadyFlag>>> = Lazy::new(|| Arc::new(RwLock::new(GameReadyFlag { ready: false })));
 
-static PORT_CONFIG: Lazy<Arc<RwLock<PortConfig>>> = Lazy::new(|| Arc::new(RwLock::new(PortConfig::new().expect("Could not create port configuration"))));
+static PORT_CONFIG: Lazy<Arc<RwLock<PortConfig>>> = Lazy::new(|| Arc::new(RwLock::new(PortConfig::new())));
 
 pub async fn websocket_handler(ws: WebSocketUpgrade, ConnectInfo(addr): ConnectInfo<SocketAddr>, State(state): State<PlayerSeat>) -> impl IntoResponse {
     ws.max_message_size(128 << 20) // 128MiB

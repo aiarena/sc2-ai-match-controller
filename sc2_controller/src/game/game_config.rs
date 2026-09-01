@@ -1,6 +1,4 @@
-use common::models::aiarena::aiarena_match::{MatchPlayer, MatchRequest};
-use common::models::aiarena::bot_race::BotRace;
-use common::PlayerNum;
+use crate::arena::{BotRace, MatchPlayer, MatchRequest, PlayerNum};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, PartialEq, Eq)]

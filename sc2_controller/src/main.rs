@@ -1,3 +1,4 @@
+mod arena;
 mod game;
 mod logging;
 mod player_seats;
