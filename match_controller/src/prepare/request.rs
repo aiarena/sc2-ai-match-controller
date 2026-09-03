@@ -3,7 +3,6 @@ use base64::{engine::general_purpose::STANDARD, Engine};
 use serde::Deserialize;
 
 use crate::graphql::post_graphql;
-use crate::race::BotRace;
 use crate::request::MatchRequest;
 use crate::settings::Settings;
 
@@ -27,14 +26,14 @@ mutation {
       participant1 {
         name
         gameDisplayId
-        playsRace
+        playsRace { databaseId }
         botZipUrl
         botDataUrl
       }
       participant2 {
         name
         gameDisplayId
-        playsRace
+        playsRace { databaseId }
         botZipUrl
         botDataUrl
       }
@@ -78,10 +77,16 @@ struct MapInfo {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+struct BotRaceInfo {
+    database_id: u8,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct ParticipantInfo {
     name: String,
     game_display_id: String,
-    plays_race: String,
+    plays_race: BotRaceInfo,
     bot_zip_url: String,
     bot_data_url: Option<String>,
 }
@@ -110,10 +115,10 @@ pub async fn fetch_match_request(settings: &Settings) -> anyhow::Result<(MatchRe
         map_name: format!("{}.SC2Map", m.map.name),
         player_1_id: m.participant1.game_display_id.clone(),
         player_1_name: m.participant1.name.clone(),
-        player_1_race: BotRace::from_str(&m.participant1.plays_race) as u8,
+        player_1_race: m.participant1.plays_race.database_id,
         player_2_id: m.participant2.game_display_id.clone(),
         player_2_name: m.participant2.name.clone(),
-        player_2_race: BotRace::from_str(&m.participant2.plays_race) as u8,
+        player_2_race: m.participant2.plays_race.database_id,
     };
     let download_links = DownloadLinks {
         map: m.map.download_link,
