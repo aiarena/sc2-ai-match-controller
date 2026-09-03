@@ -24,14 +24,14 @@ pub async fn download_zip(settings: &Settings, url: &str, name: &str, directory:
 
 async fn download_data(settings: &Settings, url: &str, name: &str) -> anyhow::Result<Bytes> {
     if !settings.should_use_cache() {
-        return download_from_url(url).await;
+        return download_from_url(url, name).await;
     }
 
-    let etag = match get_etag(url).await {
+    let etag = match get_etag(url, name).await {
         Ok(e) => e,
         Err(e) => {
             info!("No ETag, downloading from store: {:?}", e);
-            return download_from_url(url).await;
+            return download_from_url(url, name).await;
         }
     };
 
@@ -39,19 +39,20 @@ async fn download_data(settings: &Settings, url: &str, name: &str) -> anyhow::Re
         Ok(bytes) => Ok(bytes),
         Err(e) => {
             info!("No cache, downloading from store: {:?}", e);
-            download_from_url(url).await
+            download_from_url(url, name).await
         }
     }
 }
 
-async fn get_etag(url: &str) -> anyhow::Result<String> {
+async fn get_etag(url: &str, name: &str) -> anyhow::Result<String> {
     let mut last_err = None;
     for attempt in 1..=10 {
         let start = std::time::Instant::now();
-        let response = match Client::new().head(url).send().await {
+        // TODO: switch to HEAD once the Arena API provides a HEAD-signed URL alongside the GET URL; GET works because reqwest reads headers only and drops the connection before the body arrives
+        let response = match Client::new().get(url).send().await {
             Ok(r) => r,
             Err(e) => {
-                info!("[http] failure download store 0.000 MB in {:.3}s attempt {}", start.elapsed().as_secs_f64(), attempt);
+                info!("[http] failure headers store {} 0.000 MB in {:.3}s attempt {}", name, start.elapsed().as_secs_f64(), attempt);
                 error!("ETag attempt {}/10 failed: {}", attempt, e);
                 last_err = Some(anyhow::Error::from(e));
                 if attempt < 10 {
@@ -63,10 +64,10 @@ async fn get_etag(url: &str) -> anyhow::Result<String> {
         let status = response.status();
 
         if status.is_success() {
-            info!("[http] success download store 0.000 MB in {:.3}s attempt {}", start.elapsed().as_secs_f64(), attempt);
+            info!("[http] success headers store {} 0.000 MB in {:.3}s attempt {}", name, start.elapsed().as_secs_f64(), attempt);
             return Ok(response.headers().get(reqwest::header::ETAG).and_then(|v| v.to_str().ok()).unwrap_or("").to_string());
         }
-        info!("[http] failure download store 0.000 MB in {:.3}s attempt {}", start.elapsed().as_secs_f64(), attempt);
+        info!("[http] failure headers store {} 0.000 MB in {:.3}s attempt {}", name, start.elapsed().as_secs_f64(), attempt);
         if !status.is_server_error() {
             return Err(anyhow::anyhow!("ETag request failed: {}", status));
         }
@@ -79,14 +80,14 @@ async fn get_etag(url: &str) -> anyhow::Result<String> {
     Err(last_err.unwrap())
 }
 
-async fn download_from_url(url: &str) -> anyhow::Result<Bytes> {
+async fn download_from_url(url: &str, name: &str) -> anyhow::Result<Bytes> {
     let mut last_err = None;
     for attempt in 1..=10 {
         let start = std::time::Instant::now();
         let response = match Client::new().get(url).send().await {
             Ok(r) => r,
             Err(e) => {
-                info!("[http] failure download store 0.000 MB in {:.3}s attempt {}", start.elapsed().as_secs_f64(), attempt);
+                info!("[http] failure download store {} 0.000 MB in {:.3}s attempt {}", name, start.elapsed().as_secs_f64(), attempt);
                 error!("Download attempt {}/10 failed: {}", attempt, e);
                 last_err = Some(anyhow::Error::from(e));
                 if attempt < 10 {
@@ -100,14 +101,15 @@ async fn download_from_url(url: &str) -> anyhow::Result<Bytes> {
         if status.is_success() {
             let bytes = response.bytes().await.map_err(anyhow::Error::from)?;
             info!(
-                "[http] success download store {:.3} MB in {:.3}s attempt {}",
+                "[http] success download store {} {:.3} MB in {:.3}s attempt {}",
+                name,
                 bytes.len() as f64 / 1_000_000.0,
                 start.elapsed().as_secs_f64(),
                 attempt
             );
             return Ok(bytes);
         }
-        info!("[http] failure download store 0.000 MB in {:.3}s attempt {}", start.elapsed().as_secs_f64(), attempt);
+        info!("[http] failure download store {} 0.000 MB in {:.3}s attempt {}", name, start.elapsed().as_secs_f64(), attempt);
         if !status.is_server_error() {
             return Err(anyhow::anyhow!("Download failed: {}", status));
         }

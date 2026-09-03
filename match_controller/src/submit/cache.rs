@@ -14,17 +14,17 @@ pub async fn upload_cache(settings: &Settings, unique_key: &str, data: &[u8]) ->
     let response = match Client::new().post(cache_url).query(&[("uniqueKey", unique_key)]).multipart(form).send().await {
         Ok(r) => r,
         Err(e) => {
-            info!("[http] failure upload cache {:.3} MB in {:.3}s attempt 1", size_mb, start.elapsed().as_secs_f64());
+            info!("[http] failure upload cache {} {:.3} MB in {:.3}s attempt 1", unique_key, size_mb, start.elapsed().as_secs_f64());
             return Err(anyhow::Error::from(e));
         }
     };
     match response.error_for_status() {
         Ok(_) => {
-            info!("[http] success upload cache {:.3} MB in {:.3}s attempt 1", size_mb, start.elapsed().as_secs_f64());
+            info!("[http] success upload cache {} {:.3} MB in {:.3}s attempt 1", unique_key, size_mb, start.elapsed().as_secs_f64());
             Ok(())
         }
         Err(e) => {
-            info!("[http] failure upload cache {:.3} MB in {:.3}s attempt 1", size_mb, start.elapsed().as_secs_f64());
+            info!("[http] failure upload cache {} {:.3} MB in {:.3}s attempt 1", unique_key, size_mb, start.elapsed().as_secs_f64());
             Err(anyhow::Error::from(e))
         }
     }

@@ -72,42 +72,42 @@ pub async fn upload_assets(match_request: &MatchRequest, match_result: &MatchRes
     let logs_folder = Path::new(&settings.log_root);
     let replay_file = Path::new(&settings.game_directory).join(format!("{}_{}_vs_{}.SC2Replay", match_request.match_id, bot1_name, bot2_name));
 
-    let replay_id = match store::upload_file(settings, &replay_file).await {
+    let replay_id = match store::upload_file(settings, &format!("replay/{}", match_request.match_id), &replay_file).await {
         Ok(id) => id,
         Err(e) => {
             error!("{:?}", e);
             return;
         }
     };
-    let bot1_data_id = match store::upload_zip(settings, &bots_folder.join("bot1").join(&bot1_name).join("data"), settings.should_use_cache()).await {
+    let bot1_data_id = match store::upload_zip(settings, &format!("bot-data/{}", bot1_name), &bots_folder.join("bot1").join(&bot1_name).join("data"), settings.should_use_cache()).await {
         Ok(id) => id,
         Err(e) => {
             error!("{:?}", e);
             return;
         }
     };
-    let bot2_data_id = match store::upload_zip(settings, &bots_folder.join("bot2").join(&bot2_name).join("data"), settings.should_use_cache()).await {
+    let bot2_data_id = match store::upload_zip(settings, &format!("bot-data/{}", bot2_name), &bots_folder.join("bot2").join(&bot2_name).join("data"), settings.should_use_cache()).await {
         Ok(id) => id,
         Err(e) => {
             error!("{:?}", e);
             return;
         }
     };
-    let bot1_log_id = match store::upload_zip(settings, &bots_folder.join("bot1").join(&bot1_name).join("logs"), false).await {
+    let bot1_log_id = match store::upload_zip(settings, &format!("bot-logs/{}", bot1_name), &bots_folder.join("bot1").join(&bot1_name).join("logs"), false).await {
         Ok(id) => id,
         Err(e) => {
             error!("{:?}", e);
             return;
         }
     };
-    let bot2_log_id = match store::upload_zip(settings, &bots_folder.join("bot2").join(&bot2_name).join("logs"), false).await {
+    let bot2_log_id = match store::upload_zip(settings, &format!("bot-logs/{}", bot2_name), &bots_folder.join("bot2").join(&bot2_name).join("logs"), false).await {
         Ok(id) => id,
         Err(e) => {
             error!("{:?}", e);
             return;
         }
     };
-    let arenaclient_log_id = match store::upload_zip(settings, logs_folder, false).await {
+    let arenaclient_log_id = match store::upload_zip(settings, "arenaclient-logs", logs_folder, false).await {
         Ok(id) => id,
         Err(e) => {
             error!("{:?}", e);

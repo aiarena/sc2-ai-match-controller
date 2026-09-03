@@ -55,7 +55,7 @@ pub async fn request_upload_url(settings: &Settings) -> anyhow::Result<(String, 
         "query": REQUEST_UPLOAD_URLS_QUERY,
         "variables": { "input": { "count": 1 } }
     });
-    let text = post_graphql(settings, "upload", body).await?;
+    let text = post_graphql(settings, "urls", body).await?;
     let parsed: UploadUrlsResponse = serde_json::from_str(&text).context("Failed to parse requestUploadUrls response")?;
 
     let upload_urls = parsed

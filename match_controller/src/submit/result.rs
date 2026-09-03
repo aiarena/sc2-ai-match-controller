@@ -70,7 +70,7 @@ pub async fn submit_result(settings: &Settings, input: &SubmitResultInput) -> an
         "query": SUBMIT_RESULT_QUERY,
         "variables": { "input": input }
     });
-    let text = post_graphql(settings, "upload", body).await?;
+    let text = post_graphql(settings, "submit", body).await?;
     let parsed: SubmitResultResponse = serde_json::from_str(&text).context("Failed to parse submitResult response")?;
     let submit_result = parsed
         .data

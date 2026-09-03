@@ -17,19 +17,20 @@ pub async fn download_cache(settings: &Settings, url: &str, name: &str, etag: &s
     let response = match Client::new().post(cache_url).json(&body).send().await {
         Ok(r) => r,
         Err(e) => {
-            info!("[http] failure download cache 0.000 MB in {:.3}s attempt 1", start.elapsed().as_secs_f64());
+            info!("[http] failure download cache {} 0.000 MB in {:.3}s attempt 1", name, start.elapsed().as_secs_f64());
             return Err(anyhow::Error::from(e));
         }
     };
     let status = response.status();
     if !status.is_success() {
         let label = if status == reqwest::StatusCode::NOT_FOUND { "miss" } else { "failure" };
-        info!("[http] {} download cache 0.000 MB in {:.3}s attempt 1", label, start.elapsed().as_secs_f64());
+        info!("[http] {} download cache {} 0.000 MB in {:.3}s attempt 1", label, name, start.elapsed().as_secs_f64());
         return Err(anyhow::anyhow!("Cache download failed: {}", status));
     }
     let bytes = response.bytes().await.map_err(anyhow::Error::from)?;
     info!(
-        "[http] success download cache {:.3} MB in {:.3}s attempt 1",
+        "[http] success download cache {} {:.3} MB in {:.3}s attempt 1",
+        name,
         bytes.len() as f64 / 1_000_000.0,
         start.elapsed().as_secs_f64()
     );
