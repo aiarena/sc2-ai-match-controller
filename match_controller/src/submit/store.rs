@@ -75,7 +75,7 @@ pub(super) fn zip_directory(zip_path: &Path, directory: &Path) -> anyhow::Result
     std::fs::remove_file(zip_path).ok();
     let file = zip_path.to_string_lossy().to_string();
     let dir = directory.join("*").to_string_lossy().to_string();
-    let process = Command::new("7z").arg("a").arg(file).arg(dir).arg("-y").output()?;
+    let process = Command::new("7z").arg("a").arg("-tzip").arg(&file).arg(&dir).arg("-r").arg("-y").output()?;
     if process.status.success() {
         Ok(())
     } else {
