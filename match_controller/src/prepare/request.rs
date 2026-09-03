@@ -93,7 +93,7 @@ struct ParticipantInfo {
 
 pub async fn fetch_match_request(settings: &Settings) -> anyhow::Result<(MatchRequest, DownloadLinks)> {
     let body = serde_json::json!({ "query": GET_NEXT_MATCH_QUERY });
-    let text = post_graphql(settings, "download", body).await?;
+    let text = post_graphql(settings, "request", body).await?;
     let parsed: GetNextMatchResponse = serde_json::from_str(&text).context("Failed to parse getNextMatch response")?;
 
     let m = parsed

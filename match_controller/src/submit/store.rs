@@ -7,15 +7,15 @@ use tracing::{error, info};
 
 use crate::settings::Settings;
 
-pub async fn upload_file(settings: &Settings, file_path: &Path) -> anyhow::Result<String> {
+pub async fn upload_file(settings: &Settings, name: &str, file_path: &Path) -> anyhow::Result<String> {
     if !file_path.exists() {
         return Ok(String::new());
     }
     let data = tokio::fs::read(file_path).await.with_context(|| format!("Failed to read file: {}", file_path.display()))?;
-    upload_data(settings, &data).await
+    upload_data(settings, name, &data).await
 }
 
-pub async fn upload_zip(settings: &Settings, directory: &Path, cacheable: bool) -> anyhow::Result<String> {
+pub async fn upload_zip(settings: &Settings, name: &str, directory: &Path, cacheable: bool) -> anyhow::Result<String> {
     if !directory.exists() {
         return Ok(String::new());
     }
@@ -23,15 +23,14 @@ pub async fn upload_zip(settings: &Settings, directory: &Path, cacheable: bool) 
     zip_directory(tmp.path(), directory).with_context(|| format!("Failed to zip: {}", directory.display()))?;
     let data = tokio::fs::read(tmp.path()).await?;
     if cacheable {
-        let name = directory.file_name().and_then(|n| n.to_str()).unwrap_or("unknown");
         if let Err(e) = super::cache::upload_cache(settings, name, &data).await {
             info!("Cache upload failed: {}", e);
         }
     }
-    upload_data(settings, &data).await
+    upload_data(settings, name, &data).await
 }
 
-async fn upload_data(settings: &Settings, data: &[u8]) -> anyhow::Result<String> {
+async fn upload_data(settings: &Settings, name: &str, data: &[u8]) -> anyhow::Result<String> {
     let size_mb = data.len() as f64 / 1_000_000.0;
     let mut last_err = None;
     for attempt in 1..=10 {
@@ -41,7 +40,7 @@ async fn upload_data(settings: &Settings, data: &[u8]) -> anyhow::Result<String>
         let response = match Client::new().put(&upload_url).body(data.to_vec()).send().await {
             Ok(r) => r,
             Err(e) => {
-                info!("[http] failure upload store {:.3} MB in {:.3}s attempt {}", size_mb, start.elapsed().as_secs_f64(), attempt);
+                info!("[http] failure upload store {} {:.3} MB in {:.3}s attempt {}", name, size_mb, start.elapsed().as_secs_f64(), attempt);
                 error!("Upload attempt {}/10 failed: {}", attempt, e);
                 last_err = Some(anyhow::anyhow!("{}", e));
                 if attempt < 10 {
@@ -54,10 +53,10 @@ async fn upload_data(settings: &Settings, data: &[u8]) -> anyhow::Result<String>
         let elapsed = start.elapsed().as_secs_f64();
 
         if status.is_success() {
-            info!("[http] success upload store {:.3} MB in {:.3}s attempt {}", size_mb, elapsed, attempt);
+            info!("[http] success upload store {} {:.3} MB in {:.3}s attempt {}", name, size_mb, elapsed, attempt);
             return Ok(upload_id);
         }
-        info!("[http] failure upload store {:.3} MB in {:.3}s attempt {}", size_mb, elapsed, attempt);
+        info!("[http] failure upload store {} {:.3} MB in {:.3}s attempt {}", name, size_mb, elapsed, attempt);
         if !status.is_server_error() {
             return Err(anyhow::anyhow!("Upload to store failed: {}", status));
         }
