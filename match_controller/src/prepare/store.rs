@@ -100,13 +100,7 @@ async fn download_from_url(url: &str, name: &str) -> anyhow::Result<Bytes> {
 
         if status.is_success() {
             let bytes = response.bytes().await.map_err(anyhow::Error::from)?;
-            info!(
-                "[http] success download store {} {:.3} MB in {:.3}s attempt {}",
-                name,
-                bytes.len() as f64 / 1_000_000.0,
-                start.elapsed().as_secs_f64(),
-                attempt
-            );
+            info!("[http] success download store {} {:.3} MB in {:.3}s attempt {}", name, bytes.len() as f64 / 1_000_000.0, start.elapsed().as_secs_f64(), attempt);
             return Ok(bytes);
         }
         info!("[http] failure download store {} 0.000 MB in {:.3}s attempt {}", name, start.elapsed().as_secs_f64(), attempt);

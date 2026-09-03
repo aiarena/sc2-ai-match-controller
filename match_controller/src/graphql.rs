@@ -51,13 +51,7 @@ pub async fn post_graphql(settings: &Settings, operation: &str, body: serde_json
             return Err(anyhow!("GraphQL request failed: {}", status));
         }
         let text = response.text().await.context("Failed to read GraphQL response body")?;
-        info!(
-            "[http] success {} graph {:.3} MB in {:.3}s attempt {}",
-            operation,
-            text.len() as f64 / 1_000_000.0,
-            start.elapsed().as_secs_f64(),
-            attempt
-        );
+        info!("[http] success {} graph {:.3} MB in {:.3}s attempt {}", operation, text.len() as f64 / 1_000_000.0, start.elapsed().as_secs_f64(), attempt);
         return Ok(text);
     }
     Err(last_err.unwrap())

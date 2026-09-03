@@ -32,10 +32,7 @@ pub async fn prepare_match(settings: &Settings) {
     if let Err(e) = match_request.write_to_file() {
         info!("Match request could not be written: {:?}", e);
     } else {
-        info!(
-            "Match {} - {} vs {} on {} - prepared successfully",
-            match_request.match_id, match_request.player_1_name, match_request.player_2_name, match_request.map_name
-        );
+        info!("Match {} - {} vs {} on {} - prepared successfully", match_request.match_id, match_request.player_1_name, match_request.player_2_name, match_request.map_name);
     }
 }
 

@@ -28,11 +28,6 @@ pub async fn download_cache(settings: &Settings, url: &str, name: &str, etag: &s
         return Err(anyhow::anyhow!("Cache download failed: {}", status));
     }
     let bytes = response.bytes().await.map_err(anyhow::Error::from)?;
-    info!(
-        "[http] success download cache {} {:.3} MB in {:.3}s attempt 1",
-        name,
-        bytes.len() as f64 / 1_000_000.0,
-        start.elapsed().as_secs_f64()
-    );
+    info!("[http] success download cache {} {:.3} MB in {:.3}s attempt 1", name, bytes.len() as f64 / 1_000_000.0, start.elapsed().as_secs_f64());
     Ok(bytes)
 }
