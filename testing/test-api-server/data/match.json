@@ -4,7 +4,7 @@
         "name": "basic_bot",
         "game_display_id": "15842d51-f575-4b0a-9dc0-15c33c12accf",
         "bot_zip_url": "https://aiarena.net/api/arenaclient/matches/1/1/zip/",
-        "plays_race": "T",
+        "plays_race": { "databaseId": 1 },
         "type": "python"
     },
     "bot2": {
@@ -12,7 +12,7 @@
         "game_display_id": "e987f4cc-7514-4abc-bac6-da6a74046d6d",
         "bot_zip_url": "https://aiarena.net/api/arenaclient/matches/1/2/zip/",
         "bot_data_url": "https://aiarena.net/api/arenaclient/matches/1/2/data/",
-        "plays_race": "T",
+        "plays_race": { "databaseId": 1 },
         "type": "python"
     },
     "map": {
