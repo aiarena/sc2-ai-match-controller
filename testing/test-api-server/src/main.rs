@@ -26,8 +26,8 @@ const ETAG_MAP: &str = "\"test-etag-automaton-map\"";
 #[derive(Clone)]
 struct AppState {
     // Counts how many getNextMatch calls have been made.
-    // Match 1 (count == 1): cold cache — /download returns 404, source GETs serve files.
-    // Match 2 (count >= 2): warm cache — /download serves files, source GETs return 500.
+    // Match 1 (count == 1): cold cache — /download returns 404, source GETs serve full files.
+    // Match 2 (count >= 2): warm cache — /download serves files, source GETs return ETag only (no body).
     match_count: Arc<AtomicUsize>,
 }
 
@@ -224,8 +224,7 @@ fn graphql_submit_result() -> Response {
 
 async fn get_map(State(state): State<AppState>) -> Response {
     if state.match_count.load(Ordering::SeqCst) >= 2 {
-        tracing::error!("Unexpected direct download of map in match 2 — should come from cache");
-        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        return (StatusCode::OK, [(header::ETAG, ETAG_MAP)]).into_response();
     }
     let map_data = include_bytes!("../../testing-maps/AutomatonLE.SC2Map");
     (
@@ -242,8 +241,7 @@ async fn head_map() -> Response {
 
 async fn get_bot1_zip(State(state): State<AppState>) -> Response {
     if state.match_count.load(Ordering::SeqCst) >= 2 {
-        tracing::error!("Unexpected direct download of bot1 zip in match 2 — should come from cache");
-        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        return (StatusCode::OK, [(header::ETAG, ETAG_BOT1_ZIP)]).into_response();
     }
     let bot_data = include_bytes!("../data/basic_bot.zip");
     (
@@ -260,8 +258,7 @@ async fn head_bot1_zip() -> Response {
 
 async fn get_bot1_data(State(state): State<AppState>) -> Response {
     if state.match_count.load(Ordering::SeqCst) >= 2 {
-        tracing::error!("Unexpected direct download of bot1 data in match 2 — should come from cache");
-        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        return (StatusCode::OK, [(header::ETAG, ETAG_BOT1_DATA)]).into_response();
     }
     let bot_data = include_bytes!("../data/basic_bot_data.zip");
     (
@@ -278,8 +275,7 @@ async fn head_bot1_data() -> Response {
 
 async fn get_bot2_zip(State(state): State<AppState>) -> Response {
     if state.match_count.load(Ordering::SeqCst) >= 2 {
-        tracing::error!("Unexpected direct download of bot2 zip in match 2 — should come from cache");
-        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        return (StatusCode::OK, [(header::ETAG, ETAG_BOT2_ZIP)]).into_response();
     }
     let bot_data = include_bytes!("../data/loser_bot.zip");
     (
@@ -296,8 +292,7 @@ async fn head_bot2_zip() -> Response {
 
 async fn get_bot2_data(State(state): State<AppState>) -> Response {
     if state.match_count.load(Ordering::SeqCst) >= 2 {
-        tracing::error!("Unexpected direct download of bot2 data in match 2 — should come from cache");
-        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        return (StatusCode::OK, [(header::ETAG, ETAG_BOT2_DATA)]).into_response();
     }
     let bot_data = include_bytes!("../data/loser_bot_data.zip");
     (
@@ -338,35 +333,35 @@ async fn download(
     let m: serde_json::Value = serde_json::from_str(&modified).unwrap();
 
     match payload.unique_key.as_str() {
-        "basic_bot_zip" => {
+        "bot-code/basic_bot" => {
             let url = m["bot1"]["bot_zip_url"].as_str().unwrap_or("");
             if payload.url == url && payload.etag == ETAG_BOT1_ZIP {
                 let bot_data = include_bytes!("../data/basic_bot.zip");
                 return (StatusCode::OK, Body::from(&bot_data[..])).into_response();
             }
         }
-        "basic_bot_data" => {
+        "bot-data/basic_bot" => {
             let url = m["bot1"]["bot_data_url"].as_str().unwrap_or("");
             if payload.url == url && payload.etag == ETAG_BOT1_DATA {
                 let bot_data = include_bytes!("../data/basic_bot_data.zip");
                 return (StatusCode::OK, Body::from(&bot_data[..])).into_response();
             }
         }
-        "loser_bot_zip" => {
+        "bot-code/loser_bot" => {
             let url = m["bot2"]["bot_zip_url"].as_str().unwrap_or("");
             if payload.url == url && payload.etag == ETAG_BOT2_ZIP {
                 let bot_data = include_bytes!("../data/loser_bot.zip");
                 return (StatusCode::OK, Body::from(&bot_data[..])).into_response();
             }
         }
-        "loser_bot_data" => {
+        "bot-data/loser_bot" => {
             let url = m["bot2"]["bot_data_url"].as_str().unwrap_or("");
             if payload.url == url && payload.etag == ETAG_BOT2_DATA {
                 let bot_data = include_bytes!("../data/loser_bot_data.zip");
                 return (StatusCode::OK, Body::from(&bot_data[..])).into_response();
             }
         }
-        "AutomatonLE.SC2Map" => {
+        "map/AutomatonLE.SC2Map" => {
             let url = m["map"]["download_link"].as_str().unwrap_or("");
             if payload.url == url && payload.etag == ETAG_MAP {
                 let map_data = include_bytes!("../../testing-maps/AutomatonLE.SC2Map");
