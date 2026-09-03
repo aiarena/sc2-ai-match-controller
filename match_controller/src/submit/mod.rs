@@ -23,10 +23,7 @@ pub async fn submit_result(settings: &Settings) {
         }
     };
 
-    info!(
-        "Match {} - {} vs {} on {} - collecting results...",
-        &match_request.match_id, &match_request.player_1_name, &match_request.player_2_name, &match_request.map_name
-    );
+    info!("Match {} - {} vs {} on {} - collecting results...", &match_request.match_id, &match_request.player_1_name, &match_request.player_2_name, &match_request.map_name);
     let match_result = wait_for_match_result(settings, &match_request).await;
 
     if settings.should_use_arena_api() {
