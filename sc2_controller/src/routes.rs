@@ -61,12 +61,12 @@ async fn start_sc2_process(player_seat: &PlayerSeat) -> Result<()> {
 async fn start_ws_server(player_seat: &PlayerSeat) -> Result<JoinHandle<()>> {
     let addr = SocketAddr::from_str(&format!("0.0.0.0:{}", player_seat.external_port)).unwrap();
     let app = Router::new().route("/sc2api", get(websocket_handler)).with_state(player_seat.clone());
-    let ws_server = axum::Server::bind(&addr).serve(app.into_make_service_with_connect_info::<SocketAddr>());
+    let listener = tokio::net::TcpListener::bind(addr).await.map_err(|e| anyhow!("Failed to bind address: {e}"))?;
     let player_seat = player_seat.clone();
 
     let handle = tokio::spawn(async move {
         tracing::info!("WebSocket server for player seat {:?} starting on {}", &player_seat.external_port, addr);
-        if let Err(e) = ws_server.await {
+        if let Err(e) = axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>()).await {
             tracing::error!("WebSocket server for player seat {:?} failed: {:?}", &player_seat.external_port, e);
         } else {
             tracing::info!("WebSocket server for player seat {:?} shut down gracefully", &player_seat.external_port);

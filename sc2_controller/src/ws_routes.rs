@@ -188,12 +188,10 @@ pub async fn connect(port: u16) -> Option<WebSocketStream<TcpStream>> {
 
     debug!("Connecting to the SC2 process: {:?}, {:?}", url, addr);
 
-    let config = WebSocketConfig {
-        max_message_size: Some(128 << 20),
-        max_frame_size: Some(32 << 20),
-        accept_unmasked_frames: true,
-        ..Default::default()
-    };
+    let mut config = WebSocketConfig::default();
+    config.max_message_size = Some(128 << 20);
+    config.max_frame_size = Some(32 << 20);
+    config.accept_unmasked_frames = true;
 
     for _ in 0..60 {
         sleep(Duration::new(1, 0)).await;

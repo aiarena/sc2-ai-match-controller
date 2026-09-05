@@ -6,7 +6,7 @@ description = "Controller of SC2 bot processes"
 license-file = "./LICENCE"
 
 [dependencies]
-tokio = { version = "1.0", features = ["net", "rt-multi-thread", "macros"] }
+tokio = { version = "1", features = ["net", "rt-multi-thread", "macros"] }
 tracing = "0.1"
 tracing-appender = "0.2"
 tracing-subscriber = { version = "0.3", features = ["fmt", "registry"] }
