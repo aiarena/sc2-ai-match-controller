@@ -1,7 +1,7 @@
 use axum::{
     body::Body,
-    extract::{Host, Json, Path, Query, Request, State},
-    http::{header, StatusCode},
+    extract::{Json, Path, Query, Request, State},
+    http::{header, HeaderMap, StatusCode},
     middleware::{self, Next},
     response::{IntoResponse, Response},
     routing::{get, post, put},
@@ -87,7 +87,7 @@ async fn main() {
             get(get_bot2_data).head(head_bot2_data),
         )
         .route("/media/maps/AutomatonLE", get(get_map).head(head_map))
-        .route("/s3-upload/:id", put(s3_upload))
+        .route("/s3-upload/{id}", put(s3_upload))
         .route("/download", post(download))
         .route("/upload", post(upload));
 
@@ -119,16 +119,20 @@ async fn check_authorization(request: Request, next: Next) -> Response {
 
 async fn graphql_handler(
     State(state): State<AppState>,
-    Host(host): Host,
+    headers: HeaderMap,
     Json(body): Json<GraphQLBody>,
 ) -> Response {
+    let host = headers
+        .get(header::HOST)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("localhost");
     let query = &body.query;
     if query.contains("getNextMatch") {
         let count = state.match_count.fetch_add(1, Ordering::SeqCst) + 1;
         tracing::info!("getNextMatch call #{}", count);
-        graphql_get_next_match(&host)
+        graphql_get_next_match(host)
     } else if query.contains("requestUploadUrls") {
-        graphql_request_upload_urls(&host)
+        graphql_request_upload_urls(host)
     } else if query.contains("submitResult") {
         graphql_submit_result()
     } else {
@@ -314,9 +318,13 @@ async fn s3_upload(Path(id): Path<String>) -> Response {
 
 async fn download(
     State(state): State<AppState>,
-    Host(host): Host,
+    headers: HeaderMap,
     Json(payload): Json<DownloadRequest>,
 ) -> Response {
+    let host = headers
+        .get(header::HOST)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("localhost");
     let count = state.match_count.load(Ordering::SeqCst);
     tracing::debug!("Download request (match {}): {:?}", count, payload);
 

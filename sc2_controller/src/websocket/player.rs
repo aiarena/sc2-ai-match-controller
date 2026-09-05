@@ -65,7 +65,7 @@ impl Player {
     /// Send a protobuf response to the client
     pub async fn bot_send_response(&mut self, r: &Response) -> Result<(), PlayerError> {
         trace!("Response to client: [{}]", format!("{r:?}").chars().take(10).collect::<String>());
-        timeout(self.bot_ws_timeout, self.bot_send_message(AMessage::Binary(r.write_to_bytes().expect("Invalid protobuf message"))))
+        timeout(self.bot_ws_timeout, self.bot_send_message(AMessage::Binary(r.write_to_bytes().expect("Invalid protobuf message").into())))
             .await
             .map_err(|_| PlayerError::BotTimeout(self.bot_ws_timeout))
             .and_then(|r| r)

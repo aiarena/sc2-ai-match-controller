@@ -35,6 +35,6 @@ pub fn render_job_template(template: &str, values: &JobTemplateValues) -> anyhow
         .replace("PLACEHOLDER_BOT2_NAME", &values.bot2_name)
         .replace("PLACEHOLDER_BOT2_ID", &values.bot2_id);
 
-    let job: Job = serde_yaml::from_str(&rendered)?;
+    let job: Job = serde_yml::from_str(&rendered)?;
     Ok(job)
 }
