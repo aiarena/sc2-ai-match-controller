@@ -4,7 +4,7 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::process::Command;
 use tokio::net::lookup_host;
-use tracing::info;
+use tracing::{info, warn};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
@@ -53,6 +53,10 @@ async fn run_bot() {
     let command = command
         .stdout(create_log_file("/bot/logs/stdout.log"))
         .stderr(create_log_file("/bot/logs/stderr.log"))
+        // Requested arguments go first so ours are the later ones: the website
+        // rejects the arguments below outright, and with a last-one-wins parser
+        // this ordering means even a miss there can't take a bot off its game.
+        .args(requested_bot_args())
         .arg("--GamePort")
         .arg(&game_port)
         .arg("--LadderServer")
@@ -74,6 +78,36 @@ async fn run_bot() {
             panic!("Bot process failed with error: {}", e);
         }
     };
+}
+
+/// The extra command line the requester of this match asked this bot to be
+/// started with, as the requester typed it, in BOT_ARGS. Ladder matches never
+/// carry one, so an absent or empty value is the normal case.
+///
+/// This is the only place the string is interpreted: it travels verbatim from
+/// the website through the database and the API to here, and is split into
+/// arguments the way a shell would only now, as the command is built. No shell
+/// runs — each word becomes one argv entry directly.
+///
+/// The website validates that the string splits cleanly, so a value we can't
+/// split means something got past it. That costs the requester their arguments,
+/// not the match: the bot still starts, and the match still produces a result.
+fn requested_bot_args() -> Vec<String> {
+    let raw = match std::env::var("BOT_ARGS") {
+        Ok(raw) => raw,
+        Err(_) => return Vec::new(),
+    };
+    parse_bot_args(&raw)
+}
+
+fn parse_bot_args(raw: &str) -> Vec<String> {
+    match shell_words::split(raw) {
+        Ok(args) => args,
+        Err(e) => {
+            warn!("Ignoring unsplittable BOT_ARGS {:?}: {}", raw, e);
+            Vec::new()
+        }
+    }
 }
 
 fn init_controller_logs() -> (tracing_appender::non_blocking::WorkerGuard, tracing_appender::non_blocking::WorkerGuard) {
@@ -172,5 +206,46 @@ async fn wait_for_sigterm() {
             let _ = sigterm.recv().await;
             info!("Received SIGTERM, shutting down gracefully");
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_bot_args;
+
+    // These cases are the contract the website's own splitting has to match: a
+    // string it accepts must reach the bot as the arguments the requester meant.
+    // Keep them in step with test_bot_args.py in aiarena-web.
+    #[test]
+    fn splits_the_way_the_website_does() {
+        for (raw, expected) in [
+            ("", vec![]),
+            ("   ", vec![]),
+            ("--tournament=worldcup", vec!["--tournament=worldcup"]),
+            ("--a --b --c", vec!["--a", "--b", "--c"]),
+            ("--a\t--b\n  --c", vec!["--a", "--b", "--c"]),
+            (r#"--score="1:3""#, vec!["--score=1:3"]),
+            ("--score='1:3'", vec!["--score=1:3"]),
+            (r#"--message="good luck""#, vec!["--message=good luck"]),
+            (r#""--message=good luck" --x"#, vec!["--message=good luck", "--x"]),
+            (r"--message=good\ luck", vec!["--message=good luck"]),
+            ("--build all in", vec!["--build", "all", "in"]),
+        ] {
+            assert_eq!(parse_bot_args(raw), expected, "splitting {raw:?}");
+        }
+    }
+
+    #[test]
+    fn no_args_is_the_normal_case() {
+        assert!(parse_bot_args("").is_empty());
+        assert!(parse_bot_args("   ").is_empty());
+    }
+
+    #[test]
+    fn unsplittable_args_are_dropped_rather_than_fatal() {
+        // The website rejects these, so reaching here means something got past
+        // it. The match still runs; the requester just loses their arguments.
+        assert!(parse_bot_args(r#"--message="unclosed"#).is_empty());
+        assert!(parse_bot_args("--message='unclosed").is_empty());
     }
 }

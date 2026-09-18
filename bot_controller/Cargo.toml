@@ -6,6 +6,7 @@ description = "Controller of SC2 bot processes"
 license-file = "./LICENCE"
 
 [dependencies]
+shell-words = "1.1.1"
 tokio = { version = "1", features = ["net", "rt-multi-thread", "macros"] }
 tracing = "0.1"
 tracing-appender = "0.2"

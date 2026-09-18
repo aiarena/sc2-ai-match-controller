@@ -26,6 +26,13 @@ pub struct MatchInfo {
     pub id: String,
     pub participant1: Participant,
     pub participant2: Participant,
+    /// The extra command line the match requester asked each bot to be started
+    /// with, exactly as they typed it. Empty for ladder matches, which never
+    /// carry one. Nullable on the website, hence the Option.
+    #[serde(default)]
+    pub bot1_args: Option<String>,
+    #[serde(default)]
+    pub bot2_args: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -40,6 +47,8 @@ mutation {
   getNextMatch {
     match {
       id
+      bot1Args
+      bot2Args
       participant1 {
         name
         gameDisplayId
@@ -73,7 +82,11 @@ pub async fn get_next_match(website_url: &str, token: &str) -> anyhow::Result<Ma
 
     let text = resp.text().await.context("Failed to read response body")?;
 
-    let parsed: GraphQLResponse = serde_json::from_str(&text).context("Failed to parse GraphQL response")?;
+    parse_next_match(&text)
+}
+
+fn parse_next_match(text: &str) -> anyhow::Result<MatchInfo> {
+    let parsed: GraphQLResponse = serde_json::from_str(text).context("Failed to parse GraphQL response")?;
 
     let mut match_info = parsed
         .data
@@ -93,4 +106,55 @@ fn decode_base64_id(encoded: &str) -> Option<u32> {
     let decoded = String::from_utf8(bytes).ok()?;
     let id_str = decoded.rsplit(':').next()?;
     id_str.parse().ok()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_next_match;
+
+    // Base64 of "MatchType:42", the global ID shape the website hands out.
+    const MATCH_ID: &str = "TWF0Y2hUeXBlOjQy";
+
+    fn response(match_fields: &str) -> String {
+        format!(
+            r#"{{"data": {{"getNextMatch": {{"match": {{
+                "id": "{MATCH_ID}",
+                "participant1": {{"name": "basic_bot", "gameDisplayId": "bot-id-1"}},
+                "participant2": {{"name": "loser_bot", "gameDisplayId": "bot-id-2"}}
+                {match_fields}
+            }}}}}}}}"#
+        )
+    }
+
+    #[test]
+    fn reads_bot_args_from_the_response() {
+        // Pins the field names against the website's schema: these are spelled
+        // bot1Args/bot2Args there, and a silent mismatch here would look
+        // exactly like a match that was requested without any arguments.
+        let m = parse_next_match(&response(r#", "bot1Args": "--tournament=worldcup", "bot2Args": "--tournament=worldcup --build=\"all in\"""#)).unwrap();
+
+        assert_eq!(m.id, "42");
+        assert_eq!(m.bot1_args.as_deref(), Some("--tournament=worldcup"));
+        assert_eq!(m.bot2_args.as_deref(), Some(r#"--tournament=worldcup --build="all in""#));
+    }
+
+    #[test]
+    fn a_ladder_match_carries_no_bot_args() {
+        let m = parse_next_match(&response(r#", "bot1Args": "", "bot2Args": """#)).unwrap();
+
+        assert_eq!(m.bot1_args.as_deref(), Some(""));
+        assert_eq!(m.bot2_args.as_deref(), Some(""));
+    }
+
+    #[test]
+    fn null_or_missing_bot_args_is_not_an_error() {
+        // The website's columns are nullable, so both shapes can arrive.
+        let m = parse_next_match(&response(r#", "bot1Args": null, "bot2Args": null"#)).unwrap();
+        assert_eq!(m.bot1_args, None);
+
+        let m = parse_next_match(&response("")).unwrap();
+        assert_eq!(m.participant1.name, "basic_bot");
+        assert_eq!(m.bot1_args, None);
+        assert_eq!(m.bot2_args, None);
+    }
 }
