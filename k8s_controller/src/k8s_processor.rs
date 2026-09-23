@@ -74,7 +74,7 @@ pub async fn process(settings: K8sConfig) {
 async fn retrieve_match(settings: &K8sConfig, ac: &Arenaclient) -> anyhow::Result<Job> {
     let new_match = arena_api::get_next_match(&settings.website_url, &ac.token).await?;
 
-    info!("Retrieved match {:?} for AC {:?}", new_match.id, ac.name);
+    info!("Retrieved match {:?} for AC {:?}", new_match.database_id, ac.name);
 
     let template = Profile::get(&new_match).template;
     let job_name = if settings.job_prefix.is_empty() {

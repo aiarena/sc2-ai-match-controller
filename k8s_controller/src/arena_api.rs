@@ -1,6 +1,7 @@
 use anyhow::{anyhow, Context};
 use reqwest::Client;
 use serde::Deserialize;
+use tracing::info;
 
 #[derive(Debug, Deserialize)]
 struct GraphQLResponse {
@@ -62,25 +63,36 @@ pub async fn get_next_match(website_url: &str, token: &str) -> anyhow::Result<Ma
     });
 
     let url = format!("{}/graphql/", website_url.trim_end_matches('/'));
-
-    let resp = client
+    let start = std::time::Instant::now();
+    let response = match client
         .post(&url)
         .header("Authorization", format!("Token {}", token))
         .header("Accept", "application/json")
         .json(&body)
         .send()
         .await
-        .context("Failed to send GraphQL request")?;
+    {
+        Ok(r) => r,
+        Err(e) => {
+            info!("[http] failure next match 0.000 MB in {:.3}s", start.elapsed().as_secs_f64());
+            return Err(anyhow::Error::from(e));
+        }
+    };
+    let status = response.status();
+    if !status.is_success() {
+        info!("[http] failure next match 0.000 MB in {:.3}s", start.elapsed().as_secs_f64());
+        return Err(anyhow!("GraphQL request failed: {}", status));
+    }
 
-    let text = resp.text().await.context("Failed to read response body")?;
-
+    let text = response.text().await.context("Failed to read response body")?;
     let parsed: GraphQLResponse = serde_json::from_str(&text).context("Failed to parse GraphQL response")?;
-
-    parsed
+    let next_match = parsed
         .data
         .ok_or_else(|| anyhow!("GraphQL response has no data"))?
         .get_next_match
         .ok_or_else(|| anyhow!("GraphQL response has no getNextMatch"))?
         .match_info
-        .ok_or_else(|| anyhow!("GraphQL response has no match"))
+        .ok_or_else(|| anyhow!("GraphQL response has no match"));
+    info!("[http] success next match {:.3} MB in {:.3}s", text.len() as f64 / 1_000_000.0, start.elapsed().as_secs_f64());
+    Ok(next_match.unwrap())
 }
