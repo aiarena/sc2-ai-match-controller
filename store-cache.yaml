@@ -1,0 +1,155 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: store-cache-nginx
+  namespace: arenaclients
+data:
+  nginx.conf: |
+    worker_processes 1;
+    error_log /dev/stderr warn;
+    pid /run/nginx.pid;
+
+    events { worker_connections 1024; }
+
+    http {
+      access_log /dev/stdout;
+
+      # Match assets (bot zips) can be large — do not cap the request body.
+      client_max_body_size 0;
+      client_body_temp_path /tmp/nginx-body;
+
+      autoindex off;
+      server_tokens off;
+
+      server {
+        listen 80;
+
+        # /cache/{name}/{etag} maps to /data/cache/{name}/{etag}
+        location /cache/ {
+          root /data;
+          dav_methods PUT DELETE;
+          create_full_put_path on;
+          dav_access group:rw all:r;
+          # Reject anything that could enumerate or mutate outside GET/PUT/DELETE.
+          limit_except GET PUT DELETE { deny all; }
+        }
+
+        location = /healthz {
+          access_log off;
+          return 200 "ok\n";
+        }
+      }
+    }
+
+---
+
+kind: Service
+apiVersion: v1
+metadata:
+  name: store-cache
+  namespace: arenaclients
+  labels:
+    app: store-cache
+spec:
+  selector:
+    app: store-cache
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+
+---
+
+kind: StatefulSet
+apiVersion: apps/v1
+metadata:
+  name: store-cache
+  namespace: arenaclients
+  labels:
+    app: store-cache
+spec:
+  serviceName: store-cache
+  replicas: 1
+  selector:
+    matchLabels:
+      app: store-cache
+  template:
+    metadata:
+      labels:
+        app: store-cache
+    spec:
+      # Pin it to the master node with the shared data directory
+      nodeName: k3s-master
+
+      initContainers:
+        # nginx workers run as uid/gid 101 — give them ownership of the host dir.
+        - name: init-perms
+          image: busybox:1.37
+          command: ["sh", "-c", "mkdir -p /data/cache && chown -R 101:101 /data"]
+          volumeMounts:
+            - name: data
+              mountPath: /data
+
+      containers:
+        - name: nginx
+          image: nginx:latest
+          ports:
+            - name: http
+              containerPort: 80
+          volumeMounts:
+            - name: config
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+            - name: data
+              mountPath: /data
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              cpu: "1"
+              memory: 128Mi
+
+        # Reclaim objects older than 14 days (eviction policy) and prune empty dirs.
+        - name: evictor
+          image: busybox:1.37
+          command:
+            - sh
+            - -c
+            - |
+              while true; do
+                find /data/cache -type f -mtime +14 -delete 2>/dev/null || true
+                find /data/cache -mindepth 1 -type d -empty -delete 2>/dev/null || true
+                sleep 3600
+              done
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          resources:
+            requests:
+              cpu: 10m
+              memory: 8Mi
+            limits:
+              cpu: 100m
+              memory: 32Mi
+
+      volumes:
+        - name: config
+          configMap:
+            name: store-cache-nginx
+        - name: data
+          hostPath:
+            path: /mnt/store-cache
+            type: DirectoryOrCreate
