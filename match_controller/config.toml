@@ -13,4 +13,4 @@ BASE_WEBSITE_URL = ""   # AI Arena website URL; leave empty to use local match f
 MATCHES_FILE = ""       # Path to local match request file (used when BASE_WEBSITE_URL is empty)
 RESULTS_FILE = ""       # Path to local results file (used when BASE_WEBSITE_URL is empty)
 
-CACHING_SERVER_URL = "http://aiarena-caching-nodeport-service"
+CACHING_SERVER_URL = "" # S3 endpoint of the object-store cache; leave empty to disable caching

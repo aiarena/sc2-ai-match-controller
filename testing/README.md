@@ -42,7 +42,7 @@ VERSION = "latest"
 API_URL = "http://host.docker.internal:3000"
 ```
 
-Run `teting/test-api-server` and then `client_controller` with:
+Run `testing/test-api-server` and then `client_controller` with:
 
 ```
 cargo run

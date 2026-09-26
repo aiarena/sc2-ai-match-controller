@@ -35,6 +35,8 @@ spec:
               value: 'PLACEHOLDER_API_CLIENT'
             - name: ACMATCH_API_TOKEN
               value: PLACEHOLDER_API_TOKEN
+            - name: ACMATCH_CACHING_SERVER_URL
+              value: 'http://store-cache'
             - name: ACMATCH_LOGGING_LEVEL
               value: debug
             - name: ACMATCH_MATCHES_FILE
@@ -158,6 +160,8 @@ spec:
               value: 'PLACEHOLDER_API_CLIENT'
             - name: ACMATCH_API_TOKEN
               value: PLACEHOLDER_API_TOKEN
+            - name: ACMATCH_CACHING_SERVER_URL
+              value: 'http://store-cache'
             - name: ACMATCH_LOGGING_LEVEL
               value: debug
             - name: ACMATCH_MATCHES_FILE

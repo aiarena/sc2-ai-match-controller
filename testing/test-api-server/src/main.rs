@@ -1,13 +1,13 @@
 use axum::{
     body::Body,
-    extract::{Json, Path, Query, Request, State},
+    extract::{Json, Path, Request, State},
     http::{header, HeaderMap, StatusCode},
     middleware::{self, Next},
     response::{IntoResponse, Response},
     routing::{get, post, put},
     Router,
 };
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::json;
 use std::net::SocketAddr;
 use std::sync::{
@@ -26,24 +26,9 @@ const ETAG_MAP: &str = "\"test-etag-automaton-map\"";
 #[derive(Clone)]
 struct AppState {
     // Counts how many node match queries have been made.
-    // Match 1 (count == 1): cold cache — /download returns 404, source GETs serve full files.
-    // Match 2 (count >= 2): warm cache — /download serves files, source GETs return ETag only (no body).
+    // Match 1 (count == 1): cold cache — cache GET returns 404, source GETs serve full files.
+    // Match 2 (count >= 2): warm cache — cache GET serves files, source GETs return ETag only (no body).
     match_count: Arc<AtomicUsize>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-struct DownloadRequest {
-    #[serde(rename = "uniqueKey")]
-    unique_key: String,
-    url: String,
-    #[serde(rename = "md5hash")] // cache server API uses "md5hash" as the key name
-    etag: String,
-}
-
-#[derive(Debug, Deserialize)]
-struct UploadParams {
-    #[serde(rename = "uniqueKey")]
-    unique_key: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -89,8 +74,7 @@ async fn main() {
         )
         .route("/media/maps/AutomatonLE", get(get_map).head(head_map))
         .route("/s3-upload/{id}", put(s3_upload))
-        .route("/download", post(download))
-        .route("/upload", post(upload));
+        .route("/cache/{*key}", get(cache_download).put(cache_upload));
 
     let app = Router::new()
         .merge(protected_routes)
@@ -324,78 +308,56 @@ async fn s3_upload(Path(id): Path<String>) -> Response {
     StatusCode::OK.into_response()
 }
 
-async fn download(
-    State(state): State<AppState>,
-    headers: HeaderMap,
-    Json(payload): Json<DownloadRequest>,
-) -> Response {
-    let host = headers
-        .get(header::HOST)
-        .and_then(|v| v.to_str().ok())
-        .unwrap_or("localhost");
+async fn cache_download(State(state): State<AppState>, Path(key): Path<String>) -> Response {
     let count = state.match_count.load(Ordering::SeqCst);
-    tracing::debug!("Download request (match {}): {:?}", count, payload);
+    tracing::debug!("Cache download (match {}) for key: {}", count, key);
 
     // Match 1: cold cache — always miss so the client falls back to source URLs.
     if count <= 1 {
-        tracing::debug!("Cache miss (match 1) for key: {}", payload.unique_key);
+        tracing::debug!("Cache miss (match 1) for key: {}", key);
         return StatusCode::NOT_FOUND.into_response();
     }
 
-    // Match 2+: warm cache — serve from "cache" and validate etag.
-    let base_url = format!("http://{}", host);
-    let json_str = include_str!("../data/match.json");
-    let modified = json_str.replace("https://aiarena.net", &base_url);
-    let m: serde_json::Value = serde_json::from_str(&modified).unwrap();
+    let Some((name, etag)) = key.rsplit_once('/') else {
+        return StatusCode::NOT_FOUND.into_response();
+    };
+    let etag = format!("\"{}\"", etag);
+    let etag = etag.as_str();
 
-    match payload.unique_key.as_str() {
-        "bot-code/basic_bot" => {
-            let url = m["bot1"]["bot_zip_url"].as_str().unwrap_or("");
-            if payload.url == url && payload.etag == ETAG_BOT1_ZIP {
-                let bot_data = include_bytes!("../data/basic_bot.zip");
-                return (StatusCode::OK, Body::from(&bot_data[..])).into_response();
-            }
+    // Match 2+: warm cache — serve when name and etag match.
+    let served: Option<&'static [u8]> = match name {
+        "bot-code/basic_bot" if etag == ETAG_BOT1_ZIP => {
+            Some(&include_bytes!("../data/basic_bot.zip")[..])
         }
-        "bot-data/basic_bot" => {
-            let url = m["bot1"]["bot_data_url"].as_str().unwrap_or("");
-            if payload.url == url && payload.etag == ETAG_BOT1_DATA {
-                let bot_data = include_bytes!("../data/basic_bot_data.zip");
-                return (StatusCode::OK, Body::from(&bot_data[..])).into_response();
-            }
+        "bot-data/basic_bot" if etag == ETAG_BOT1_DATA => {
+            Some(&include_bytes!("../data/basic_bot_data.zip")[..])
         }
-        "bot-code/loser_bot" => {
-            let url = m["bot2"]["bot_zip_url"].as_str().unwrap_or("");
-            if payload.url == url && payload.etag == ETAG_BOT2_ZIP {
-                let bot_data = include_bytes!("../data/loser_bot.zip");
-                return (StatusCode::OK, Body::from(&bot_data[..])).into_response();
-            }
+        "bot-code/loser_bot" if etag == ETAG_BOT2_ZIP => {
+            Some(&include_bytes!("../data/loser_bot.zip")[..])
         }
-        "bot-data/loser_bot" => {
-            let url = m["bot2"]["bot_data_url"].as_str().unwrap_or("");
-            if payload.url == url && payload.etag == ETAG_BOT2_DATA {
-                let bot_data = include_bytes!("../data/loser_bot_data.zip");
-                return (StatusCode::OK, Body::from(&bot_data[..])).into_response();
-            }
+        "bot-data/loser_bot" if etag == ETAG_BOT2_DATA => {
+            Some(&include_bytes!("../data/loser_bot_data.zip")[..])
         }
-        "map/AutomatonLE.SC2Map" => {
-            let url = m["map"]["download_link"].as_str().unwrap_or("");
-            if payload.url == url && payload.etag == ETAG_MAP {
-                let map_data = include_bytes!("../../testing-maps/AutomatonLE.SC2Map");
-                return (StatusCode::OK, Body::from(&map_data[..])).into_response();
-            }
+        "map/AutomatonLE.SC2Map" if etag == ETAG_MAP => {
+            Some(&include_bytes!("../../testing-maps/AutomatonLE.SC2Map")[..])
         }
-        _ => {}
+        _ => None,
+    };
+
+    match served {
+        Some(bytes) => (StatusCode::OK, Body::from(bytes)).into_response(),
+        None => {
+            tracing::error!(
+                "Cache miss in match {} for key '{}' — name or etag mismatch",
+                count,
+                key
+            );
+            StatusCode::NOT_FOUND.into_response()
+        }
     }
-
-    tracing::error!(
-        "Cache miss in match {} for key '{}' — etag or url mismatch",
-        count,
-        payload.unique_key
-    );
-    StatusCode::NOT_FOUND.into_response()
 }
 
-async fn upload(Query(params): Query<UploadParams>) -> Response {
-    tracing::debug!("Upload request with uniqueKey: {}", params.unique_key);
+async fn cache_upload(Path(key): Path<String>) -> Response {
+    tracing::debug!("Cache upload for key: {}", key);
     StatusCode::OK.into_response()
 }

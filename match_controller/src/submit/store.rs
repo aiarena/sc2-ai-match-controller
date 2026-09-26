@@ -12,7 +12,8 @@ pub async fn upload_file(settings: &Settings, name: &str, file_path: &Path) -> a
         return Ok(String::new());
     }
     let data = tokio::fs::read(file_path).await.with_context(|| format!("Failed to read file: {}", file_path.display()))?;
-    upload_data(settings, name, &data).await
+    let (upload_id, _etag) = upload_data(settings, name, &data).await?;
+    Ok(upload_id)
 }
 
 pub async fn upload_zip(settings: &Settings, name: &str, directory: &Path, cacheable: bool) -> anyhow::Result<String> {
@@ -22,15 +23,16 @@ pub async fn upload_zip(settings: &Settings, name: &str, directory: &Path, cache
     let tmp = tempfile::NamedTempFile::new()?;
     zip_directory(tmp.path(), directory).with_context(|| format!("Failed to zip: {}", directory.display()))?;
     let data = tokio::fs::read(tmp.path()).await?;
+    let (upload_id, etag) = upload_data(settings, name, &data).await?;
     if cacheable {
-        if let Err(e) = super::cache::upload_cache(settings, name, &data).await {
+        if let Err(e) = super::cache::upload_cache(settings, name, &etag, &data).await {
             info!("Cache upload failed: {}", e);
         }
     }
-    upload_data(settings, name, &data).await
+    Ok(upload_id)
 }
 
-async fn upload_data(settings: &Settings, name: &str, data: &[u8]) -> anyhow::Result<String> {
+async fn upload_data(settings: &Settings, name: &str, data: &[u8]) -> anyhow::Result<(String, String)> {
     let size_mb = data.len() as f64 / 1_000_000.0;
     let mut last_err = None;
     for attempt in 1..=10 {
@@ -53,8 +55,9 @@ async fn upload_data(settings: &Settings, name: &str, data: &[u8]) -> anyhow::Re
         let elapsed = start.elapsed().as_secs_f64();
 
         if status.is_success() {
+            let etag = response.headers().get(reqwest::header::ETAG).and_then(|v| v.to_str().ok()).unwrap_or("").to_string();
             info!("[http] success upload store {} {:.3} MB in {:.3}s attempt {}", name, size_mb, elapsed, attempt);
-            return Ok(upload_id);
+            return Ok((upload_id, etag));
         }
         info!("[http] failure upload store {} {:.3} MB in {:.3}s attempt {}", name, size_mb, elapsed, attempt);
         if !status.is_server_error() {

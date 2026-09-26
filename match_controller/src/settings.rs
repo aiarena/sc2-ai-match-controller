@@ -26,6 +26,10 @@ impl Settings {
     pub fn should_use_cache(&self) -> bool {
         !self.caching_server_url.is_empty()
     }
+
+    pub fn cache_object_url(&self, name: &str, etag: &str) -> String {
+        format!("{}/cache/{}/{}", self.caching_server_url.trim_end_matches('/'), name, etag.trim_matches('"'))
+    }
 }
 
 #[derive(Debug, Copy, Clone, Deserialize, Eq, PartialEq)]

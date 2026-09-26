@@ -7,7 +7,7 @@ use std::time::Duration;
 use tokio::io::AsyncWriteExt;
 use tracing::{debug, error, info};
 
-use super::cache::download_cache;
+use super::cache::{download_cache, upload_cache};
 use crate::settings::Settings;
 
 pub async fn download_file(settings: &Settings, url: &str, name: &str, file: &Path) -> anyhow::Result<()> {
@@ -24,14 +24,14 @@ pub async fn download_zip(settings: &Settings, url: &str, name: &str, directory:
 
 async fn download_data(settings: &Settings, url: &str, name: &str) -> anyhow::Result<Bytes> {
     if !settings.should_use_cache() {
-        return download_from_url(url, name).await;
+        return Ok(download_from_url(url, name).await?.0);
     }
 
     let etag = match get_etag(url, name).await {
         Ok(e) => e,
         Err(e) => {
             info!("No ETag, downloading from store: {:?}", e);
-            return download_from_url(url, name).await;
+            return Ok(download_from_url(url, name).await?.0);
         }
     };
 
@@ -39,7 +39,15 @@ async fn download_data(settings: &Settings, url: &str, name: &str) -> anyhow::Re
         Ok(bytes) => Ok(bytes),
         Err(e) => {
             info!("No cache, downloading from store: {:?}", e);
-            download_from_url(url, name).await
+            let (bytes, etag) = download_from_url(url, name).await?;
+            // Write-through: populate the cache under the ETag of the bytes we
+            // actually downloaded, so subsequent matches hit.
+            if etag.is_empty() {
+                info!("Cache upload skipped: store returned no ETag for {}", name);
+            } else if let Err(e) = upload_cache(settings, name, &etag, &bytes).await {
+                info!("Cache upload failed: {}", e);
+            }
+            Ok(bytes)
         }
     }
 }
@@ -80,7 +88,7 @@ async fn get_etag(url: &str, name: &str) -> anyhow::Result<String> {
     Err(last_err.unwrap())
 }
 
-async fn download_from_url(url: &str, name: &str) -> anyhow::Result<Bytes> {
+async fn download_from_url(url: &str, name: &str) -> anyhow::Result<(Bytes, String)> {
     let mut last_err = None;
     for attempt in 1..=10 {
         let start = std::time::Instant::now();
@@ -99,9 +107,10 @@ async fn download_from_url(url: &str, name: &str) -> anyhow::Result<Bytes> {
         let status = response.status();
 
         if status.is_success() {
+            let etag = response.headers().get(reqwest::header::ETAG).and_then(|v| v.to_str().ok()).unwrap_or("").to_string();
             let bytes = response.bytes().await.map_err(anyhow::Error::from)?;
             info!("[http] success download store {} {:.3} MB in {:.3}s attempt {}", name, bytes.len() as f64 / 1_000_000.0, start.elapsed().as_secs_f64(), attempt);
-            return Ok(bytes);
+            return Ok((bytes, etag));
         }
         info!("[http] failure download store {} 0.000 MB in {:.3}s attempt {}", name, start.elapsed().as_secs_f64(), attempt);
         if !status.is_server_error() {
