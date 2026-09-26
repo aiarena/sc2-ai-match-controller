@@ -56,8 +56,10 @@ async fn get_etag(url: &str, name: &str) -> anyhow::Result<String> {
     let mut last_err = None;
     for attempt in 1..=10 {
         let start = std::time::Instant::now();
-        // TODO: switch to HEAD once the Arena API provides a HEAD-signed URL alongside the GET URL; GET works because reqwest reads headers only and drops the connection before the body arrives
-        let response = match Client::new().get(url).send().await {
+        // Emulate a HEAD on a pre-signed GET URL: request a single byte via Range
+        // so S3 does not transfer (and bill for) the whole object body. The ETag is
+        // still returned, with a 206 Partial Content status.
+        let response = match Client::new().get(url).header(reqwest::header::RANGE, "bytes=0-0").send().await {
             Ok(r) => r,
             Err(e) => {
                 info!("[http] failure headers store {} 0.000 MB in {:.3}s attempt {}", name, start.elapsed().as_secs_f64(), attempt);
