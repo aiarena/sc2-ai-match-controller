@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1"
-config = { version = "0.14", default-features = false, features = ["toml", "json"] }
+config = { version = "0.15", default-features = false, features = ["toml", "json"] }
 # kube 2.x and k8s-openapi 0.26 are the latest versions supporting v1_30 our cluster at v1.30.13+k3s1.
 k8s-openapi = { version = "0.26", default-features = false, features = ["v1_30"] }
 kube = { version = "2", default-features = false, features = ["client", "runtime", "rustls-tls"] }
