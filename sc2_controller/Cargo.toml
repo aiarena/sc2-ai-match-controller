@@ -27,7 +27,7 @@ tower-http = { version = "0.7", features=["trace"] }
 tracing = "0.1"
 tracing-appender = "0.2"
 tracing-subscriber = { version = "0.3", features = ["fmt", "registry", "env-filter"] }
-utoipa = { version = "5", features = ["axum_extras"], optional = true }
+utoipa = { version = "6", features = ["axum_extras"], optional = true }
 utoipa-swagger-ui = { version = "9", features = ["axum"], optional = true }
 
 [features]
