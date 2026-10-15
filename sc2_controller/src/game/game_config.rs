@@ -53,7 +53,7 @@ impl GameConfig {
             map: map_name.to_string(),
             players,
 
-            max_game_time: 80640,
+            max_game_time: 60480,
             max_frame_time: 40,
             timeout_secs: 30,
             replay_path: "/root/StarCraftII/maps".to_string(),
