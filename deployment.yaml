@@ -16,7 +16,7 @@ spec:
         app: aiarena-k8s-controller
     spec:
       containers:
-      - image: aiarena/k8s-controller:2026.09.26-18.42
+      - image: aiarena/k8s-controller:2026.10.20-17.21
         name: k8s-controller
         volumeMounts:
         - mountPath: /app/arenaclients.json
